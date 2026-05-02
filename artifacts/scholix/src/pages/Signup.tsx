@@ -36,7 +36,7 @@ export default function Signup() {
     e.preventDefault();
     setError("");
     signupMutation.mutate(
-      { firstName, lastName, email, password, role },
+      { data: { firstName, lastName, email, password, role } },
       {
         onSuccess: (data) => {
           login(data.user as any, data.token);

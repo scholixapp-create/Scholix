@@ -18,7 +18,7 @@ export default function AdminTutorApprovals() {
 
   const handleToggle = (tutorId: number, currentlyApproved: boolean) => {
     approveMutation.mutate(
-      { tutorId, data: { approved: !currentlyApproved } },
+      { tutorId, data: { approved: !currentlyApproved as boolean } },
       {
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });

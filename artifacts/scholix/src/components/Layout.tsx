@@ -80,7 +80,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = getNav(user.role);
 
   const handleLogout = () => {
-    logoutMutation.mutate(undefined, {
+    logoutMutation.mutate(undefined as void, {
       onSettled: () => {
         queryClient.clear();
         logout();

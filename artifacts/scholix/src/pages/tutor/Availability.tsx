@@ -56,7 +56,7 @@ export default function TutorAvailability() {
   const handleSave = () => {
     if (!tutorId) return;
     setAvailMutation.mutate(
-      { tutorId, data: { slots } },
+      { tutorId, data: { slots: slots } },
       {
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: getGetTutorAvailabilityQueryKey(tutorId) });
@@ -71,7 +71,7 @@ export default function TutorAvailability() {
     if (!tutorId) return;
     if (hourlyRate < 65) { alert("Minimum rate is $65/hr"); return; }
     updateProfileMutation.mutate(
-      { tutorId, data: { hourlyRate } },
+      { tutorId, data: { hourlyRate: hourlyRate } },
       {
         onSuccess: () => {
           qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });

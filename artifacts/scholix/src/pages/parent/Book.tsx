@@ -43,7 +43,7 @@ export default function BookSession() {
     const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
 
     createSession.mutate(
-      { tutorId, studentId: selectedStudentId, subject, scheduledAt, durationMinutes: duration },
+      { data: { tutorId, studentId: selectedStudentId, subject, scheduledAt, durationMinutes: duration } },
       {
         onSuccess: (session) => {
           setCreatedSession(session);
@@ -58,7 +58,7 @@ export default function BookSession() {
   const handlePayment = () => {
     if (!createdSession) return;
     simulatePayment.mutate(
-      { sessionId: createdSession.id },
+      { data: { sessionId: createdSession.id } },
       {
         onSuccess: () => {
           setStep("confirmed");

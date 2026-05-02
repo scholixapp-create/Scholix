@@ -26,7 +26,7 @@ export default function Login() {
     e.preventDefault();
     setError("");
     loginMutation.mutate(
-      { email, password },
+      { data: { email, password } },
       {
         onSuccess: (data) => {
           login(data.user as any, data.token);
