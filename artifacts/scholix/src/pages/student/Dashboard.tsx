@@ -1,103 +1,294 @@
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useListSessions, useGetSessionSummary } from "@workspace/api-client-react";
+import { useListSessions, useListStudents } from "@workspace/api-client-react";
 import StatusBadge from "@/components/StatusBadge";
-import { Calendar, BookOpen, Zap, BarChart2 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import {
+  Calendar, BookOpen, Clock, GraduationCap,
+  ChevronRight, CheckCircle2, XCircle, Inbox,
+} from "lucide-react";
+import { format, parseISO, isPast, isFuture } from "date-fns";
 
-function PlaceholderCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
+type Tab = "upcoming" | "history";
+
+interface Session {
+  id: number;
+  subject: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: string;
+  isPaid: boolean;
+  totalAmount: number;
+  tutorName: string;
+  studentName: string;
+}
+
+function CountdownBadge({ scheduledAt }: { scheduledAt: string }) {
+  const date = parseISO(scheduledAt);
+  const now = new Date();
+  const diffMs = date.getTime() - now.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+  if (diffHours < 24 && diffHours >= 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold">
+        In {diffHours}h
+      </span>
+    );
+  }
+  if (diffDays < 7 && diffDays >= 0) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
+        In {diffDays}d
+      </span>
+    );
+  }
+  return null;
+}
+
+function UpcomingCard({ session }: { session: Session }) {
   return (
-    <div className="bg-card border border-card-border rounded-xl p-4 flex items-start gap-3 opacity-60">
-      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-        <Icon size={16} className="text-muted-foreground" />
+    <div className="bg-card border border-card-border rounded-xl p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+            <BookOpen size={15} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-semibold text-foreground">{session.subject}</p>
+              <CountdownBadge scheduledAt={session.scheduledAt} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">with {session.tutorName}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Calendar size={11} />
+                {format(parseISO(session.scheduledAt), "EEE, MMM d 'at' h:mm a")}
+              </span>
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <Clock size={11} />
+                {session.durationMinutes}m
+              </span>
+            </div>
+          </div>
+        </div>
+        <StatusBadge status={session.status} />
       </div>
-      <div>
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground mt-1">Coming soon</span>
+    </div>
+  );
+}
+
+function HistoryCard({ session }: { session: Session }) {
+  const isCompleted = session.status === "completed";
+  return (
+    <div className="bg-card border border-card-border rounded-xl p-4">
+      <div className="flex items-start gap-3">
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+          isCompleted ? "bg-accent/10" : "bg-muted"
+        }`}>
+          {isCompleted
+            ? <CheckCircle2 size={15} className="text-accent" />
+            : <XCircle size={15} className="text-muted-foreground" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-foreground">{session.subject}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">with {session.tutorName}</p>
+            </div>
+            {isCompleted && (
+              <span className="text-sm font-semibold text-foreground shrink-0">
+                ${session.totalAmount.toFixed(2)}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Calendar size={11} />
+              {format(parseISO(session.scheduledAt), "MMM d, yyyy · h:mm a")}
+            </span>
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Clock size={11} />
+              {session.durationMinutes}m
+            </span>
+          </div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function EmptyState({ tab }: { tab: Tab }) {
+  return (
+    <div className="bg-card border border-card-border rounded-xl p-8 text-center">
+      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+        {tab === "upcoming"
+          ? <Calendar size={20} className="text-muted-foreground" />
+          : <Inbox size={20} className="text-muted-foreground" />}
+      </div>
+      {tab === "upcoming" ? (
+        <>
+          <p className="text-sm font-medium text-foreground">No upcoming sessions</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Ask your parent to book a tutoring session for you
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="text-sm font-medium text-foreground">No session history yet</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Your completed and cancelled sessions will appear here
+          </p>
+        </>
+      )}
     </div>
   );
 }
 
 export default function StudentDashboard() {
   const { user } = useAuth();
-  const sessions = useListSessions(undefined);
-  const summary = useGetSessionSummary(undefined);
+  const [tab, setTab] = useState<Tab>("upcoming");
 
-  const upcoming = sessions.data
-    ?.filter((s) => s.status === "scheduled")
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-    .slice(0, 5) ?? [];
+  const allStudents = useListStudents();
+  const allSessions = useListSessions(undefined);
+
+  // Find this user's student record
+  const myStudent = allStudents.data?.find((s) => s.userId === user?.id) ?? null;
+
+  // Filter sessions by studentId
+  const mySessions: Session[] = (allSessions.data ?? []).filter(
+    (s) => myStudent && s.studentId === myStudent.id
+  ) as Session[];
+
+  const upcoming = mySessions
+    .filter((s) => s.status === "scheduled")
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
+  const history = mySessions
+    .filter((s) => s.status !== "scheduled")
+    .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
+
+  const totalHours = mySessions
+    .filter((s) => s.status === "completed")
+    .reduce((sum, s) => sum + s.durationMinutes / 60, 0);
+
+  const subjects = [...new Set(mySessions.map((s) => s.subject))];
+
+  const isLoading = allStudents.isLoading || allSessions.isLoading;
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
+      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-foreground">Hello, {user?.firstName}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Your learning journey</p>
+        <h1 className="text-xl font-bold text-foreground">Hello, {user?.firstName} 👋</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Here's your learning overview</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="bg-primary rounded-xl p-4 text-white">
-          <div className="flex items-center gap-2 mb-2">
-            <Calendar size={16} className="opacity-80" />
-            <span className="text-xs font-medium opacity-80">Upcoming</span>
-          </div>
-          <p className="text-2xl font-bold">{summary.data?.scheduled ?? 0}</p>
-          <p className="text-xs opacity-70 mt-0.5">sessions scheduled</p>
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-primary rounded-xl p-3 text-white text-center">
+          <p className="text-2xl font-bold">{upcoming.length}</p>
+          <p className="text-[10px] opacity-75 mt-0.5 leading-tight">Upcoming</p>
         </div>
-        <div className="bg-card border border-card-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <BookOpen size={16} className="text-accent" />
-            <span className="text-xs font-medium text-muted-foreground">Completed</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground">{summary.data?.completed ?? 0}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">sessions done</p>
+        <div className="bg-card border border-card-border rounded-xl p-3 text-center">
+          <p className="text-2xl font-bold text-foreground">{history.filter(s => s.status === "completed").length}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Completed</p>
+        </div>
+        <div className="bg-card border border-card-border rounded-xl p-3 text-center">
+          <p className="text-2xl font-bold text-foreground">{totalHours.toFixed(1)}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">Hours learned</p>
         </div>
       </div>
 
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground">Upcoming sessions</h2>
+      {/* Subjects studied */}
+      {subjects.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-6">
+          {subjects.map((s) => (
+            <span key={s} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium">
+              {s}
+            </span>
+          ))}
         </div>
+      )}
 
-        {sessions.isLoading ? (
-          <div className="space-y-2">
-            {[1, 2].map((i) => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}
-          </div>
-        ) : upcoming.length === 0 ? (
-          <div className="bg-card border border-card-border rounded-xl p-6 text-center">
-            <Calendar size={24} className="text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No upcoming sessions</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Ask your parent to book a session for you</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {upcoming.map((session) => (
-              <div key={session.id} className="bg-card border border-card-border rounded-xl p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{session.subject}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">with {session.tutorName}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {format(parseISO(session.scheduledAt), "EEE, MMM d 'at' h:mm a")}
-                    </p>
-                  </div>
-                  <StatusBadge status={session.status} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Tabs */}
+      <div className="flex gap-1 bg-muted p-1 rounded-xl mb-4">
+        <button
+          onClick={() => setTab("upcoming")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+            tab === "upcoming"
+              ? "bg-card shadow-sm text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Calendar size={14} />
+          Upcoming
+          {upcoming.length > 0 && (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              tab === "upcoming" ? "bg-primary text-white" : "bg-muted-foreground/20 text-muted-foreground"
+            }`}>
+              {upcoming.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab("history")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+            tab === "history"
+              ? "bg-card shadow-sm text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Clock size={14} />
+          History
+          {history.length > 0 && (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              tab === "history" ? "bg-primary text-white" : "bg-muted-foreground/20 text-muted-foreground"
+            }`}>
+              {history.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      <div>
-        <h2 className="text-sm font-semibold text-foreground mb-3">Coming soon</h2>
-        <div className="space-y-2">
-          <PlaceholderCard icon={BarChart2} title="Progress Dashboard" desc="See how you're improving across subjects" />
-          <PlaceholderCard icon={BookOpen} title="Homework Tracker" desc="Track assignments set by your tutor" />
-          <PlaceholderCard icon={Zap} title="AI Study Tools" desc="Personalized practice and explanations" />
+      {/* Tab content */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />
+          ))}
         </div>
-      </div>
+      ) : tab === "upcoming" ? (
+        <div className="space-y-3">
+          {upcoming.length === 0 ? (
+            <EmptyState tab="upcoming" />
+          ) : (
+            upcoming.map((session) => (
+              <UpcomingCard key={session.id} session={session} />
+            ))
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {history.length === 0 ? (
+            <EmptyState tab="history" />
+          ) : (
+            history.map((session) => (
+              <HistoryCard key={session.id} session={session} />
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Tutor tip */}
+      {!isLoading && upcoming.length > 0 && tab === "upcoming" && (
+        <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-primary/5 border border-primary/15">
+          <GraduationCap size={14} className="text-primary mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <span className="font-medium text-foreground">Tip:</span> Join your session a few minutes early so you can have your materials ready.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
