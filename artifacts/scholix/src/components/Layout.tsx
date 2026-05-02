@@ -10,6 +10,7 @@ import {
   LogOut,
   Clock,
   GraduationCap,
+  Baby,
 } from "lucide-react";
 
 interface NavItem {
@@ -30,6 +31,7 @@ function getTutorNav(): NavItem[] {
 function getParentNav(): NavItem[] {
   return [
     { href: "/parent/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+    { href: "/parent/students", label: "Students", icon: <Baby size={18} /> },
     { href: "/parent/tutors", label: "Find Tutors", icon: <GraduationCap size={18} /> },
   ];
 }

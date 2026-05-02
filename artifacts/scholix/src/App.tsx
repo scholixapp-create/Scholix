@@ -15,6 +15,7 @@ import TutorSessions from "@/pages/tutor/Sessions";
 import ParentDashboard from "@/pages/parent/Dashboard";
 import ParentTutors from "@/pages/parent/Tutors";
 import ParentBook from "@/pages/parent/Book";
+import ParentStudents from "@/pages/parent/Students";
 import StudentDashboard from "@/pages/student/Dashboard";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminUsers from "@/pages/admin/Users";
@@ -99,6 +100,11 @@ function Router() {
       <Route path="/parent/book/:tutorId">
         <RequireAuth role="parent">
           <Layout><ParentBook /></Layout>
+        </RequireAuth>
+      </Route>
+      <Route path="/parent/students">
+        <RequireAuth role="parent">
+          <Layout><ParentStudents /></Layout>
         </RequireAuth>
       </Route>
 
