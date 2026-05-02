@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useLogout } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNotifications } from "@/hooks/useNotifications";
+import NotificationsPanel from "@/components/NotificationsPanel";
 import {
   LayoutDashboard,
   Calendar,
@@ -12,6 +15,7 @@ import {
   GraduationCap,
   Baby,
   DollarSign,
+  Bell,
 } from "lucide-react";
 
 interface NavItem {
@@ -78,6 +82,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const queryClient = useQueryClient();
   const logoutMutation = useLogout();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const { notifications, unreadCount, isLoading: notifsLoading, markRead, markAllRead, dismiss } = useNotifications();
 
   if (!user) return <>{children}</>;
 
@@ -106,9 +112,36 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="px-4 py-4 border-b border-sidebar-border">
-          <div className="px-2 py-2 rounded-lg bg-sidebar-accent">
-            <p className="text-xs text-sidebar-foreground/60 font-medium uppercase tracking-wider mb-0.5">{getRoleLabel(user.role)}</p>
-            <p className="text-sm font-semibold text-white truncate">{user.firstName} {user.lastName}</p>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 px-2 py-2 rounded-lg bg-sidebar-accent">
+              <p className="text-xs text-sidebar-foreground/60 font-medium uppercase tracking-wider mb-0.5">{getRoleLabel(user.role)}</p>
+              <p className="text-sm font-semibold text-white truncate">{user.firstName} {user.lastName}</p>
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications((v) => !v)}
+                className="relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
+                title="Notifications"
+              >
+                <Bell size={17} className="text-sidebar-foreground/70" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <NotificationsPanel
+                  notifications={notifications}
+                  unreadCount={unreadCount}
+                  isLoading={notifsLoading}
+                  onMarkRead={markRead}
+                  onMarkAllRead={markAllRead}
+                  onDismiss={dismiss}
+                  onClose={() => setShowNotifications(false)}
+                />
+              )}
+            </div>
           </div>
         </div>
 
@@ -155,6 +188,31 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-white/60">{user.firstName}</span>
+            {/* Bell — mobile */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications((v) => !v)}
+                className="relative p-1.5 rounded-md hover:bg-sidebar-accent transition-colors"
+              >
+                <Bell size={16} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              {showNotifications && (
+                <NotificationsPanel
+                  notifications={notifications}
+                  unreadCount={unreadCount}
+                  isLoading={notifsLoading}
+                  onMarkRead={markRead}
+                  onMarkAllRead={markAllRead}
+                  onDismiss={dismiss}
+                  onClose={() => setShowNotifications(false)}
+                />
+              )}
+            </div>
             <button onClick={handleLogout} className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors">
               <LogOut size={16} />
             </button>

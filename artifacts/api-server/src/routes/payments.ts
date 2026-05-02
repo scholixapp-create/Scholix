@@ -1,7 +1,10 @@
 import { Router } from "express";
-import { db, paymentsTable, sessionsTable } from "@workspace/db";
+import { db, paymentsTable, sessionsTable, tutorsTable, usersTable, studentsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { SimulatePaymentBody, ListPaymentsQueryParams } from "@workspace/api-zod";
+import { createNotification } from "../lib/notify";
+import { paymentConfirmedEmailHtml } from "../lib/email";
+import { format } from "date-fns";
 
 const router = Router();
 
@@ -38,6 +41,46 @@ router.post("/payments/simulate", async (req, res) => {
       status: "paid",
     })
     .returning();
+
+  // Notify parent: find student → parentId is the parent's userId
+  const [student] = await db
+    .select()
+    .from(studentsTable)
+    .where(eq(studentsTable.id, session.studentId))
+    .limit(1);
+
+  const [tutorRow] = await db
+    .select({ firstName: usersTable.firstName, lastName: usersTable.lastName })
+    .from(tutorsTable)
+    .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
+    .where(eq(tutorsTable.id, session.tutorId))
+    .limit(1);
+
+  if (student?.parentId) {
+    const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "your tutor";
+    const dateStr = format(session.scheduledAt, "EEE, MMM d 'at' h:mm a");
+
+    const [parentUser] = await db
+      .select({ firstName: usersTable.firstName })
+      .from(usersTable)
+      .where(eq(usersTable.id, student.parentId))
+      .limit(1);
+
+    await createNotification({
+      userId: student.parentId,
+      type: "payment_confirmed",
+      title: "Payment confirmed",
+      message: `Your ${session.subject} session with ${tutorName} on ${dateStr} is confirmed`,
+      emailSubject: `Payment confirmed — ${session.subject} with ${tutorName}`,
+      emailHtml: paymentConfirmedEmailHtml({
+        recipientName: parentUser?.firstName ?? "there",
+        tutorName,
+        subject: session.subject,
+        date: dateStr,
+        amount: session.totalAmount,
+      }),
+    });
+  }
 
   res.json({
     id: payment.id,

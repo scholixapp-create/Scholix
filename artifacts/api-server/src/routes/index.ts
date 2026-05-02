@@ -6,6 +6,7 @@ import studentsRouter from "./students";
 import sessionsRouter from "./sessions";
 import paymentsRouter from "./payments";
 import adminRouter from "./admin";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(studentsRouter);
 router.use(sessionsRouter);
 router.use(paymentsRouter);
 router.use(adminRouter);
+router.use(notificationsRouter);
 
 export default router;

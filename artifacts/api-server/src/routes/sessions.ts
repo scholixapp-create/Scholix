@@ -2,6 +2,9 @@ import { Router } from "express";
 import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
+import { createNotification } from "../lib/notify";
+import { sessionBookedEmailHtml } from "../lib/email";
+import { format } from "date-fns";
 
 const router = Router();
 
@@ -120,7 +123,43 @@ router.post("/sessions", async (req, res) => {
     })
     .returning();
 
-  res.status(201).json(await sessionToJson(session));
+  const sessionJson = await sessionToJson(session);
+
+  // Notify tutor
+  const [tutorUserRow] = await db
+    .select({ userId: tutorsTable.userId, firstName: usersTable.firstName })
+    .from(tutorsTable)
+    .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
+    .where(eq(tutorsTable.id, session.tutorId))
+    .limit(1);
+
+  const [student] = await db
+    .select()
+    .from(studentsTable)
+    .where(eq(studentsTable.id, session.studentId))
+    .limit(1);
+
+  const dateStr = format(session.scheduledAt, "EEE, MMM d 'at' h:mm a");
+
+  if (tutorUserRow) {
+    await createNotification({
+      userId: tutorUserRow.userId,
+      type: "session_booked",
+      title: "New session booked",
+      message: `${student?.firstName ?? "A student"} booked ${session.subject} on ${dateStr}`,
+      emailSubject: `New session booked — ${session.subject}`,
+      emailHtml: sessionBookedEmailHtml({
+        recipientName: tutorUserRow.firstName,
+        studentName: student ? `${student.firstName} ${student.lastName}` : "A student",
+        subject: session.subject,
+        date: dateStr,
+        duration: session.durationMinutes,
+        amount: session.totalAmount,
+      }),
+    });
+  }
+
+  res.status(201).json(sessionJson);
 });
 
 router.get("/sessions/:sessionId", async (req, res) => {

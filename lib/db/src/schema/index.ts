@@ -5,3 +5,4 @@ export * from "./students";
 export * from "./sessions";
 export * from "./payments";
 export * from "./invoices";
+export * from "./notifications";
