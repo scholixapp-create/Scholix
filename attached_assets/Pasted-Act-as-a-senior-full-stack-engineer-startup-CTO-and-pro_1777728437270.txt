@@ -1,0 +1,173 @@
+Act as a senior full-stack engineer, startup CTO, and product designer.
+
+Build a mobile-first web app called "Scholix".
+
+Scholix is a tutoring platform and tutor operating system that allows independent tutors to run their own tutoring business while the platform handles scheduling, payments, students, and organisation.
+
+The app should feel:
+- Smart
+- Clean
+- Academic but modern
+- Slightly tech/startup style
+- Trustworthy for parents
+- Simple and intuitive for students
+- Empowering for tutors
+
+Avoid:
+- clutter
+- overly complex UI
+- childish design
+- corporate stiffness
+
+Use:
+- clean typography
+- rounded UI cards
+- subtle colour accents (blue/green)
+- minimal layout
+- mobile-first design
+
+TECH STACK:
+- React
+- TypeScript
+- Tailwind CSS
+- Node.js backend
+- Simple database (Supabase or mock JSON for MVP)
+- Stripe placeholders for payments (do NOT fully implement Stripe yet)
+
+CORE USER TYPES:
+- Admin (platform owner)
+- Tutor
+- Parent
+- Student
+
+---
+
+CORE MVP FEATURES (FOCUS ONLY ON THESE):
+
+1. Authentication
+- Sign up / login
+- Role selection (tutor, parent, student)
+- Basic profile creation
+
+---
+
+2. Tutor Dashboard
+- Set hourly rate (minimum $65)
+- Set availability (simple time slots)
+- View upcoming sessions
+- Button to create session
+
+---
+
+3. Parent Dashboard
+- View tutors (simple list with name, subject, price)
+- Book a session
+- Select time from tutor availability
+- Enter student details
+
+---
+
+4. Booking System
+- Create session:
+  - tutor
+  - student
+  - subject
+  - date/time
+  - duration
+- Session status:
+  - scheduled
+  - completed
+
+---
+
+5. Payment Flow (SIMPLIFIED MVP)
+- When booking:
+  - show “Pay before session” UI
+  - simulate payment success (no real Stripe yet)
+- Mark session as "paid"
+
+---
+
+6. Session Completion
+- Tutor clicks “Mark Complete”
+- Automatically:
+  - generate invoice (simple UI card)
+  - show platform commission (30%)
+  - show tutor earnings (70%)
+
+---
+
+7. Basic CRM (very simple)
+- Tutors can see:
+  - their students
+  - session history
+
+---
+
+8. Admin Dashboard (simple)
+- View:
+  - all users
+  - all sessions
+  - total revenue (mocked)
+- Approve tutors (toggle switch)
+
+---
+
+9. Data Structure (IMPORTANT)
+Create clean models for:
+- Users (with roles)
+- Tutors (profile, rate, availability)
+- Students
+- Sessions
+- Payments
+
+---
+
+10. UI Requirements
+- Mobile-first
+- Clean dashboard layout
+- Card-based design
+- Clear buttons:
+  - "Book Session"
+  - "Set Availability"
+  - "Mark Complete"
+
+---
+
+11. Sample Data
+Preload:
+- 3 tutors
+- 5 students
+- 5 sessions
+
+---
+
+12. Future placeholders (DO NOT BUILD FULLY)
+Add placeholder sections for:
+- Homework tracking
+- Progress dashboard
+- Tutor ratings
+- Group sessions
+- AI tools
+
+---
+
+UX PRIORITY:
+Every screen should clearly answer:
+- What do I do next?
+- What is scheduled?
+- What needs attention?
+
+---
+
+OUTPUT:
+- Working MVP
+- Clean file structure
+- Instructions to run the app
+- Clear components
+- Simple backend logic
+- Ready to expand later
+
+Do NOT overcomplicate.
+Focus on a clean, working MVP that demonstrates the full flow:
+Tutor → Availability → Booking → Payment → Session → Invoice

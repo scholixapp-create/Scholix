@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Scholix tutoring platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: users
+    description: User operations
+  - name: tutors
+    description: Tutor operations
+  - name: students
+    description: Student operations
+  - name: sessions
+    description: Session operations
+  - name: payments
+    description: Payment operations
+  - name: admin
+    description: Admin operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +37,495 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/signup:
+    post:
+      operationId: signup
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupBody"
+      responses:
+        "201":
+          description: Signup successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /tutors:
+    get:
+      operationId: listTutors
+      tags: [tutors]
+      summary: List all approved tutors
+      responses:
+        "200":
+          description: List of tutors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TutorProfile"
+
+  /tutors/{tutorId}:
+    get:
+      operationId: getTutor
+      tags: [tutors]
+      summary: Get a tutor by ID
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tutor profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tutors/{tutorId}/profile:
+    put:
+      operationId: updateTutorProfile
+      tags: [tutors]
+      summary: Update tutor profile
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTutorProfileBody"
+      responses:
+        "200":
+          description: Updated tutor profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorProfile"
+
+  /tutors/{tutorId}/availability:
+    get:
+      operationId: getTutorAvailability
+      tags: [tutors]
+      summary: Get tutor availability slots
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of availability slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailabilitySlot"
+    put:
+      operationId: setTutorAvailability
+      tags: [tutors]
+      summary: Set tutor availability slots
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetAvailabilityBody"
+      responses:
+        "200":
+          description: Updated availability slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailabilitySlot"
+
+  /tutors/{tutorId}/students:
+    get:
+      operationId: getTutorStudents
+      tags: [tutors]
+      summary: Get students associated with a tutor
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+
+  /students:
+    get:
+      operationId: listStudents
+      tags: [students]
+      summary: List all students
+      responses:
+        "200":
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+    post:
+      operationId: createStudent
+      tags: [students]
+      summary: Create a new student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStudentBody"
+      responses:
+        "201":
+          description: Created student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+
+  /students/{studentId}:
+    get:
+      operationId: getStudent
+      tags: [students]
+      summary: Get a student by ID
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions:
+    get:
+      operationId: listSessions
+      tags: [sessions]
+      summary: List sessions (filtered by role context)
+      parameters:
+        - name: tutorId
+          in: query
+          schema:
+            type: integer
+        - name: studentId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [scheduled, completed, cancelled]
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Session"
+    post:
+      operationId: createSession
+      tags: [sessions]
+      summary: Create a new session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSessionBody"
+      responses:
+        "201":
+          description: Created session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /sessions/{sessionId}:
+    get:
+      operationId: getSession
+      tags: [sessions]
+      summary: Get a session by ID
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /sessions/{sessionId}/complete:
+    post:
+      operationId: completeSession
+      tags: [sessions]
+      summary: Mark a session as complete and generate invoice
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Completed session with invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionWithInvoice"
+
+  /sessions/{sessionId}/cancel:
+    post:
+      operationId: cancelSession
+      tags: [sessions]
+      summary: Cancel a session
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /payments/simulate:
+    post:
+      operationId: simulatePayment
+      tags: [payments]
+      summary: Simulate a payment for a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulatePaymentBody"
+      responses:
+        "200":
+          description: Payment simulated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: List payments
+      parameters:
+        - name: sessionId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+  /admin/tutors/{tutorId}/approve:
+    post:
+      operationId: approveTutor
+      tags: [admin]
+      summary: Approve or unapprove a tutor
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveTutorBody"
+      responses:
+        "200":
+          description: Tutor approval updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorProfile"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get platform-wide statistics
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /sessions/summary:
+    get:
+      operationId: getSessionSummary
+      tags: [sessions]
+      summary: Get session counts by status for the current user
+      parameters:
+        - name: tutorId
+          in: query
+          schema:
+            type: integer
+        - name: studentId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Session summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +533,333 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+
+    LoginBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+
+    SignupBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [tutor, parent, student, admin]
+      required: [email, password, firstName, lastName, role]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required: [user, token]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [tutor, parent, student, admin]
+        createdAt:
+          type: string
+      required: [id, email, firstName, lastName, role, createdAt]
+
+    TutorProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        bio:
+          type: string
+          nullable: true
+        subjects:
+          type: array
+          items:
+            type: string
+        hourlyRate:
+          type: number
+        isApproved:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, userId, firstName, lastName, email, subjects, hourlyRate, isApproved, createdAt]
+
+    UpdateTutorProfileBody:
+      type: object
+      properties:
+        bio:
+          type: string
+        subjects:
+          type: array
+          items:
+            type: string
+        hourlyRate:
+          type: number
+
+    AvailabilitySlot:
+      type: object
+      properties:
+        id:
+          type: integer
+        tutorId:
+          type: integer
+        dayOfWeek:
+          type: integer
+          description: 0=Sunday, 6=Saturday
+        startTime:
+          type: string
+          description: "HH:MM format"
+        endTime:
+          type: string
+          description: "HH:MM format"
+      required: [id, tutorId, dayOfWeek, startTime, endTime]
+
+    SetAvailabilityBody:
+      type: object
+      properties:
+        slots:
+          type: array
+          items:
+            type: object
+            properties:
+              dayOfWeek:
+                type: integer
+              startTime:
+                type: string
+              endTime:
+                type: string
+            required: [dayOfWeek, startTime, endTime]
+      required: [slots]
+
+    Student:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+          nullable: true
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        gradeLevel:
+          type: string
+          nullable: true
+        parentId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+      required: [id, firstName, lastName, email, createdAt]
+
+    CreateStudentBody:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        gradeLevel:
+          type: string
+        parentId:
+          type: integer
+      required: [firstName, lastName, email]
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: integer
+        tutorId:
+          type: integer
+        studentId:
+          type: integer
+        subject:
+          type: string
+        scheduledAt:
+          type: string
+        durationMinutes:
+          type: integer
+        status:
+          type: string
+          enum: [scheduled, completed, cancelled]
+        isPaid:
+          type: boolean
+        totalAmount:
+          type: number
+        tutorName:
+          type: string
+          nullable: true
+        studentName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required: [id, tutorId, studentId, subject, scheduledAt, durationMinutes, status, isPaid, totalAmount, createdAt]
+
+    CreateSessionBody:
+      type: object
+      properties:
+        tutorId:
+          type: integer
+        studentId:
+          type: integer
+        subject:
+          type: string
+        scheduledAt:
+          type: string
+        durationMinutes:
+          type: integer
+      required: [tutorId, studentId, subject, scheduledAt, durationMinutes]
+
+    SessionWithInvoice:
+      type: object
+      properties:
+        session:
+          $ref: "#/components/schemas/Session"
+        invoice:
+          $ref: "#/components/schemas/Invoice"
+      required: [session, invoice]
+
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        totalAmount:
+          type: number
+        platformCommission:
+          type: number
+        tutorEarnings:
+          type: number
+        commissionRate:
+          type: number
+        generatedAt:
+          type: string
+        tutorName:
+          type: string
+        studentName:
+          type: string
+        subject:
+          type: string
+        durationMinutes:
+          type: integer
+      required: [id, sessionId, totalAmount, platformCommission, tutorEarnings, commissionRate, generatedAt, tutorName, studentName, subject, durationMinutes]
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        amount:
+          type: number
+        status:
+          type: string
+          enum: [pending, paid, refunded]
+        simulatedAt:
+          type: string
+      required: [id, sessionId, amount, status, simulatedAt]
+
+    SimulatePaymentBody:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+      required: [sessionId]
+
+    ApproveTutorBody:
+      type: object
+      properties:
+        approved:
+          type: boolean
+      required: [approved]
+
+    AdminStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        totalTutors:
+          type: integer
+        approvedTutors:
+          type: integer
+        totalStudents:
+          type: integer
+        totalSessions:
+          type: integer
+        completedSessions:
+          type: integer
+        scheduledSessions:
+          type: integer
+        totalRevenue:
+          type: number
+        platformCommission:
+          type: number
+      required: [totalUsers, totalTutors, approvedTutors, totalStudents, totalSessions, completedSessions, scheduledSessions, totalRevenue, platformCommission]
+
+    SessionSummary:
+      type: object
+      properties:
+        scheduled:
+          type: integer
+        completed:
+          type: integer
+        cancelled:
+          type: integer
+        total:
+          type: integer
+      required: [scheduled, completed, cancelled, total]
