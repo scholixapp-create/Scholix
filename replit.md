@@ -103,6 +103,16 @@ lib/
 - `lib/api-spec/orval.config.ts` — `schemas` block removed to avoid duplicates
 - Run codegen after any OpenAPI spec changes
 
+## Email Notifications (Resend)
+
+- Email sending is implemented in `artifacts/api-server/src/lib/email.ts` using the `resend` npm package
+- Emails are sent on: session booked (→ tutor) and payment confirmed (→ parent)
+- The server gracefully skips email if `RESEND_API_KEY` is not set — in-app notifications still work
+- **TODO**: `RESEND_API_KEY` secret has not been configured yet. The Replit Resend integration was dismissed.
+  - Option A: Re-connect via the Replit Resend integration panel
+  - Option B: User provides API key manually → store as `RESEND_API_KEY` secret via environment-secrets skill
+- Do NOT attempt to use the Resend integration without user completing the auth flow first
+
 ## Color Theme (Tailwind)
 
 Navy sidebar + blue primary + emerald accent. Academic palette.
