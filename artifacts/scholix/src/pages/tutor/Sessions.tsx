@@ -4,16 +4,13 @@ import { useListTutors, useListSessions, useCompleteSession, useCancelSession } 
 import { getListSessionsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import StatusBadge from "@/components/StatusBadge";
-import { Calendar, CheckCircle, X } from "lucide-react";
+import { Calendar, CheckCircle, X, Download, FileText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 interface Invoice {
   id: number;
   sessionId: number;
   totalAmount: number;
-  platformCommission: number;
-  tutorEarnings: number;
-  commissionRate: number;
   generatedAt: string;
   tutorName: string;
   studentName: string;
@@ -21,59 +18,115 @@ interface Invoice {
   durationMinutes: number;
 }
 
-function InvoiceCard({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
+function InvoiceModal({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch(`/api/invoices/${invoice.id}/pdf`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("PDF generation failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `scholix-invoice-${invoice.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Could not generate PDF. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const generatedDate = format(parseISO(invoice.generatedAt), "d MMMM yyyy");
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-sm bg-card border border-card-border rounded-2xl p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              <CheckCircle size={16} className="text-accent" />
-              <h2 className="text-base font-bold text-foreground">Session Complete</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm bg-card border border-card-border rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="bg-sidebar px-5 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                <FileText size={15} className="text-white" />
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm leading-tight">Invoice Generated</p>
+                <p className="text-white/50 text-[11px]">#{String(invoice.id).padStart(5, "0")} · {generatedDate}</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">Invoice #{invoice.id}</p>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X size={16} className="text-white/70" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
-            <X size={16} className="text-muted-foreground" />
+        </div>
+
+        {/* Session summary */}
+        <div className="px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle size={14} className="text-accent" />
+            <span className="text-xs font-semibold text-accent uppercase tracking-wide">Session Complete</span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Subject</span>
+              <span className="font-semibold text-foreground">{invoice.subject}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Student</span>
+              <span className="font-medium text-foreground">{invoice.studentName}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Duration</span>
+              <span className="font-medium text-foreground">{invoice.durationMinutes} min</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Tutor</span>
+              <span className="font-medium text-foreground">{invoice.tutorName}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Total */}
+        <div className="px-5 py-4 bg-muted/40 border-b border-border">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">Total charged to parent</span>
+            <span className="text-xl font-bold text-foreground">${invoice.totalAmount.toFixed(2)}</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-1">Payment processed through Scholix</p>
+        </div>
+
+        {/* Actions */}
+        <div className="px-5 py-4 flex gap-2.5">
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity"
+          >
+            <Download size={14} />
+            {downloading ? "Generating…" : "Download Invoice PDF"}
+          </button>
+          <button
+            onClick={onClose}
+            className="py-2.5 px-4 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+          >
+            Close
           </button>
         </div>
-
-        <div className="bg-muted/50 rounded-xl p-4 mb-4 space-y-1.5">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subject</span>
-            <span className="font-medium text-foreground">{invoice.subject}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Student</span>
-            <span className="font-medium text-foreground">{invoice.studentName}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Duration</span>
-            <span className="font-medium text-foreground">{invoice.durationMinutes} min</span>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Total amount</span>
-            <span className="font-medium text-foreground">${invoice.totalAmount.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Platform (30%)</span>
-            <span className="font-medium text-destructive">-${invoice.platformCommission.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-sm pt-2 border-t border-border">
-            <span className="font-semibold text-foreground">Your earnings (70%)</span>
-            <span className="font-bold text-accent text-base">${invoice.tutorEarnings.toFixed(2)}</span>
-          </div>
-        </div>
-
-        <button
-          onClick={onClose}
-          className="w-full mt-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
-        >
-          Done
-        </button>
       </div>
     </div>
   );
@@ -94,16 +147,16 @@ export default function TutorSessions() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [filter, setFilter] = useState<"all" | "scheduled" | "completed">("all");
 
-  const filtered = sessions.data?.filter((s) => {
-    if (filter === "all") return true;
-    return s.status === filter;
-  }).sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()) ?? [];
+  const filtered = sessions.data
+    ?.filter((s) => filter === "all" || s.status === filter)
+    .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()) ?? [];
 
   const handleComplete = (sessionId: number) => {
     completeMutation.mutate({ sessionId }, {
       onSuccess: (data) => {
         qc.invalidateQueries({ queryKey: getListSessionsQueryKey() });
-        setInvoice(data.invoice as Invoice);
+        const inv = data.invoice as Invoice;
+        setInvoice(inv);
       },
     });
   };
@@ -117,7 +170,7 @@ export default function TutorSessions() {
 
   return (
     <div className="p-4 md:p-6 max-w-lg mx-auto">
-      {invoice && <InvoiceCard invoice={invoice} onClose={() => setInvoice(null)} />}
+      {invoice && <InvoiceModal invoice={invoice} onClose={() => setInvoice(null)} />}
 
       <div className="mb-6">
         <h1 className="text-xl font-bold text-foreground">My Sessions</h1>
@@ -174,7 +227,7 @@ export default function TutorSessions() {
                     className="flex-1 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center justify-center gap-1.5"
                   >
                     <CheckCircle size={13} />
-                    Mark Complete
+                    {completeMutation.isPending ? "Completing…" : "Mark Complete"}
                   </button>
                   <button
                     onClick={() => handleCancel(session.id)}

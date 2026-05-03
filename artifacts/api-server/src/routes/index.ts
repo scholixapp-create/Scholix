@@ -7,6 +7,7 @@ import sessionsRouter from "./sessions";
 import paymentsRouter from "./payments";
 import adminRouter from "./admin";
 import notificationsRouter from "./notifications";
+import invoicesRouter from "./invoices";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(sessionsRouter);
 router.use(paymentsRouter);
 router.use(adminRouter);
 router.use(notificationsRouter);
+router.use(invoicesRouter);
 
 export default router;
