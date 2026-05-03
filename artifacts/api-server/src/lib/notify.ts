@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { sendEmail } from "./email";
 import { logger } from "./logger";
 
-type NotificationType = "session_booked" | "payment_confirmed" | "session_completed" | "session_cancelled";
+type NotificationType = "session_booked" | "payment_confirmed" | "session_completed" | "session_cancelled" | "session_reminder";
 
 export async function createNotification(opts: {
   userId: number;

@@ -6,6 +6,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "payment_confirmed",
   "session_completed",
   "session_cancelled",
+  "session_reminder",
 ]);
 
 export const notificationsTable = pgTable("notifications", {

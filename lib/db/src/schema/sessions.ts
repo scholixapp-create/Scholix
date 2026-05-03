@@ -16,6 +16,7 @@ export const sessionsTable = pgTable("sessions", {
   status: sessionStatusEnum("status").notNull().default("scheduled"),
   isPaid: boolean("is_paid").notNull().default(false),
   totalAmount: real("total_amount").notNull().default(0),
+  reminderSent: boolean("reminder_sent").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
