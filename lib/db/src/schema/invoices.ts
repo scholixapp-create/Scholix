@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, real, timestamp, text } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sessionsTable } from "./sessions";
@@ -10,6 +10,7 @@ export const invoicesTable = pgTable("invoices", {
   platformCommission: real("platform_commission").notNull(),
   tutorEarnings: real("tutor_earnings").notNull(),
   commissionRate: real("commission_rate").notNull().default(0.3),
+  commissionTier: text("commission_tier"),
   generatedAt: timestamp("generated_at").defaultNow().notNull(),
 });
 

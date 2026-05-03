@@ -14,6 +14,8 @@ function studentToJson(s: typeof studentsTable.$inferSelect) {
     email: s.email,
     gradeLevel: s.gradeLevel ?? null,
     parentId: s.parentId ?? null,
+    dateOfBirth: s.dateOfBirth ?? null,
+    isIdentityVerified: s.isIdentityVerified ?? false,
     createdAt: s.createdAt.toISOString(),
   };
 }
@@ -56,6 +58,29 @@ router.get("/students/:studentId", async (req, res) => {
     res.status(404).json({ error: "Student not found" });
     return;
   }
+  res.json(studentToJson(student));
+});
+
+router.post("/students/:studentId/verify-identity", async (req, res) => {
+  const studentId = parseInt(req.params.studentId, 10);
+  const { dateOfBirth, declaration } = req.body ?? {};
+
+  if (!dateOfBirth || !declaration) {
+    res.status(400).json({ error: "dateOfBirth and declaration are required" });
+    return;
+  }
+
+  const [student] = await db
+    .update(studentsTable)
+    .set({ dateOfBirth, isIdentityVerified: true })
+    .where(eq(studentsTable.id, studentId))
+    .returning();
+
+  if (!student) {
+    res.status(404).json({ error: "Student not found" });
+    return;
+  }
+
   res.json(studentToJson(student));
 });
 

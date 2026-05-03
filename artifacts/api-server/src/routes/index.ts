@@ -9,6 +9,7 @@ import adminRouter from "./admin";
 import notificationsRouter from "./notifications";
 import invoicesRouter from "./invoices";
 import verificationRouter from "./verification";
+import progressRouter from "./progress";
 
 const router: IRouter = Router();
 
@@ -18,6 +19,7 @@ router.use(verificationRouter);
 router.use(tutorsRouter);
 router.use(studentsRouter);
 router.use(sessionsRouter);
+router.use(progressRouter);
 router.use(paymentsRouter);
 router.use(adminRouter);
 router.use(notificationsRouter);

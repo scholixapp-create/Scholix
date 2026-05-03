@@ -56,16 +56,31 @@ lib/
 | Parent  | parent1@scholix.com      | parent123  |
 | Student | student1@scholix.com     | student123 |
 
-## Business Rules
+## Business Rules — Commission
 
-- Platform commission: **30%** (tutor keeps 70%)
+### Tier progression (by tutor's total completed sessions)
+| Tier | Sessions | Platform fee | Tutor keeps |
+|------|----------|-------------|-------------|
+| Starter | 0–9 | 30% | 70% |
+| Growth | 10–24 | 25% | 75% |
+| Established | 25–49 | 20% | 80% |
+| Expert | 50+ | 15% | 85% |
+
+### Special free-session rules (evaluated in priority order)
+1. **First student — lifetime free**: Tutor's very first student (stored as `tutors.firstStudentId`) = 0% commission on ALL their sessions, forever.
+2. **First session free**: Any new tutor-student pair → first completed session = 0% commission.
+3. Otherwise: apply the tier rate above.
+- `commissionTier` on invoices: `first_student_free` | `first_session_free` | `standard` | `growth` | `established` | `expert`
+- `isCommissionFree` boolean on sessions table marks 0%-commission sessions
+
+### Other rules
 - Minimum tutor hourly rate: **$65/hr**
 - Sessions must be paid via `POST /api/payments/simulate` before a tutor can mark them complete
-- Completing a session auto-generates an invoice (70/30 split)
+- Completing a session auto-generates an invoice with the correct commission applied
 
 ## DB Schema Tables
 
-`users`, `tutors`, `availability`, `students`, `sessions`, `payments`, `invoices`, `tutor_documents`
+`users`, `tutors`, `availability`, `students`, `sessions`, `payments`, `invoices`, `tutor_documents`, `student_progress`
 
 ### Tutor Verification Fields (tutors table)
 - `verificationStatus`: `pending_verification` | `approved` | `rejected`
@@ -93,6 +108,11 @@ lib/
 - `POST /api/payments/simulate`, `GET /api/payments`
 - `GET /api/invoices?parentId=X` — parent invoice history
 - `GET /api/invoices/:id/pdf` — PDF download
+- `POST /api/sessions/:id/progress` — tutor logs progress (score 1–10, notes)
+- `GET /api/sessions/:id/progress` — get single progress entry
+- `GET /api/students/:id/progress` — student progress timeline (parent view)
+- `POST /api/students/:id/verify-identity` — self-declare identity (dateOfBirth, declaration)
+- `GET /api/admin/commission-stats` — free session counts + tier breakdown
 - `GET /api/admin/users`, `POST /api/admin/tutors/:id/approve`, `GET /api/admin/stats`
 - `GET /api/admin/tutors/all` — all tutors with verification status + docs
 - `POST /api/admin/tutors/:id/verify` — `{ action: "approve" | "reject" }`

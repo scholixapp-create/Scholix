@@ -7,3 +7,4 @@ export * from "./payments";
 export * from "./invoices";
 export * from "./notifications";
 export * from "./tutor-documents";
+export * from "./student-progress";

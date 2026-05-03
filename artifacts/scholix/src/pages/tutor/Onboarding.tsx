@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { Shield, Upload, CheckCircle, Clock, X, FileText, AlertCircle } from "lucide-react";
+import { Shield, Upload, CheckCircle, Clock, X, FileText, AlertCircle, Sparkles, TrendingUp, Trophy } from "lucide-react";
 
 interface TutorMe {
   verificationStatus: string;
@@ -162,7 +162,7 @@ export default function TutorOnboarding() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <Shield size={22} className="text-primary" />
           </div>
@@ -170,6 +170,46 @@ export default function TutorOnboarding() {
           <p className="text-sm text-muted-foreground mt-1">
             Complete verification to start accepting bookings
           </p>
+        </div>
+
+        {/* Commission perks promo */}
+        <div className="bg-accent/5 border border-accent/20 rounded-2xl p-4 mb-6 space-y-3">
+          <p className="text-xs font-bold text-accent uppercase tracking-wider">Tutor Benefits</p>
+          <div className="space-y-2.5">
+            <div className="flex items-start gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles size={13} className="text-accent" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">First Student — Always Free</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Your very first student on Scholix pays <strong className="text-accent">0% platform commission</strong> on every lesson, forever.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles size={13} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">Every New Student — First Session Free</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  The first session with any new student is <strong className="text-primary">0% commission</strong> — helping you build your client base.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                <Trophy size={13} className="text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-foreground">Commission Drops as You Grow</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Standard fee is 30%. Hit 10 sessions → <strong>25%</strong>. Hit 25 → <strong>20%</strong>. Hit 50 → <strong>15%</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="bg-card border border-card-border rounded-2xl p-6 shadow-sm">
