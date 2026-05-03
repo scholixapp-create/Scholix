@@ -72,6 +72,7 @@ router.get("/tutors/me", async (req, res) => {
     wwccNumber: row.tutors.wwccNumber,
     wwccExpiry: row.tutors.wwccExpiry,
     educationDetails: row.tutors.educationDetails,
+    abn: row.tutors.abn ?? null,
     documents: docs.map((d) => ({
       id: d.id,
       docType: d.docType,
@@ -86,7 +87,7 @@ router.put("/tutors/me/details", async (req, res) => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
 
-  const { wwccNumber, wwccExpiry, educationDetails } = req.body as Record<string, string>;
+  const { wwccNumber, wwccExpiry, educationDetails, abn } = req.body as Record<string, string>;
 
   const [tutor] = await db
     .select({ id: tutorsTable.id, verificationStatus: tutorsTable.verificationStatus })
@@ -96,9 +97,12 @@ router.put("/tutors/me/details", async (req, res) => {
 
   if (!tutor) { res.status(404).json({ error: "Tutor not found" }); return; }
 
+  const updates: Record<string, string | undefined> = { wwccNumber, wwccExpiry, educationDetails };
+  if (abn !== undefined) updates.abn = abn;
+
   await db
     .update(tutorsTable)
-    .set({ wwccNumber, wwccExpiry, educationDetails })
+    .set(updates)
     .where(eq(tutorsTable.id, tutor.id));
 
   res.json({ success: true });

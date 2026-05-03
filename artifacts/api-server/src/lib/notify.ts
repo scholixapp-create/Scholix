@@ -23,17 +23,19 @@ export async function createNotification(opts: {
 
     if (opts.emailHtml && opts.emailSubject) {
       const [user] = await db
-        .select({ email: usersTable.email })
+        .select({ email: usersTable.email, emailNotificationsEnabled: usersTable.emailNotificationsEnabled })
         .from(usersTable)
         .where(eq(usersTable.id, opts.userId))
         .limit(1);
 
-      if (user?.email) {
+      if (user?.email && user?.emailNotificationsEnabled) {
         await sendEmail({
           to: user.email,
           subject: opts.emailSubject,
           html: opts.emailHtml,
         });
+      } else if (user && !user.emailNotificationsEnabled) {
+        logger.info({ userId: opts.userId }, "Email skipped — user has notifications disabled");
       }
     }
   } catch (err) {

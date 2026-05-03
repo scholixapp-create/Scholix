@@ -3,7 +3,7 @@ import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTabl
 import { eq, and, ne } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
-import { sessionBookedEmailHtml } from "../lib/email";
+import { sessionBookedEmailHtml, sessionCompletedEmailHtml } from "../lib/email";
 import { format } from "date-fns";
 
 const router = Router();
@@ -345,6 +345,60 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
     .from(studentsTable)
     .where(eq(studentsTable.id, updated.studentId))
     .limit(1);
+
+  const dateStr = format(updated.scheduledAt, "EEE, MMM d 'at' h:mm a");
+  const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "Your tutor";
+  const studentName = student ? `${student.firstName} ${student.lastName}` : "Student";
+
+  // Notify tutor — session completed + earnings
+  const [tutorUserRow2] = await db
+    .select({ userId: tutorsTable.userId, firstName: usersTable.firstName })
+    .from(tutorsTable)
+    .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
+    .where(eq(tutorsTable.id, updated.tutorId))
+    .limit(1);
+
+  if (tutorUserRow2) {
+    await createNotification({
+      userId: tutorUserRow2.userId,
+      type: "session_completed",
+      title: "Session completed",
+      message: `${session.subject} session with ${studentName} completed. You earned $${commResult.tutorEarnings.toFixed(2)}.`,
+      emailSubject: `Session completed — ${session.subject}`,
+      emailHtml: sessionCompletedEmailHtml({
+        recipientName: tutorUserRow2.firstName,
+        tutorName,
+        studentName,
+        subject: updated.subject,
+        date: dateStr,
+        duration: updated.durationMinutes,
+        totalAmount: updated.totalAmount,
+        tutorEarnings: commResult.tutorEarnings,
+        commissionTier: commResult.tier,
+        isCommissionFree: commResult.isCommissionFree,
+      }),
+    });
+  }
+
+  // Notify parent if the student has a parentId (userId of parent)
+  if (student?.parentId) {
+    await createNotification({
+      userId: student.parentId,
+      type: "session_completed",
+      title: "Session completed",
+      message: `${studentName}'s ${session.subject} session with ${tutorName} has been completed.`,
+      emailSubject: `Session completed — ${session.subject}`,
+      emailHtml: sessionCompletedEmailHtml({
+        recipientName: studentName.split(" ")[0],
+        tutorName,
+        studentName,
+        subject: updated.subject,
+        date: dateStr,
+        duration: updated.durationMinutes,
+        totalAmount: updated.totalAmount,
+      }),
+    });
+  }
 
   res.json({
     session: sessionJson,

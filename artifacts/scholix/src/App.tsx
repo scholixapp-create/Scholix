@@ -25,6 +25,7 @@ import AdminSessions from "@/pages/admin/Sessions";
 import TutorOnboarding from "@/pages/tutor/Onboarding";
 import ParentInvoices from "@/pages/parent/Invoices";
 import TutorDirectory from "@/pages/TutorDirectory";
+import Settings from "@/pages/Settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -160,6 +161,12 @@ function Router() {
       <Route path="/admin/sessions">
         <RequireAuth role="admin">
           <Layout><AdminSessions /></Layout>
+        </RequireAuth>
+      </Route>
+
+      <Route path="/settings">
+        <RequireAuth>
+          <Layout><Settings /></Layout>
         </RequireAuth>
       </Route>
 

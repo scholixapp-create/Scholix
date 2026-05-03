@@ -15,6 +15,7 @@ export const tutorsTable = pgTable("tutors", {
   wwccExpiry: text("wwcc_expiry"),
   educationDetails: text("education_details"),
   firstStudentId: integer("first_student_id"),
+  abn: text("abn"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

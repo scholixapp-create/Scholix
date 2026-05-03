@@ -10,6 +10,7 @@ import notificationsRouter from "./notifications";
 import invoicesRouter from "./invoices";
 import verificationRouter from "./verification";
 import progressRouter from "./progress";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(paymentsRouter);
 router.use(adminRouter);
 router.use(notificationsRouter);
 router.use(invoicesRouter);
+router.use(settingsRouter);
 
 export default router;

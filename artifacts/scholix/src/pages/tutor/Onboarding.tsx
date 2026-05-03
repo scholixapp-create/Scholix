@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { Shield, Upload, CheckCircle, Clock, X, FileText, AlertCircle, Sparkles, TrendingUp, Trophy } from "lucide-react";
+import { Shield, Upload, CheckCircle, Clock, FileText, AlertCircle, Sparkles, Trophy, Building2, ExternalLink } from "lucide-react";
 
 interface TutorMe {
   verificationStatus: string;
   wwccNumber?: string;
   wwccExpiry?: string;
   educationDetails?: string;
+  abn?: string;
   documents?: { id: number; docType: string; originalName: string }[];
 }
 
@@ -90,6 +91,7 @@ export default function TutorOnboarding() {
   const [wwccNumber, setWwccNumber] = useState("");
   const [wwccExpiry, setWwccExpiry] = useState("");
   const [educationDetails, setEducationDetails] = useState("");
+  const [abn, setAbn] = useState("");
   const [wwccFile, setWwccFile] = useState<File | null>(null);
   const [educationFile, setEducationFile] = useState<File | null>(null);
   const [wwccUploaded, setWwccUploaded] = useState(false);
@@ -102,6 +104,7 @@ export default function TutorOnboarding() {
       if (data.wwccNumber) setWwccNumber(data.wwccNumber);
       if (data.wwccExpiry) setWwccExpiry(data.wwccExpiry);
       if (data.educationDetails) setEducationDetails(data.educationDetails);
+      if (data.abn) setAbn(data.abn);
       if (data.documents?.some((d) => d.docType === "wwcc")) setWwccUploaded(true);
       if (data.documents?.some((d) => d.docType === "education")) setEducationUploaded(true);
     }).catch(() => {});
@@ -111,6 +114,9 @@ export default function TutorOnboarding() {
     e.preventDefault();
     setError("");
 
+    const abnClean = abn.replace(/\s/g, "");
+    if (!abnClean) { setError("ABN is required. As a contractor, you must provide your Australian Business Number."); return; }
+    if (!/^\d{11}$/.test(abnClean)) { setError("ABN must be exactly 11 digits. Remove any spaces or dashes."); return; }
     if (!wwccNumber.trim()) { setError("WWCC number is required."); return; }
     if (!wwccExpiry) { setError("WWCC expiry date is required."); return; }
     if (!wwccFile && !wwccUploaded) { setError("Please upload your WWCC document."); return; }
@@ -118,7 +124,7 @@ export default function TutorOnboarding() {
     setStep("uploading");
 
     try {
-      await apiPut("/api/tutors/me/details", { wwccNumber, wwccExpiry, educationDetails });
+      await apiPut("/api/tutors/me/details", { wwccNumber, wwccExpiry, educationDetails, abn: abn.replace(/\s/g, "") });
 
       if (wwccFile && !wwccUploaded) {
         await uploadDoc("wwcc", wwccFile);
@@ -221,6 +227,50 @@ export default function TutorOnboarding() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* ABN */}
+            <div>
+              <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                <Building2 size={14} className="text-primary" />
+                Australian Business Number (ABN)
+                <span className="ml-auto text-[10px] font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">Required</span>
+              </h2>
+              <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+                As a contractor on Scholix you operate as a sole trader. Your ABN is required for tax and payment purposes under Australian law.
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">ABN</label>
+                  <input
+                    type="text"
+                    value={abn}
+                    onChange={(e) => setAbn(e.target.value.replace(/[^\d\s]/g, ""))}
+                    placeholder="e.g. 51 824 753 556"
+                    maxLength={14}
+                    className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors font-mono tracking-wider"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">11 digits — spaces are fine</p>
+                </div>
+                <a
+                  href="https://abr.business.gov.au/ABN/Default"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                >
+                  <ExternalLink size={11} />
+                  Look up your ABN on the Australian Business Register
+                </a>
+                <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    <strong className="text-foreground">Don't have an ABN?</strong> You can apply for free at{" "}
+                    <a href="https://abr.business.gov.au" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">abr.business.gov.au</a>.
+                    Most applications are processed within minutes. You'll need your Tax File Number (TFN) handy.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-border" />
+
             {/* WWCC */}
             <div>
               <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">

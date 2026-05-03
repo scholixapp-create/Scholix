@@ -82,6 +82,17 @@ lib/
 
 `users`, `tutors`, `availability`, `students`, `sessions`, `payments`, `invoices`, `tutor_documents`, `student_progress`
 
+### Email Notifications
+- **Transport**: mock (console log) when `RESEND_API_KEY` is not set; real Resend when set.
+- **Events**: booking confirmation (session_booked), 24h reminder (session_reminder), session completed (session_completed)
+- **Toggle**: `users.emailNotificationsEnabled` boolean (default true); checked in `notify.ts` before sending any email
+- **UI**: `/settings` page available to all roles from the sidebar
+
+### Tutor Onboarding Requirements
+- **ABN** (Australian Business Number) — required field, 11 digits, stored in `tutors.abn`; validated on submit; links to ABR lookup + application guidance
+- WWCC number, expiry, document upload (required)
+- Education / qualifications (optional)
+
 ### Tutor Verification Fields (tutors table)
 - `verificationStatus`: `pending_verification` | `approved` | `rejected`
 - `wwccNumber`: WWCC card number (text)
@@ -113,6 +124,8 @@ lib/
 - `GET /api/students/:id/progress` — student progress timeline (parent view)
 - `POST /api/students/:id/verify-identity` — self-declare identity (dateOfBirth, declaration)
 - `GET /api/admin/commission-stats` — free session counts + tier breakdown
+- `GET /api/settings` — get user's emailNotificationsEnabled flag
+- `PUT /api/settings` — update emailNotificationsEnabled flag
 - `GET /api/admin/users`, `POST /api/admin/tutors/:id/approve`, `GET /api/admin/stats`
 - `GET /api/admin/tutors/all` — all tutors with verification status + docs
 - `POST /api/admin/tutors/:id/verify` — `{ action: "approve" | "reject" }`
