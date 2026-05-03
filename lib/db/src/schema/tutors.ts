@@ -10,6 +10,10 @@ export const tutorsTable = pgTable("tutors", {
   subjects: text("subjects").array().notNull().default([]),
   hourlyRate: real("hourly_rate").notNull().default(65),
   isApproved: boolean("is_approved").notNull().default(false),
+  verificationStatus: text("verification_status").notNull().default("pending_verification"),
+  wwccNumber: text("wwcc_number"),
+  wwccExpiry: text("wwcc_expiry"),
+  educationDetails: text("education_details"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

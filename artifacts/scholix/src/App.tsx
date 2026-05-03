@@ -22,6 +22,9 @@ import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminUsers from "@/pages/admin/Users";
 import AdminTutorApprovals from "@/pages/admin/TutorApprovals";
 import AdminSessions from "@/pages/admin/Sessions";
+import TutorOnboarding from "@/pages/tutor/Onboarding";
+import ParentInvoices from "@/pages/parent/Invoices";
+import TutorDirectory from "@/pages/TutorDirectory";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -113,6 +116,23 @@ function Router() {
           <Layout><ParentStudents /></Layout>
         </RequireAuth>
       </Route>
+
+      {/* Tutor onboarding — no Layout wrapping, standalone page */}
+      <Route path="/tutor/onboarding">
+        <RequireAuth role="tutor">
+          <TutorOnboarding />
+        </RequireAuth>
+      </Route>
+
+      {/* Parent invoices */}
+      <Route path="/parent/invoices">
+        <RequireAuth role="parent">
+          <Layout><ParentInvoices /></Layout>
+        </RequireAuth>
+      </Route>
+
+      {/* Public tutor directory */}
+      <Route path="/tutors" component={TutorDirectory} />
 
       {/* Student routes */}
       <Route path="/student/dashboard">

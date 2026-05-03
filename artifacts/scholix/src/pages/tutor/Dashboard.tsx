@@ -2,8 +2,56 @@ import { useAuth } from "@/context/AuthContext";
 import { useListSessions, useGetSessionSummary, useListTutors } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
-import { Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen } from "lucide-react";
+import { Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen, Shield, AlertCircle, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
+
+interface TutorVerification {
+  verificationStatus: string;
+  wwccNumber?: string | null;
+}
+
+function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
+
+function VerificationBanner({ status, hasWwcc }: { status: string; hasWwcc: boolean }) {
+  if (status === "approved") return null;
+
+  if (status === "rejected") return (
+    <div className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+      <XCircle size={18} className="text-destructive shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-destructive">Verification rejected</p>
+        <p className="text-xs text-destructive/80 mt-0.5">Your application was not approved. Please re-submit with correct documents.</p>
+      </div>
+      <Link href="/tutor/onboarding" className="shrink-0 px-3 py-1.5 rounded-lg bg-destructive text-white text-xs font-semibold hover:opacity-90 transition-opacity">
+        Re-submit
+      </Link>
+    </div>
+  );
+
+  if (!hasWwcc) return (
+    <div className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+      <Shield size={18} className="text-amber-600 shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-amber-800">Complete your verification</p>
+        <p className="text-xs text-amber-700 mt-0.5">Upload your WWCC to start appearing in search and accepting bookings.</p>
+      </div>
+      <Link href="/tutor/onboarding" className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:opacity-90 transition-opacity">
+        Verify now
+      </Link>
+    </div>
+  );
+
+  return (
+    <div className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200">
+      <AlertCircle size={18} className="text-blue-600 shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-blue-800">Your account is pending verification</p>
+        <p className="text-xs text-blue-700 mt-0.5">Our team is reviewing your documents. You'll be notified once approved (1–2 business days).</p>
+      </div>
+    </div>
+  );
+}
 
 function PlaceholderCard({ icon: Icon, title, desc }: { icon: any; title: string; desc: string }) {
   return (
@@ -22,9 +70,17 @@ function PlaceholderCard({ icon: Icon, title, desc }: { icon: any; title: string
 
 export default function TutorDashboard() {
   const { user } = useAuth();
+  const [verif, setVerif] = useState<TutorVerification | null>(null);
   const tutors = useListTutors();
   const tutorProfile = tutors.data?.find((t) => t.userId === user?.id);
   const tutorId = tutorProfile?.id;
+
+  useEffect(() => {
+    fetch("/api/tutors/me", { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setVerif(data); })
+      .catch(() => {});
+  }, []);
 
   const sessions = useListSessions(tutorId ? { tutorId } : undefined, {
     query: { enabled: !!tutorId },
@@ -51,6 +107,13 @@ export default function TutorDashboard() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
+      {verif && (
+        <VerificationBanner
+          status={verif.verificationStatus}
+          hasWwcc={!!verif.wwccNumber}
+        />
+      )}
+
       <div className="mb-6">
         <h1 className="text-xl font-bold text-foreground">{greeting()}, {user?.firstName}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Here's what's happening today</p>

@@ -40,7 +40,11 @@ export default function Signup() {
       {
         onSuccess: (data) => {
           login(data.user as any, data.token);
-          navigate(getDashboard(data.user.role));
+          if (data.user.role === "tutor") {
+            navigate("/tutor/onboarding");
+          } else {
+            navigate(getDashboard(data.user.role));
+          }
         },
         onError: () => {
           setError("Could not create account. Email may already be in use.");

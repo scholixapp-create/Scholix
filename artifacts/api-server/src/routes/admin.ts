@@ -29,7 +29,10 @@ router.post("/admin/tutors/:tutorId/approve", async (req, res) => {
 
   await db
     .update(tutorsTable)
-    .set({ isApproved: parsed.data.approved })
+    .set({
+      isApproved: parsed.data.approved,
+      verificationStatus: parsed.data.approved ? "approved" : "rejected",
+    })
     .where(eq(tutorsTable.id, tutorId));
 
   const [row] = await db

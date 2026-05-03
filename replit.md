@@ -65,37 +65,74 @@ lib/
 
 ## DB Schema Tables
 
-`users`, `tutors`, `availability`, `students`, `sessions`, `payments`, `invoices`
+`users`, `tutors`, `availability`, `students`, `sessions`, `payments`, `invoices`, `tutor_documents`
+
+### Tutor Verification Fields (tutors table)
+- `verificationStatus`: `pending_verification` | `approved` | `rejected`
+- `wwccNumber`: WWCC card number (text)
+- `wwccExpiry`: expiry date (text, ISO date)
+- `educationDetails`: free-text VCE/tertiary details
+
+### Tutor Documents (tutor_documents table)
+- Uploaded files stored in `artifacts/api-server/uploads/`
+- `docType`: `wwcc` | `education`
+- Served via `GET /api/admin/documents/:docId` (admin only)
 
 ## API Routes
 
 - `POST /api/auth/login`, `POST /api/auth/signup`, `POST /api/auth/logout`
-- `GET/PUT /api/tutors`, `GET /api/tutors/:id`, `GET/PUT /api/tutors/:id/availability`
+- `GET /api/tutors` (approved only), `GET /api/tutors/:id`, `PUT /api/tutors/:id/profile`
+- `GET /api/tutors/me` — own profile with verification status (auth required)
+- `PUT /api/tutors/me/details` — update WWCC + education info
+- `POST /api/tutors/me/documents` — upload document (multer, multipart)
+- `POST /api/tutors/me/submit-verification` — mark as submitted
+- `GET /api/tutors/:id/availability`, `PUT /api/tutors/:id/availability`
 - `GET /api/students`, `POST /api/students`, `GET /api/students/:id`
 - `GET/POST /api/sessions`, `POST /api/sessions/:id/complete`, `POST /api/sessions/:id/cancel`
 - `GET /api/sessions/summary`
 - `POST /api/payments/simulate`, `GET /api/payments`
-- `GET /api/admin/users`, `PUT /api/admin/tutors/:id/approve`, `GET /api/admin/stats`
+- `GET /api/invoices?parentId=X` — parent invoice history
+- `GET /api/invoices/:id/pdf` — PDF download
+- `GET /api/admin/users`, `POST /api/admin/tutors/:id/approve`, `GET /api/admin/stats`
+- `GET /api/admin/tutors/all` — all tutors with verification status + docs
+- `POST /api/admin/tutors/:id/verify` — `{ action: "approve" | "reject" }`
+- `GET /api/admin/documents/:docId` — secure document download
+
+## File Uploads
+
+- multer v2 installed in `api-server`; marked as `external` in `build.mjs`
+- Files stored in `artifacts/api-server/uploads/` (not committed)
+- Max file size: 10 MB; allowed types: PDF, JPG, PNG, WebP
 
 ## Frontend Pages
 
 | Path | Role | Description |
 |------|------|-------------|
 | `/` | Public | Landing page (redirects to dashboard if logged in) |
+| `/tutors` | Public | Tutor directory — searchable, no login required |
 | `/login` | Public | Login with demo account table |
-| `/signup` | Public | Signup with role selection |
-| `/tutor/dashboard` | Tutor | Stats, upcoming sessions, quick actions |
+| `/signup` | Public | Signup; tutors redirected to /tutor/onboarding |
+| `/tutor/dashboard` | Tutor | Stats + verification banner; links to onboarding |
+| `/tutor/onboarding` | Tutor | WWCC upload + education details verification form |
 | `/tutor/sessions` | Tutor | All sessions with complete/cancel + invoice modal |
 | `/tutor/students` | Tutor | Student list with session history |
 | `/tutor/availability` | Tutor | Set weekly slots + hourly rate |
 | `/parent/dashboard` | Parent | Stats, upcoming sessions, book CTA |
-| `/parent/tutors` | Parent | Browse tutors with subjects/rate |
+| `/parent/tutors` | Parent | Browse approved tutors with subjects/rate |
 | `/parent/book/:id` | Parent | 3-step: details → simulated payment → confirmation |
+| `/parent/invoices` | Parent | Invoice history with PDF re-download |
 | `/student/dashboard` | Student | Upcoming sessions, coming-soon features |
 | `/admin/dashboard` | Admin | Platform stats, revenue, session breakdown |
 | `/admin/users` | Admin | All users by role |
-| `/admin/tutors` | Admin | Approve/revoke tutor access |
+| `/admin/tutors` | Admin | Tutor verification — view docs, approve/reject |
 | `/admin/sessions` | Admin | All sessions with filter |
+
+## Tutor Status Flow
+
+New tutor signs up → `verificationStatus = pending_verification`, `isApproved = false`
+→ Redirected to `/tutor/onboarding` to upload WWCC + education docs
+→ Admin reviews at `/admin/tutors`, clicks Approve or Reject
+→ `verificationStatus = approved`, `isApproved = true` → tutor appears in search + can accept bookings
 
 ## Codegen Notes
 

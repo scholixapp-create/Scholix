@@ -8,11 +8,13 @@ import paymentsRouter from "./payments";
 import adminRouter from "./admin";
 import notificationsRouter from "./notifications";
 import invoicesRouter from "./invoices";
+import verificationRouter from "./verification";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(verificationRouter);
 router.use(tutorsRouter);
 router.use(studentsRouter);
 router.use(sessionsRouter);

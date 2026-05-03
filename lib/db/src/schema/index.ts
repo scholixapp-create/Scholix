@@ -6,3 +6,4 @@ export * from "./sessions";
 export * from "./payments";
 export * from "./invoices";
 export * from "./notifications";
+export * from "./tutor-documents";
