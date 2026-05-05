@@ -17,6 +17,7 @@ import {
   DollarSign,
   Bell,
   Settings,
+  BarChart2,
 } from "lucide-react";
 
 interface NavItem {
@@ -47,6 +48,8 @@ function getParentNav(): NavItem[] {
 function getStudentNav(): NavItem[] {
   return [
     { href: "/student/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+    { href: "/student/progress", label: "Progress", icon: <BarChart2 size={18} /> },
+    { href: "/settings", label: "Settings", icon: <Settings size={18} /> },
   ];
 }
 

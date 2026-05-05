@@ -2,7 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useListSessions, useGetSessionSummary } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
-import { Calendar, GraduationCap } from "lucide-react";
+import { Calendar, GraduationCap, Bell, ChevronRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 export default function ParentDashboard() {
@@ -59,7 +59,7 @@ export default function ParentDashboard() {
       </Link>
 
       {/* Upcoming sessions */}
-      <div>
+      <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-foreground">Upcoming sessions</h2>
         </div>
@@ -101,6 +101,23 @@ export default function ParentDashboard() {
           </div>
         )}
       </div>
+
+      {/* Manage notifications CTA */}
+      <Link
+        href="/settings"
+        className="flex items-center justify-between w-full p-4 rounded-xl bg-card border border-card-border hover:border-primary/40 transition-colors group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
+            <Bell size={16} className="text-purple-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Manage Notifications</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Control booking and session email alerts</p>
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+      </Link>
     </div>
   );
 }

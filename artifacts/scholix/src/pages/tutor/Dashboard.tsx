@@ -2,7 +2,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useListSessions, useGetSessionSummary, useListTutors } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
-import { Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen, Shield, AlertCircle, XCircle } from "lucide-react";
+import { Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen, Shield, AlertCircle, XCircle, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
 
@@ -222,7 +222,7 @@ export default function TutorDashboard() {
       </div>
 
       {/* Future placeholders */}
-      <div>
+      <div className="mb-6">
         <h2 className="text-sm font-semibold text-foreground mb-3">Coming soon</h2>
         <div className="space-y-2">
           <PlaceholderCard icon={BarChart2} title="Progress Dashboard" desc="Track student improvement over time" />
@@ -231,6 +231,23 @@ export default function TutorDashboard() {
           <PlaceholderCard icon={BookOpen} title="Homework Tracking" desc="Assign and monitor homework" />
         </div>
       </div>
+
+      {/* Manage notifications CTA */}
+      <Link
+        href="/settings"
+        className="flex items-center justify-between w-full p-4 rounded-xl bg-card border border-card-border hover:border-primary/40 transition-colors group"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
+            <Bell size={16} className="text-purple-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Manage Notifications</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Control booking and session email alerts</p>
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+      </Link>
     </div>
   );
 }

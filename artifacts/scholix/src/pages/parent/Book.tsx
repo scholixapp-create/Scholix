@@ -4,7 +4,8 @@ import { useGetTutor, useGetTutorAvailability, useListStudents, useCreateSession
 import { useQueryClient } from "@tanstack/react-query";
 import { getListSessionsQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
-import { ArrowLeft, CheckCircle, CreditCard, GraduationCap, Baby, Plus } from "lucide-react";
+import { ArrowLeft, CheckCircle, CreditCard, GraduationCap, Baby, Plus, Calendar, Clock, Bell, ChevronRight } from "lucide-react";
+import { format } from "date-fns";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const SUBJECTS = ["Mathematics", "Physics", "Chemistry", "Biology", "English Literature", "History", "Science", "Calculus", "Essay Writing", "Computer Science"];
@@ -24,13 +25,11 @@ export default function BookSession() {
   const createSession = useCreateSession();
   const simulatePayment = useSimulatePayment();
 
-  // Only show students belonging to this parent
   const myStudents = allStudents.data?.filter((s) => s.parentId === user?.id) ?? [];
 
   const [step, setStep] = useState<Step>("details");
   const [selectedStudentId, setSelectedStudentId] = useState<number>(0);
 
-  // Auto-select when there's exactly one student
   useEffect(() => {
     if (myStudents.length === 1 && selectedStudentId === 0) {
       setSelectedStudentId(myStudents[0].id);
@@ -45,6 +44,7 @@ export default function BookSession() {
   const [error, setError] = useState("");
 
   const totalAmount = tutor.data ? (tutor.data.hourlyRate * duration) / 60 : 0;
+  const selectedStudent = myStudents.find((s) => s.id === selectedStudentId);
 
   const handleBooking = (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,38 +90,114 @@ export default function BookSession() {
     return <div className="p-6 text-sm text-muted-foreground">Tutor not found.</div>;
   }
 
+  /* ── Confirmation screen ──────────────────────────────────────────────── */
   if (step === "confirmed") {
+    const scheduledDate = date && time ? new Date(`${date}T${time}:00`) : null;
+
     return (
-      <div className="p-4 md:p-6 max-w-sm mx-auto text-center pt-16">
-        <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={32} className="text-accent" />
+      <div className="p-4 md:p-6 max-w-sm mx-auto pt-10">
+        {/* Success icon */}
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={32} className="text-accent" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">Session Booked!</h1>
+          <p className="text-sm text-muted-foreground mt-1.5">
+            Payment processed. Your session is confirmed.
+          </p>
         </div>
-        <h1 className="text-xl font-bold text-foreground">Session booked!</h1>
-        <p className="text-sm text-muted-foreground mt-2">Your session with {tutor.data.firstName} has been confirmed and payment processed.</p>
-        <div className="mt-6 bg-card border border-card-border rounded-xl p-4 text-left space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subject</span>
-            <span className="font-medium text-foreground">{subject}</span>
+
+        {/* Session details card */}
+        <div className="bg-card border border-card-border rounded-2xl overflow-hidden mb-5">
+          <div className="px-4 py-3 border-b border-border bg-muted/30">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Session Details</p>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Duration</span>
-            <span className="font-medium text-foreground">{duration} min</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Amount paid</span>
-            <span className="font-medium text-accent">${totalAmount.toFixed(2)}</span>
+          <div className="px-4 py-3 divide-y divide-border">
+            <div className="flex justify-between py-2.5">
+              <span className="text-sm text-muted-foreground">Tutor</span>
+              <span className="text-sm font-semibold text-foreground">{tutor.data.firstName} {tutor.data.lastName}</span>
+            </div>
+            {selectedStudent && (
+              <div className="flex justify-between py-2.5">
+                <span className="text-sm text-muted-foreground">Student</span>
+                <span className="text-sm font-semibold text-foreground">{selectedStudent.firstName} {selectedStudent.lastName}</span>
+              </div>
+            )}
+            <div className="flex justify-between py-2.5">
+              <span className="text-sm text-muted-foreground">Subject</span>
+              <span className="text-sm font-semibold text-foreground">{subject}</span>
+            </div>
+            {scheduledDate && (
+              <div className="flex justify-between py-2.5">
+                <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Calendar size={13} />
+                  Date & time
+                </span>
+                <span className="text-sm font-semibold text-foreground text-right">
+                  {format(scheduledDate, "EEE, MMM d")}
+                  <br />
+                  <span className="font-normal text-muted-foreground">{format(scheduledDate, "h:mm a")}</span>
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between py-2.5">
+              <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <Clock size={13} />
+                Duration
+              </span>
+              <span className="text-sm font-semibold text-foreground">{duration} min</span>
+            </div>
+            <div className="flex justify-between py-2.5">
+              <span className="text-sm text-muted-foreground">Amount paid</span>
+              <span className="text-sm font-bold text-accent">${totalAmount.toFixed(2)}</span>
+            </div>
           </div>
         </div>
-        <Link
-          href="/parent/dashboard"
-          className="block mt-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
-        >
-          Back to Dashboard
-        </Link>
+
+        {/* Next steps */}
+        <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 mb-5">
+          <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Next Steps</p>
+          <div className="space-y-2.5">
+            {[
+              { icon: Bell, text: "You'll receive a reminder email 24 hours before the session" },
+              { icon: Clock, text: "Join your session a few minutes early to get settled" },
+              { icon: CheckCircle, text: "After the session, your tutor will log progress notes for you" },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon size={11} className="text-primary" />
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">{text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="space-y-2">
+          <Link
+            href="/parent/dashboard"
+            className="flex items-center justify-between w-full py-3 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            Go to Dashboard
+            <ChevronRight size={16} />
+          </Link>
+          <Link
+            href="/settings"
+            className="flex items-center justify-between w-full py-3 px-4 rounded-xl bg-card border border-card-border text-sm font-medium text-foreground hover:border-primary/40 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Bell size={14} className="text-muted-foreground" />
+              Manage Notifications
+            </span>
+            <ChevronRight size={16} className="text-muted-foreground" />
+          </Link>
+        </div>
       </div>
     );
   }
 
+  /* ── Payment screen ───────────────────────────────────────────────────── */
   if (step === "payment") {
     return (
       <div className="p-4 md:p-6 max-w-sm mx-auto">
@@ -182,6 +258,7 @@ export default function BookSession() {
     );
   }
 
+  /* ── Details form ─────────────────────────────────────────────────────── */
   return (
     <div className="p-4 md:p-6 max-w-sm mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -227,9 +304,7 @@ export default function BookSession() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground">No students added yet</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Add a student before booking a session
-              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Add a student before booking a session</p>
               <Link
                 href="/parent/students"
                 className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
@@ -249,12 +324,8 @@ export default function BookSession() {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                  {myStudents[0].firstName} {myStudents[0].lastName}
-                </p>
-                {myStudents[0].gradeLevel && (
-                  <p className="text-[11px] text-muted-foreground">{myStudents[0].gradeLevel}</p>
-                )}
+                <p className="text-sm font-medium text-foreground">{myStudents[0].firstName} {myStudents[0].lastName}</p>
+                {myStudents[0].gradeLevel && <p className="text-[11px] text-muted-foreground">{myStudents[0].gradeLevel}</p>}
               </div>
               <span className="text-[10px] font-medium text-accent bg-accent/10 px-2 py-0.5 rounded-full">Auto-selected</span>
             </div>
@@ -275,10 +346,7 @@ export default function BookSession() {
                 </option>
               ))}
             </select>
-            <Link
-              href="/parent/students"
-              className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
-            >
+            <Link href="/parent/students" className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors">
               <Plus size={10} /> Add another student
             </Link>
           </div>
@@ -293,9 +361,7 @@ export default function BookSession() {
             required
           >
             <option value="">Select a subject...</option>
-            {SUBJECTS.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
+            {SUBJECTS.map((s) => (<option key={s} value={s}>{s}</option>))}
           </select>
         </div>
 

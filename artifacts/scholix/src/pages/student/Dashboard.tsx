@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useListSessions, useListStudents } from "@workspace/api-client-react";
+import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
 import {
   Calendar, BookOpen, Clock, GraduationCap,
   ChevronRight, CheckCircle2, XCircle, Inbox,
+  BarChart2, Bell, Copy, Check,
 } from "lucide-react";
-import { format, parseISO, isPast, isFuture } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 type Tab = "upcoming" | "history";
 
@@ -118,6 +120,45 @@ function HistoryCard({ session }: { session: Session }) {
   );
 }
 
+function RequestSessionCard({ studentName }: { studentName: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const message = `Hi! Can you book a tutoring session for me on Scholix? My name is ${studentName}. You can find tutors at scholix.replit.app`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-r from-primary/5 to-blue-50 border border-primary/20 rounded-xl p-4">
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <GraduationCap size={16} className="text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-foreground">Want a session?</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            Ask a parent or guardian to book a session for you. Copy the message below to share with them.
+          </p>
+          <button
+            onClick={handleCopy}
+            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 transition-all"
+          >
+            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? "Copied!" : "Copy message for parent"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState({ tab }: { tab: Tab }) {
   return (
     <div className="bg-card border border-card-border rounded-xl p-8 text-center">
@@ -152,10 +193,8 @@ export default function StudentDashboard() {
   const allStudents = useListStudents();
   const allSessions = useListSessions(undefined);
 
-  // Find this user's student record
   const myStudent = allStudents.data?.find((s) => s.userId === user?.id) ?? null;
 
-  // Filter sessions by studentId
   const mySessions: Session[] = (allSessions.data ?? []).filter(
     (s) => myStudent && s.studentId === myStudent.id
   ) as Session[];
@@ -185,7 +224,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-3 mb-5">
         <div className="bg-primary rounded-xl p-3 text-white text-center">
           <p className="text-2xl font-bold">{upcoming.length}</p>
           <p className="text-[10px] opacity-75 mt-0.5 leading-tight">Upcoming</p>
@@ -200,14 +239,51 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Subjects studied */}
+      {/* Subject pills */}
       {subjects.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-6">
+        <div className="flex flex-wrap gap-1.5 mb-5">
           {subjects.map((s) => (
             <span key={s} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-medium">
               {s}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Quick links */}
+      <div className="grid grid-cols-2 gap-2 mb-5">
+        <Link
+          href="/student/progress"
+          className="flex items-center gap-2 p-3 rounded-xl bg-card border border-card-border hover:border-primary/40 transition-colors"
+        >
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <BarChart2 size={15} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground">My Progress</p>
+            <p className="text-[10px] text-muted-foreground">Scores & notes</p>
+          </div>
+          <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+        </Link>
+        <Link
+          href="/settings"
+          className="flex items-center gap-2 p-3 rounded-xl bg-card border border-card-border hover:border-primary/40 transition-colors"
+        >
+          <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+            <Bell size={15} className="text-purple-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground">Notifications</p>
+            <p className="text-[10px] text-muted-foreground">Manage emails</p>
+          </div>
+          <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+        </Link>
+      </div>
+
+      {/* Request session card */}
+      {!isLoading && (
+        <div className="mb-5">
+          <RequestSessionCard studentName={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()} />
         </div>
       )}
 
@@ -260,27 +336,18 @@ export default function StudentDashboard() {
         </div>
       ) : tab === "upcoming" ? (
         <div className="space-y-3">
-          {upcoming.length === 0 ? (
-            <EmptyState tab="upcoming" />
-          ) : (
-            upcoming.map((session) => (
-              <UpcomingCard key={session.id} session={session} />
-            ))
-          )}
+          {upcoming.length === 0 ? <EmptyState tab="upcoming" /> : upcoming.map((session) => (
+            <UpcomingCard key={session.id} session={session} />
+          ))}
         </div>
       ) : (
         <div className="space-y-3">
-          {history.length === 0 ? (
-            <EmptyState tab="history" />
-          ) : (
-            history.map((session) => (
-              <HistoryCard key={session.id} session={session} />
-            ))
-          )}
+          {history.length === 0 ? <EmptyState tab="history" /> : history.map((session) => (
+            <HistoryCard key={session.id} session={session} />
+          ))}
         </div>
       )}
 
-      {/* Tutor tip */}
       {!isLoading && upcoming.length > 0 && tab === "upcoming" && (
         <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-primary/5 border border-primary/15">
           <GraduationCap size={14} className="text-primary mt-0.5 shrink-0" />
