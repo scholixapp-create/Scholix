@@ -4,7 +4,7 @@ import { z } from "zod/v4";
 import { tutorsTable } from "./tutors";
 import { studentsTable } from "./students";
 
-export const sessionStatusEnum = pgEnum("session_status", ["scheduled", "completed", "cancelled"]);
+export const sessionStatusEnum = pgEnum("session_status", ["pending_payment", "scheduled", "completed", "cancelled"]);
 
 export const sessionsTable = pgTable("sessions", {
   id: serial("id").primaryKey(),
@@ -13,7 +13,7 @@ export const sessionsTable = pgTable("sessions", {
   subject: text("subject").notNull(),
   scheduledAt: timestamp("scheduled_at").notNull(),
   durationMinutes: integer("duration_minutes").notNull().default(60),
-  status: sessionStatusEnum("status").notNull().default("scheduled"),
+  status: sessionStatusEnum("status").notNull().default("pending_payment"),
   isPaid: boolean("is_paid").notNull().default(false),
   totalAmount: real("total_amount").notNull().default(0),
   reminderSent: boolean("reminder_sent").notNull().default(false),

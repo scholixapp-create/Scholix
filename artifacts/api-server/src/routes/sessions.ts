@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable } from "@workspace/db";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, inArray } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
 import { sessionBookedEmailHtml, sessionCompletedEmailHtml } from "../lib/email";
@@ -154,10 +154,10 @@ router.get("/sessions/summary", async (req, res) => {
   const conditions = [];
   if (tutorId) conditions.push(eq(sessionsTable.tutorId, tutorId));
   if (studentId) conditions.push(eq(sessionsTable.studentId, studentId));
+  // Exclude pending_payment from summary counts
+  conditions.push(inArray(sessionsTable.status, ["scheduled", "completed", "cancelled"]));
 
-  const sessions = conditions.length > 0
-    ? await db.select().from(sessionsTable).where(and(...conditions))
-    : await db.select().from(sessionsTable);
+  const sessions = await db.select().from(sessionsTable).where(and(...conditions));
 
   const summary = { scheduled: 0, completed: 0, cancelled: 0, total: sessions.length };
   for (const s of sessions) {
@@ -177,7 +177,14 @@ router.get("/sessions", async (req, res) => {
   const conditions = [];
   if (tutorId) conditions.push(eq(sessionsTable.tutorId, tutorId));
   if (studentId) conditions.push(eq(sessionsTable.studentId, studentId));
-  if (status) conditions.push(eq(sessionsTable.status, status as "scheduled" | "completed" | "cancelled"));
+  if (status) {
+    conditions.push(eq(sessionsTable.status, status as "pending_payment" | "scheduled" | "completed" | "cancelled"));
+  } else {
+    // By default exclude pending_payment from general session lists (tutors shouldn't see unpaid sessions)
+    if (tutorId && !studentId) {
+      conditions.push(inArray(sessionsTable.status, ["scheduled", "completed", "cancelled"]));
+    }
+  }
 
   const sessions = conditions.length > 0
     ? await db.select().from(sessionsTable).where(and(...conditions))
@@ -207,6 +214,7 @@ router.post("/sessions", async (req, res) => {
 
   const totalAmount = (tutor.hourlyRate * parsed.data.durationMinutes) / 60;
 
+  // Session created as pending_payment — confirmed only after payment
   const [session] = await db
     .insert(sessionsTable)
     .values({
@@ -215,46 +223,13 @@ router.post("/sessions", async (req, res) => {
       subject: parsed.data.subject,
       scheduledAt: new Date(parsed.data.scheduledAt),
       durationMinutes: parsed.data.durationMinutes,
-      status: "scheduled",
+      status: "pending_payment",
       isPaid: false,
       totalAmount,
     })
     .returning();
 
   const sessionJson = await sessionToJson(session);
-
-  const [tutorUserRow] = await db
-    .select({ userId: tutorsTable.userId, firstName: usersTable.firstName })
-    .from(tutorsTable)
-    .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
-    .where(eq(tutorsTable.id, session.tutorId))
-    .limit(1);
-
-  const [student] = await db
-    .select()
-    .from(studentsTable)
-    .where(eq(studentsTable.id, session.studentId))
-    .limit(1);
-
-  const dateStr = format(session.scheduledAt, "EEE, MMM d 'at' h:mm a");
-
-  if (tutorUserRow) {
-    await createNotification({
-      userId: tutorUserRow.userId,
-      type: "session_booked",
-      title: "New session booked",
-      message: `${student?.firstName ?? "A student"} booked ${session.subject} on ${dateStr}`,
-      emailSubject: `New session booked — ${session.subject}`,
-      emailHtml: sessionBookedEmailHtml({
-        recipientName: tutorUserRow.firstName,
-        studentName: student ? `${student.firstName} ${student.lastName}` : "A student",
-        subject: session.subject,
-        date: dateStr,
-        duration: session.durationMinutes,
-        amount: session.totalAmount,
-      }),
-    });
-  }
 
   res.status(201).json(sessionJson);
 });
@@ -350,7 +325,7 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
   const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "Your tutor";
   const studentName = student ? `${student.firstName} ${student.lastName}` : "Student";
 
-  // Notify tutor — session completed + earnings
+  // Notify tutor — session completed + earnings + upload notes action
   const [tutorUserRow2] = await db
     .select({ userId: tutorsTable.userId, firstName: usersTable.firstName })
     .from(tutorsTable)
@@ -361,9 +336,11 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
   if (tutorUserRow2) {
     await createNotification({
       userId: tutorUserRow2.userId,
-      type: "session_completed",
-      title: "Session completed",
-      message: `${session.subject} session with ${studentName} completed. You earned $${commResult.tutorEarnings.toFixed(2)}.`,
+      type: "action_upload_notes",
+      title: "Upload progress notes",
+      message: `${session.subject} with ${studentName} is done — log their progress now`,
+      actionUrl: "/tutor/sessions",
+      actionLabel: "Log notes",
       emailSubject: `Session completed — ${session.subject}`,
       emailHtml: sessionCompletedEmailHtml({
         recipientName: tutorUserRow2.firstName,
@@ -380,13 +357,15 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
     });
   }
 
-  // Notify parent if the student has a parentId (userId of parent)
+  // Notify parent — session completed + rate tutor action
   if (student?.parentId) {
     await createNotification({
       userId: student.parentId,
-      type: "session_completed",
-      title: "Session completed",
-      message: `${studentName}'s ${session.subject} session with ${tutorName} has been completed.`,
+      type: "action_rate_session",
+      title: "Rate your tutor",
+      message: `${studentName}'s ${session.subject} session with ${tutorName} is done. How did it go?`,
+      actionUrl: "/parent/sessions",
+      actionLabel: "Leave a review",
       emailSubject: `Session completed — ${session.subject}`,
       emailHtml: sessionCompletedEmailHtml({
         recipientName: studentName.split(" ")[0],

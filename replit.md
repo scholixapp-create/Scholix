@@ -80,11 +80,31 @@ lib/
 
 ## DB Schema Tables
 
-`users`, `tutors`, `availability`, `students`, `sessions`, `payments`, `invoices`, `tutor_documents`, `student_progress`
+`users`, `tutors`, `availability`, `students`, `sessions`, `payments`, `invoices`, `tutor_documents`, `student_progress`, `notifications`
+
+### users table — extra columns
+- `phone`: text, nullable — Australian mobile number (04XXXXXXXX format, stored as 10-digit string). Required on signup. Used for WhatsApp deep-links.
+
+### Session status flow
+`pending_payment` → `scheduled` (after `POST /api/payments/simulate`) → `completed` | `cancelled`
+
+Tutor session listings filter out `pending_payment` sessions by default. Parent sees them to complete payment.
+
+### Notifications table — columns
+- `type`: enum including `payment_confirmed`, `session_booked`, `session_reminder`, `session_completed`, `action_confirm_session`, `action_upload_notes`, `action_rate_session`, `whatsapp_connect`
+- `actionUrl`: text, nullable — deep-link path for the action button (e.g. `/parent/sessions`)
+- `actionLabel`: text, nullable — button label (e.g. "View session", "Open WhatsApp")
+
+Actionable notifications render an amber "actions required" banner + a button in `NotificationsPanel.tsx`.
+
+### WhatsApp deep-links
+- Format: `https://wa.me/614XXXXXXXX` (country code prefix, no leading zero)
+- Sent to both parent and tutor as `whatsapp_connect` notifications when BOTH users have phones and a session payment is confirmed
+- Helper: `toWhatsAppNumber(phone: string)` in `payments.ts` converts `04XXXXXXXX` → `614XXXXXXXX`
 
 ### Email Notifications
 - **Transport**: mock (console log) when `RESEND_API_KEY` is not set; real Resend when set.
-- **Events**: booking confirmation (session_booked), 24h reminder (session_reminder), session completed (session_completed)
+- **Events**: booking confirmation (session_booked), 24h reminder (session_reminder), session completed (session_completed), payment confirmed
 - **Toggle**: `users.emailNotificationsEnabled` boolean (default true); checked in `notify.ts` before sending any email
 - **UI**: `/settings` page available to all roles from the sidebar
 

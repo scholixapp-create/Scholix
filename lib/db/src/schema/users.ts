@@ -11,6 +11,7 @@ export const usersTable = pgTable("users", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   role: userRoleEnum("role").notNull(),
+  phone: text("phone"),
   emailNotificationsEnabled: boolean("email_notifications_enabled").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

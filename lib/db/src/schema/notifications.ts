@@ -7,6 +7,10 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "session_completed",
   "session_cancelled",
   "session_reminder",
+  "action_confirm_session",
+  "action_upload_notes",
+  "action_rate_session",
+  "whatsapp_connect",
 ]);
 
 export const notificationsTable = pgTable("notifications", {
@@ -15,6 +19,8 @@ export const notificationsTable = pgTable("notifications", {
   type: notificationTypeEnum("type").notNull(),
   title: text("title").notNull(),
   message: text("message").notNull(),
+  actionUrl: text("action_url"),
+  actionLabel: text("action_label"),
   isRead: boolean("is_read").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

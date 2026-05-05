@@ -2,7 +2,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useListSessions, useGetSessionSummary, useListTutors } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
-import { Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen, Shield, AlertCircle, XCircle, Bell } from "lucide-react";
+import {
+  Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen,
+  Shield, AlertCircle, XCircle, Bell, TrendingUp, UserPlus, Layers, ArrowUp,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
 
@@ -68,12 +71,184 @@ function PlaceholderCard({ icon: Icon, title, desc }: { icon: any; title: string
   );
 }
 
+const COMMISSION_TIERS = [
+  { name: "Standard",    min: 0,  max: 9,  rate: 30, color: "bg-slate-400" },
+  { name: "Growth",      min: 10, max: 24, rate: 25, color: "bg-blue-500" },
+  { name: "Established", min: 25, max: 49, rate: 20, color: "bg-violet-500" },
+  { name: "Expert",      min: 50, max: Infinity, rate: 15, color: "bg-green-500" },
+];
+
+function GrowEarningsSection({
+  completedSessions,
+  hourlyRate,
+}: {
+  completedSessions: number;
+  hourlyRate: number;
+}) {
+  const currentTier = COMMISSION_TIERS.find(
+    (t) => completedSessions >= t.min && completedSessions <= t.max
+  ) ?? COMMISSION_TIERS[0];
+
+  const nextTier = COMMISSION_TIERS.find((t) => t.min > completedSessions);
+  const progressToNext = nextTier
+    ? Math.min(((completedSessions - currentTier.min) / (nextTier.min - currentTier.min)) * 100, 100)
+    : 100;
+
+  const suggestedRate = hourlyRate < 75 ? 75 : hourlyRate < 90 ? 90 : hourlyRate < 110 ? 110 : null;
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-3">
+        <TrendingUp size={16} className="text-accent" />
+        <h2 className="text-sm font-semibold text-foreground">Grow Your Earnings</h2>
+      </div>
+
+      <div className="space-y-3">
+        {/* 1 — Get More Students */}
+        <div className="bg-card border border-card-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <UserPlus size={14} className="text-primary" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">Get More Students</p>
+          </div>
+          <div className="space-y-2">
+            {[
+              { done: true,  text: "Complete your profile with a bio and subjects" },
+              { done: true,  text: "Set your weekly availability" },
+              { done: false, text: "Share your Scholix profile link with students" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <div className={`w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
+                  item.done ? "bg-accent border-accent" : "border-muted-foreground/40"
+                }`}>
+                  {item.done && <span className="text-white text-[8px] font-bold">✓</span>}
+                </div>
+                <p className={`text-xs leading-relaxed ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                  {item.text}
+                </p>
+              </div>
+            ))}
+          </div>
+          <Link
+            href="/tutor/profile"
+            className="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-primary hover:underline"
+          >
+            Update profile <ChevronRight size={11} />
+          </Link>
+        </div>
+
+        {/* 2 — Commission Progress */}
+        <div className="bg-card border border-card-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
+              <BarChart2 size={14} className="text-violet-600" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">Commission Progress</p>
+          </div>
+
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <span className="text-xs text-muted-foreground">Current tier: </span>
+              <span className="text-xs font-bold text-foreground">{currentTier.name}</span>
+            </div>
+            <span className="text-xs font-bold text-foreground">{currentTier.rate}% fee</span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="h-2 bg-muted rounded-full overflow-hidden mb-2">
+            <div
+              className={`h-full rounded-full transition-all ${currentTier.color}`}
+              style={{ width: `${progressToNext}%` }}
+            />
+          </div>
+
+          {nextTier ? (
+            <p className="text-[11px] text-muted-foreground">
+              <span className="font-semibold text-foreground">{nextTier.min - completedSessions} more sessions</span>{" "}
+              to reach {nextTier.name} tier ({nextTier.rate}% fee) — save ${((currentTier.rate - nextTier.rate) / 100 * hourlyRate).toFixed(0)}/session
+            </p>
+          ) : (
+            <p className="text-[11px] text-accent font-semibold">🎉 You've reached Expert tier — lowest fee on Scholix!</p>
+          )}
+
+          {/* Tier ladder */}
+          <div className="mt-3 grid grid-cols-4 gap-1">
+            {COMMISSION_TIERS.map((t) => (
+              <div
+                key={t.name}
+                className={`text-center p-1.5 rounded-lg border ${
+                  t.name === currentTier.name
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-border"
+                }`}
+              >
+                <p className="text-[9px] font-bold text-foreground">{t.rate}%</p>
+                <p className={`text-[9px] ${t.name === currentTier.name ? "text-primary font-semibold" : "text-muted-foreground"}`}>{t.name}</p>
+                <p className="text-[8px] text-muted-foreground/70">{t.min === 50 ? "50+" : `${t.min}–${t.max}`}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 3 — Increase Your Rate */}
+        {suggestedRate && (
+          <div className="bg-gradient-to-br from-accent/5 to-accent/10 border border-accent/20 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                <ArrowUp size={14} className="text-accent" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">Increase Your Rate</p>
+            </div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Your current rate</span>
+              <span className="text-sm font-bold text-foreground">${hourlyRate}/hr</span>
+            </div>
+            <div className="bg-accent/10 rounded-lg px-3 py-2 mb-3">
+              <p className="text-xs text-accent font-medium">
+                Top tutors on Scholix charge ${suggestedRate}+/hr — consider raising your rate.
+              </p>
+            </div>
+            <Link
+              href="/tutor/profile"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline"
+            >
+              Update my rate <ChevronRight size={11} />
+            </Link>
+          </div>
+        )}
+
+        {/* 4 — Group Sessions */}
+        <div className="bg-card border border-card-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
+              <Layers size={14} className="text-green-600" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">Group Sessions</p>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-semibold">Coming soon</span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+            Teach multiple students at once and multiply your income without extra hours.
+          </p>
+          <div className="bg-muted/50 rounded-lg px-3 py-2">
+            <p className="text-[11px] font-semibold text-foreground">Example</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              3 students × ${Math.round(hourlyRate * 0.6)}/hr = <span className="font-bold text-accent">${Math.round(hourlyRate * 0.6 * 3)}/hr</span> — versus ${hourlyRate}/hr solo
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TutorDashboard() {
   const { user } = useAuth();
   const [verif, setVerif] = useState<TutorVerification | null>(null);
   const tutors = useListTutors();
   const tutorProfile = tutors.data?.find((t) => t.userId === user?.id);
   const tutorId = tutorProfile?.id;
+  const hourlyRate = tutorProfile?.hourlyRate ?? 65;
 
   useEffect(() => {
     fetch("/api/tutors/me", { headers: { Authorization: `Bearer ${getToken()}` } })
@@ -93,6 +268,8 @@ export default function TutorDashboard() {
     ?.filter((s) => s.status === "scheduled")
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
     .slice(0, 5) ?? [];
+
+  const completedSessions = sessions.data?.filter((s) => s.status === "completed").length ?? 0;
 
   const totalEarnings = sessions.data
     ?.filter((s) => s.status === "completed" && s.isPaid)
@@ -150,7 +327,7 @@ export default function TutorDashboard() {
             <DollarSign size={16} className="text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground">Rate</span>
           </div>
-          <p className="text-2xl font-bold text-foreground">${tutorProfile?.hourlyRate ?? 65}</p>
+          <p className="text-2xl font-bold text-foreground">${hourlyRate}</p>
           <p className="text-xs text-muted-foreground mt-0.5">per hour</p>
         </div>
       </div>
@@ -221,7 +398,10 @@ export default function TutorDashboard() {
         )}
       </div>
 
-      {/* Future placeholders */}
+      {/* Grow Your Earnings */}
+      <GrowEarningsSection completedSessions={completedSessions} hourlyRate={hourlyRate} />
+
+      {/* Coming soon */}
       <div className="mb-6">
         <h2 className="text-sm font-semibold text-foreground mb-3">Coming soon</h2>
         <div className="space-y-2">

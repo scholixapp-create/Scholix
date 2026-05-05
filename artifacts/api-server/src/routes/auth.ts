@@ -17,6 +17,23 @@ function makeToken(userId: number): string {
   return Buffer.from(`${userId}:${Date.now()}`).toString("base64");
 }
 
+/** Normalise and validate Australian mobile numbers.
+ *  Accepts: 04XX XXX XXX, 04XXXXXXXX, +61 4XX XXX XXX, +614XXXXXXXX
+ *  Returns null if invalid.
+ */
+function normaliseAuPhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, "");
+  // +614XXXXXXXX → 04XXXXXXXX
+  if (digits.startsWith("614") && digits.length === 11) {
+    return "0" + digits.slice(2);
+  }
+  // 04XXXXXXXX
+  if (digits.startsWith("04") && digits.length === 10) {
+    return digits;
+  }
+  return null;
+}
+
 function userToJson(user: typeof usersTable.$inferSelect) {
   return {
     id: user.id,
@@ -24,6 +41,7 @@ function userToJson(user: typeof usersTable.$inferSelect) {
     firstName: user.firstName,
     lastName: user.lastName,
     role: user.role,
+    phone: user.phone ?? null,
     createdAt: user.createdAt.toISOString(),
   };
 }
@@ -57,7 +75,21 @@ router.post("/auth/signup", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { email, password, firstName, lastName, role } = parsed.data;
+  const { email, password, firstName, lastName, role, phone } = parsed.data;
+
+  // Validate phone if provided
+  let normalisedPhone: string | null = null;
+  if (phone) {
+    normalisedPhone = normaliseAuPhone(phone);
+    if (!normalisedPhone) {
+      res.status(400).json({ error: "Please enter a valid Australian mobile number (e.g. 0412 345 678)" });
+      return;
+    }
+  } else {
+    // Phone is required — must be provided
+    res.status(400).json({ error: "Australian mobile number is required" });
+    return;
+  }
 
   const existing = await db
     .select({ id: usersTable.id })
@@ -78,6 +110,7 @@ router.post("/auth/signup", async (req, res) => {
       firstName,
       lastName,
       role,
+      phone: normalisedPhone,
     })
     .returning();
 

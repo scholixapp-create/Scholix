@@ -1,14 +1,53 @@
 import { useEffect, useRef } from "react";
-import { Bell, Check, CheckCheck, Trash2, BookOpen, CreditCard, GraduationCap, XCircle, X } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, BookOpen, CreditCard, GraduationCap, XCircle, X, Upload, Star, MessageCircle, ExternalLink, ArrowRight } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import type { AppNotification } from "@/hooks/useNotifications";
+import { Link } from "wouter";
 
-const typeConfig: Record<string, { icon: any; iconBg: string; iconColor: string }> = {
-  session_booked:    { icon: BookOpen,     iconBg: "bg-primary/10",     iconColor: "text-primary" },
-  payment_confirmed: { icon: CreditCard,   iconBg: "bg-accent/10",      iconColor: "text-accent" },
-  session_completed: { icon: GraduationCap, iconBg: "bg-green-100",     iconColor: "text-green-600" },
-  session_cancelled: { icon: XCircle,      iconBg: "bg-destructive/10", iconColor: "text-destructive" },
+const typeConfig: Record<string, { icon: any; iconBg: string; iconColor: string; isActionable?: boolean }> = {
+  session_booked:          { icon: BookOpen,       iconBg: "bg-primary/10",       iconColor: "text-primary" },
+  payment_confirmed:       { icon: CreditCard,     iconBg: "bg-accent/10",        iconColor: "text-accent" },
+  session_completed:       { icon: GraduationCap,  iconBg: "bg-green-100",        iconColor: "text-green-600" },
+  session_cancelled:       { icon: XCircle,        iconBg: "bg-destructive/10",   iconColor: "text-destructive" },
+  session_reminder:        { icon: Bell,           iconBg: "bg-amber-100",        iconColor: "text-amber-600" },
+  action_confirm_session:  { icon: CreditCard,     iconBg: "bg-amber-100",        iconColor: "text-amber-600",  isActionable: true },
+  action_upload_notes:     { icon: Upload,         iconBg: "bg-blue-100",         iconColor: "text-blue-600",   isActionable: true },
+  action_rate_session:     { icon: Star,           iconBg: "bg-yellow-100",       iconColor: "text-yellow-600", isActionable: true },
+  whatsapp_connect:        { icon: MessageCircle,  iconBg: "bg-green-100",        iconColor: "text-green-600",  isActionable: true },
 };
+
+function ActionButton({ notification, onMarkRead }: { notification: AppNotification; onMarkRead: (id: number) => void }) {
+  if (!notification.actionUrl || !notification.actionLabel) return null;
+
+  const isExternal = notification.actionUrl.startsWith("http");
+  const cls = "inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90 transition-opacity";
+
+  if (isExternal) {
+    return (
+      <a
+        href={notification.actionUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => !notification.isRead && onMarkRead(notification.id)}
+        className={cls}
+      >
+        {notification.actionLabel}
+        <ExternalLink size={10} />
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      href={notification.actionUrl}
+      onClick={() => !notification.isRead && onMarkRead(notification.id)}
+      className={cls}
+    >
+      {notification.actionLabel}
+      <ArrowRight size={10} />
+    </Link>
+  );
+}
 
 function NotificationItem({
   notification,
@@ -21,18 +60,19 @@ function NotificationItem({
 }) {
   const cfg = typeConfig[notification.type] ?? typeConfig["session_booked"];
   const Icon = cfg.icon;
+  const isActionable = cfg.isActionable && !!notification.actionUrl;
 
   return (
     <div
       className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors ${
         !notification.isRead ? "bg-primary/5 border-l-2 border-l-primary" : ""
-      }`}
+      } ${isActionable && !notification.isRead ? "border-l-amber-400" : ""}`}
     >
       <div className={`w-8 h-8 rounded-full ${cfg.iconBg} flex items-center justify-center shrink-0 mt-0.5`}>
         <Icon size={14} className={cfg.iconColor} />
       </div>
       <div className="flex-1 min-w-0" onClick={() => !notification.isRead && onMarkRead(notification.id)}>
-        <p className={`text-xs font-semibold leading-tight ${notification.isRead ? "text-foreground" : "text-foreground"}`}>
+        <p className="text-xs font-semibold leading-tight text-foreground">
           {notification.title}
         </p>
         <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
@@ -41,6 +81,7 @@ function NotificationItem({
         <p className="text-[10px] text-muted-foreground/70 mt-1">
           {formatDistanceToNow(parseISO(notification.createdAt), { addSuffix: true })}
         </p>
+        <ActionButton notification={notification} onMarkRead={onMarkRead} />
       </div>
       <div className="flex items-center gap-1 shrink-0 mt-0.5">
         {!notification.isRead && (
@@ -95,6 +136,10 @@ export default function NotificationsPanel({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
+  const actionable = notifications.filter(
+    (n) => !n.isRead && typeConfig[n.type]?.isActionable && n.actionUrl
+  );
+
   return (
     <div
       ref={panelRef}
@@ -132,8 +177,20 @@ export default function NotificationsPanel({
         </div>
       </div>
 
+      {/* Action required banner */}
+      {actionable.length > 0 && (
+        <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
+            <span className="text-white text-[9px] font-bold">{actionable.length}</span>
+          </div>
+          <p className="text-[11px] text-amber-800 font-medium">
+            {actionable.length === 1 ? "1 action required" : `${actionable.length} actions required`}
+          </p>
+        </div>
+      )}
+
       {/* Body */}
-      <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 180px)" }}>
+      <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 220px)" }}>
         {isLoading ? (
           <div className="space-y-1 p-2">
             {[1, 2, 3].map((i) => (

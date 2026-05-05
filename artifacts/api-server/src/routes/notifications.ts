@@ -32,6 +32,8 @@ router.get("/notifications", async (req, res) => {
     type: n.type,
     title: n.title,
     message: n.message,
+    actionUrl: n.actionUrl ?? null,
+    actionLabel: n.actionLabel ?? null,
     isRead: n.isRead,
     createdAt: n.createdAt.toISOString(),
   })));

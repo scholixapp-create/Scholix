@@ -3,13 +3,24 @@ import { eq } from "drizzle-orm";
 import { sendEmail } from "./email";
 import { logger } from "./logger";
 
-type NotificationType = "session_booked" | "payment_confirmed" | "session_completed" | "session_cancelled" | "session_reminder";
+type NotificationType =
+  | "session_booked"
+  | "payment_confirmed"
+  | "session_completed"
+  | "session_cancelled"
+  | "session_reminder"
+  | "action_confirm_session"
+  | "action_upload_notes"
+  | "action_rate_session"
+  | "whatsapp_connect";
 
 export async function createNotification(opts: {
   userId: number;
   type: NotificationType;
   title: string;
   message: string;
+  actionUrl?: string;
+  actionLabel?: string;
   emailHtml?: string;
   emailSubject?: string;
 }) {
@@ -19,6 +30,8 @@ export async function createNotification(opts: {
       type: opts.type,
       title: opts.title,
       message: opts.message,
+      actionUrl: opts.actionUrl ?? null,
+      actionLabel: opts.actionLabel ?? null,
     });
 
     if (opts.emailHtml && opts.emailSubject) {

@@ -43,6 +43,7 @@ export const SignupBody = zod.object({
   firstName: zod.string(),
   lastName: zod.string(),
   role: zod.enum(["tutor", "parent", "student", "admin"]),
+  phone: zod.string().optional(),
 });
 
 /**

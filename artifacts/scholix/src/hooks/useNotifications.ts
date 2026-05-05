@@ -5,6 +5,8 @@ export interface AppNotification {
   type: string;
   title: string;
   message: string;
+  actionUrl: string | null;
+  actionLabel: string | null;
   isRead: boolean;
   createdAt: string;
 }
