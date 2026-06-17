@@ -7,12 +7,12 @@ export default function TestModeBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const dismissed = localStorage.getItem(DISMISS_KEY);
+    const dismissed = sessionStorage.getItem(DISMISS_KEY);
     if (!dismissed) setVisible(true);
   }, []);
 
   const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, "1");
+    sessionStorage.setItem(DISMISS_KEY, "1");
     setVisible(false);
   };
 
