@@ -339,7 +339,7 @@ export default function TutorDashboard() {
         <div className="bg-card border border-card-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <DollarSign size={16} className="text-accent" />
-            <span className="text-xs font-medium text-muted-foreground">Earnings</span>
+            <span className="text-xs font-medium text-muted-foreground">Your Growth</span>
           </div>
           <p className="text-2xl font-bold text-foreground">${totalEarnings.toFixed(0)}</p>
           <p className="text-xs text-muted-foreground mt-0.5">total (70%)</p>
@@ -390,7 +390,7 @@ export default function TutorDashboard() {
       {/* Upcoming sessions */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-foreground">Upcoming sessions</h2>
+          <h2 className="text-sm font-semibold text-foreground">Your Week</h2>
           <Link href="/tutor/sessions" className="text-xs text-primary font-medium flex items-center gap-0.5">
             View all <ChevronRight size={12} />
           </Link>

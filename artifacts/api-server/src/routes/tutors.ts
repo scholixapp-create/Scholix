@@ -1,11 +1,15 @@
 import { Router } from "express";
 import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and } from "drizzle-orm";
 import { UpdateTutorProfileBody, SetTutorAvailabilityBody } from "@workspace/api-zod";
 
 const router = Router();
 
-function tutorToJson(tutor: typeof tutorsTable.$inferSelect, user: typeof usersTable.$inferSelect) {
+function tutorToJson(
+  tutor: typeof tutorsTable.$inferSelect,
+  user: typeof usersTable.$inferSelect,
+  sessionCount = 0
+) {
   return {
     id: tutor.id,
     userId: tutor.userId,
@@ -16,8 +20,19 @@ function tutorToJson(tutor: typeof tutorsTable.$inferSelect, user: typeof usersT
     subjects: tutor.subjects ?? [],
     hourlyRate: tutor.hourlyRate,
     isApproved: tutor.isApproved,
+    verificationStatus: tutor.verificationStatus ?? "pending_verification",
+    educationDetails: (tutor as Record<string, unknown>).educationDetails as string | null ?? null,
+    sessionCount,
     createdAt: tutor.createdAt.toISOString(),
   };
+}
+
+async function getSessionCount(tutorId: number): Promise<number> {
+  const rows = await db
+    .select({ id: sessionsTable.id })
+    .from(sessionsTable)
+    .where(and(eq(sessionsTable.tutorId, tutorId), eq(sessionsTable.status, "completed")));
+  return rows.length;
 }
 
 router.get("/tutors", async (_req, res) => {
@@ -27,7 +42,13 @@ router.get("/tutors", async (_req, res) => {
     .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
     .where(eq(tutorsTable.isApproved, true));
 
-  res.json(tutors.map((r) => tutorToJson(r.tutors, r.users)));
+  const result = await Promise.all(
+    tutors.map(async (r) => {
+      const count = await getSessionCount(r.tutors.id);
+      return tutorToJson(r.tutors, r.users, count);
+    })
+  );
+  res.json(result);
 });
 
 router.get("/tutors/:tutorId", async (req, res) => {
@@ -43,7 +64,8 @@ router.get("/tutors/:tutorId", async (req, res) => {
     res.status(404).json({ error: "Tutor not found" });
     return;
   }
-  res.json(tutorToJson(row.tutors, row.users));
+  const count = await getSessionCount(tutorId);
+  res.json(tutorToJson(row.tutors, row.users, count));
 });
 
 router.put("/tutors/:tutorId/profile", async (req, res) => {
@@ -78,8 +100,20 @@ router.put("/tutors/:tutorId/profile", async (req, res) => {
     res.status(404).json({ error: "Tutor not found" });
     return;
   }
-  res.json(tutorToJson(row.tutors, row.users));
+  const count = await getSessionCount(tutorId);
+  res.json(tutorToJson(row.tutors, row.users, count));
 });
+
+function slotToJson(s: typeof availabilityTable.$inferSelect) {
+  return {
+    id: s.id,
+    tutorId: s.tutorId,
+    date: s.date,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    isBooked: s.isBooked,
+  };
+}
 
 router.get("/tutors/:tutorId/availability", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
@@ -88,15 +122,7 @@ router.get("/tutors/:tutorId/availability", async (req, res) => {
     .from(availabilityTable)
     .where(eq(availabilityTable.tutorId, tutorId));
 
-  res.json(
-    slots.map((s) => ({
-      id: s.id,
-      tutorId: s.tutorId,
-      dayOfWeek: s.dayOfWeek,
-      startTime: s.startTime,
-      endTime: s.endTime,
-    }))
-  );
+  res.json(slots.map(slotToJson));
 });
 
 router.put("/tutors/:tutorId/availability", async (req, res) => {
@@ -113,15 +139,48 @@ router.put("/tutors/:tutorId/availability", async (req, res) => {
     await db.insert(availabilityTable).values(
       parsed.data.slots.map((s) => ({
         tutorId,
-        dayOfWeek: s.dayOfWeek,
+        date: s.date,
         startTime: s.startTime,
         endTime: s.endTime,
+        isBooked: false,
       }))
     );
   }
 
   const slots = await db.select().from(availabilityTable).where(eq(availabilityTable.tutorId, tutorId));
-  res.json(slots.map((s) => ({ id: s.id, tutorId: s.tutorId, dayOfWeek: s.dayOfWeek, startTime: s.startTime, endTime: s.endTime })));
+  res.json(slots.map(slotToJson));
+});
+
+router.post("/tutors/:tutorId/availability", async (req, res) => {
+  const tutorId = parseInt(req.params.tutorId, 10);
+  const { date, startTime, endTime } = req.body as { date?: string; startTime?: string; endTime?: string };
+  if (!date || !startTime || !endTime) {
+    res.status(400).json({ error: "date, startTime, endTime required" });
+    return;
+  }
+
+  const [slot] = await db
+    .insert(availabilityTable)
+    .values({ tutorId, date, startTime, endTime, isBooked: false })
+    .returning();
+
+  res.status(201).json(slotToJson(slot));
+});
+
+router.delete("/tutors/:tutorId/availability/:slotId", async (req, res) => {
+  const slotId = parseInt(req.params.slotId, 10);
+  const tutorId = parseInt(req.params.tutorId, 10);
+
+  const [deleted] = await db
+    .delete(availabilityTable)
+    .where(and(eq(availabilityTable.id, slotId), eq(availabilityTable.tutorId, tutorId)))
+    .returning();
+
+  if (!deleted) {
+    res.status(404).json({ error: "Slot not found" });
+    return;
+  }
+  res.json({ ok: true });
 });
 
 router.get("/tutors/:tutorId/students", async (req, res) => {

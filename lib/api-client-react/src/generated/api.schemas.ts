@@ -73,6 +73,9 @@ export interface TutorProfile {
   subjects: string[];
   hourlyRate: number;
   isApproved: boolean;
+  verificationStatus: string;
+  educationDetails?: string | null;
+  sessionCount: number;
   createdAt: string;
 }
 
@@ -85,16 +88,17 @@ export interface UpdateTutorProfileBody {
 export interface AvailabilitySlot {
   id: number;
   tutorId: number;
-  /** 0=Sunday, 6=Saturday */
-  dayOfWeek: number;
+  /** YYYY-MM-DD format */
+  date: string;
   /** HH:MM format */
   startTime: string;
   /** HH:MM format */
   endTime: string;
+  isBooked: boolean;
 }
 
 export type SetAvailabilityBodySlotsItem = {
-  dayOfWeek: number;
+  date: string;
   startTime: string;
   endTime: string;
 };
@@ -151,6 +155,7 @@ export interface CreateSessionBody {
   subject: string;
   scheduledAt: string;
   durationMinutes: number;
+  availabilitySlotId?: number | null;
 }
 
 export interface Invoice {

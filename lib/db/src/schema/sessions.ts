@@ -18,6 +18,7 @@ export const sessionsTable = pgTable("sessions", {
   totalAmount: real("total_amount").notNull().default(0),
   reminderSent: boolean("reminder_sent").notNull().default(false),
   isCommissionFree: boolean("is_commission_free").notNull().default(false),
+  availabilitySlotId: integer("availability_slot_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable } from "@workspace/db";
+import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, availabilityTable } from "@workspace/db";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
@@ -214,6 +214,25 @@ router.post("/sessions", async (req, res) => {
 
   const totalAmount = (tutor.hourlyRate * parsed.data.durationMinutes) / 60;
 
+  // If an availability slot is requested, verify it exists and is not already booked
+  const slotId = parsed.data.availabilitySlotId ?? null;
+  if (slotId) {
+    const [slot] = await db
+      .select()
+      .from(availabilityTable)
+      .where(and(eq(availabilityTable.id, slotId), eq(availabilityTable.tutorId, parsed.data.tutorId)))
+      .limit(1);
+
+    if (!slot) {
+      res.status(404).json({ error: "Availability slot not found" });
+      return;
+    }
+    if (slot.isBooked) {
+      res.status(409).json({ error: "This time slot has already been booked" });
+      return;
+    }
+  }
+
   // Session created as pending_payment — confirmed only after payment
   const [session] = await db
     .insert(sessionsTable)
@@ -226,6 +245,7 @@ router.post("/sessions", async (req, res) => {
       status: "pending_payment",
       isPaid: false,
       totalAmount,
+      availabilitySlotId: slotId,
     })
     .returning();
 

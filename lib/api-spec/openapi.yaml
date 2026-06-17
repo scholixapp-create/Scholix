@@ -625,9 +625,16 @@ components:
           type: number
         isApproved:
           type: boolean
+        verificationStatus:
+          type: string
+        educationDetails:
+          type: string
+          nullable: true
+        sessionCount:
+          type: integer
         createdAt:
           type: string
-      required: [id, userId, firstName, lastName, email, subjects, hourlyRate, isApproved, createdAt]
+      required: [id, userId, firstName, lastName, email, subjects, hourlyRate, isApproved, verificationStatus, sessionCount, createdAt]
 
     UpdateTutorProfileBody:
       type: object
@@ -648,16 +655,18 @@ components:
           type: integer
         tutorId:
           type: integer
-        dayOfWeek:
-          type: integer
-          description: 0=Sunday, 6=Saturday
+        date:
+          type: string
+          description: "YYYY-MM-DD format"
         startTime:
           type: string
           description: "HH:MM format"
         endTime:
           type: string
           description: "HH:MM format"
-      required: [id, tutorId, dayOfWeek, startTime, endTime]
+        isBooked:
+          type: boolean
+      required: [id, tutorId, date, startTime, endTime, isBooked]
 
     SetAvailabilityBody:
       type: object
@@ -667,13 +676,13 @@ components:
           items:
             type: object
             properties:
-              dayOfWeek:
-                type: integer
+              date:
+                type: string
               startTime:
                 type: string
               endTime:
                 type: string
-            required: [dayOfWeek, startTime, endTime]
+            required: [date, startTime, endTime]
       required: [slots]
 
     Student:
@@ -760,6 +769,9 @@ components:
           type: string
         durationMinutes:
           type: integer
+        availabilitySlotId:
+          type: integer
+          nullable: true
       required: [tutorId, studentId, subject, scheduledAt, durationMinutes]
 
     SessionWithInvoice:

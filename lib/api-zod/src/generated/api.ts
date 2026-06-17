@@ -43,7 +43,6 @@ export const SignupBody = zod.object({
   firstName: zod.string(),
   lastName: zod.string(),
   role: zod.enum(["tutor", "parent", "student", "admin"]),
-  phone: zod.string().optional(),
 });
 
 /**
@@ -78,6 +77,9 @@ export const ListTutorsResponseItem = zod.object({
   subjects: zod.array(zod.string()),
   hourlyRate: zod.number(),
   isApproved: zod.boolean(),
+  verificationStatus: zod.string(),
+  educationDetails: zod.string().nullish(),
+  sessionCount: zod.number(),
   createdAt: zod.string(),
 });
 export const ListTutorsResponse = zod.array(ListTutorsResponseItem);
@@ -99,6 +101,9 @@ export const GetTutorResponse = zod.object({
   subjects: zod.array(zod.string()),
   hourlyRate: zod.number(),
   isApproved: zod.boolean(),
+  verificationStatus: zod.string(),
+  educationDetails: zod.string().nullish(),
+  sessionCount: zod.number(),
   createdAt: zod.string(),
 });
 
@@ -125,6 +130,9 @@ export const UpdateTutorProfileResponse = zod.object({
   subjects: zod.array(zod.string()),
   hourlyRate: zod.number(),
   isApproved: zod.boolean(),
+  verificationStatus: zod.string(),
+  educationDetails: zod.string().nullish(),
+  sessionCount: zod.number(),
   createdAt: zod.string(),
 });
 
@@ -138,9 +146,10 @@ export const GetTutorAvailabilityParams = zod.object({
 export const GetTutorAvailabilityResponseItem = zod.object({
   id: zod.number(),
   tutorId: zod.number(),
-  dayOfWeek: zod.number().describe("0=Sunday, 6=Saturday"),
+  date: zod.string().describe("YYYY-MM-DD format"),
   startTime: zod.string().describe("HH:MM format"),
   endTime: zod.string().describe("HH:MM format"),
+  isBooked: zod.boolean(),
 });
 export const GetTutorAvailabilityResponse = zod.array(
   GetTutorAvailabilityResponseItem,
@@ -156,7 +165,7 @@ export const SetTutorAvailabilityParams = zod.object({
 export const SetTutorAvailabilityBody = zod.object({
   slots: zod.array(
     zod.object({
-      dayOfWeek: zod.number(),
+      date: zod.string(),
       startTime: zod.string(),
       endTime: zod.string(),
     }),
@@ -166,9 +175,10 @@ export const SetTutorAvailabilityBody = zod.object({
 export const SetTutorAvailabilityResponseItem = zod.object({
   id: zod.number(),
   tutorId: zod.number(),
-  dayOfWeek: zod.number().describe("0=Sunday, 6=Saturday"),
+  date: zod.string().describe("YYYY-MM-DD format"),
   startTime: zod.string().describe("HH:MM format"),
   endTime: zod.string().describe("HH:MM format"),
+  isBooked: zod.boolean(),
 });
 export const SetTutorAvailabilityResponse = zod.array(
   SetTutorAvailabilityResponseItem,
@@ -271,6 +281,7 @@ export const CreateSessionBody = zod.object({
   subject: zod.string(),
   scheduledAt: zod.string(),
   durationMinutes: zod.number(),
+  availabilitySlotId: zod.number().nullish(),
 });
 
 /**
@@ -419,6 +430,9 @@ export const ApproveTutorResponse = zod.object({
   subjects: zod.array(zod.string()),
   hourlyRate: zod.number(),
   isApproved: zod.boolean(),
+  verificationStatus: zod.string(),
+  educationDetails: zod.string().nullish(),
+  sessionCount: zod.number(),
   createdAt: zod.string(),
 });
 

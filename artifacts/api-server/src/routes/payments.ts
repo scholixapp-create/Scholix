@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, paymentsTable, sessionsTable, tutorsTable, usersTable, studentsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, paymentsTable, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, availabilityTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { SimulatePaymentBody, ListPaymentsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
 import { paymentConfirmedEmailHtml, sessionBookedEmailHtml } from "../lib/email";
@@ -8,15 +8,39 @@ import { format } from "date-fns";
 
 const router = Router();
 
-/** Format an Australian mobile for a WhatsApp wa.me link.
- *  Converts 04XXXXXXXX → 614XXXXXXXX
- */
 function toWhatsAppNumber(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   if (digits.startsWith("04") && digits.length === 10) {
     return "61" + digits.slice(1);
   }
   return digits;
+}
+
+async function getTierCommission(tutorId: number, studentId: number, totalAmount: number) {
+  const [tutor] = await db.select().from(tutorsTable).where(eq(tutorsTable.id, tutorId)).limit(1);
+
+  if (tutor?.firstStudentId === studentId) {
+    return { commissionRate: 0, platformCommission: 0, tutorEarnings: totalAmount, tier: "first_student_free", isCommissionFree: true };
+  }
+
+  const completed = await db
+    .select({ id: sessionsTable.id, studentId: sessionsTable.studentId })
+    .from(sessionsTable)
+    .where(and(eq(sessionsTable.tutorId, tutorId), eq(sessionsTable.status, "completed")));
+
+  const prevWithStudent = completed.filter((s) => s.studentId === studentId);
+  if (prevWithStudent.length === 0) {
+    return { commissionRate: 0, platformCommission: 0, tutorEarnings: totalAmount, tier: "first_session_free", isCommissionFree: true };
+  }
+
+  const count = completed.length;
+  let rate = 0.30;
+  let tier = "standard";
+  if (count >= 50) { rate = 0.15; tier = "expert"; }
+  else if (count >= 25) { rate = 0.20; tier = "established"; }
+  else if (count >= 10) { rate = 0.25; tier = "growth"; }
+
+  return { commissionRate: rate, platformCommission: totalAmount * rate, tutorEarnings: totalAmount * (1 - rate), tier, isCommissionFree: false };
 }
 
 router.post("/payments/simulate", async (req, res) => {
@@ -39,7 +63,6 @@ router.post("/payments/simulate", async (req, res) => {
     return;
   }
 
-  // Confirm the session: pending_payment → scheduled, mark as paid
   await db
     .update(sessionsTable)
     .set({ isPaid: true, status: "scheduled" })
@@ -47,12 +70,31 @@ router.post("/payments/simulate", async (req, res) => {
 
   const [payment] = await db
     .insert(paymentsTable)
-    .values({
-      sessionId,
-      amount: session.totalAmount,
-      status: "paid",
-    })
+    .values({ sessionId, amount: session.totalAmount, status: "paid" })
     .returning();
+
+  // Generate invoice immediately on payment (if not already exists)
+  const [existingInv] = await db.select().from(invoicesTable).where(eq(invoicesTable.sessionId, sessionId)).limit(1);
+  if (!existingInv) {
+    const comm = await getTierCommission(session.tutorId, session.studentId, session.totalAmount);
+    await db.insert(invoicesTable).values({
+      sessionId,
+      totalAmount: session.totalAmount,
+      platformCommission: comm.platformCommission,
+      tutorEarnings: comm.tutorEarnings,
+      commissionRate: comm.commissionRate,
+      commissionTier: comm.tier,
+    });
+    // Mark isCommissionFree on session
+    if (comm.isCommissionFree) {
+      await db.update(sessionsTable).set({ isCommissionFree: true }).where(eq(sessionsTable.id, sessionId));
+    }
+  }
+
+  // Mark availability slot as booked if session has one
+  if (session.availabilitySlotId) {
+    await db.update(availabilityTable).set({ isBooked: true }).where(eq(availabilityTable.id, session.availabilitySlotId));
+  }
 
   const [student] = await db
     .select()
@@ -70,7 +112,6 @@ router.post("/payments/simulate", async (req, res) => {
   const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "your tutor";
   const dateStr = format(session.scheduledAt, "EEE, MMM d 'at' h:mm a");
 
-  // ── Notify parent: payment confirmed ──────────────────────────────────
   if (student?.parentId) {
     const [parentUser] = await db
       .select({ firstName: usersTable.firstName, phone: usersTable.phone })
@@ -95,7 +136,6 @@ router.post("/payments/simulate", async (req, res) => {
       }),
     });
 
-    // WhatsApp connection suggestion — both need phones
     const parentPhone = parentUser?.phone ?? null;
     const tutorPhone = tutorRow?.phone ?? null;
 
@@ -112,7 +152,6 @@ router.post("/payments/simulate", async (req, res) => {
     }
   }
 
-  // ── Notify tutor: new booking confirmed ───────────────────────────────
   if (tutorRow) {
     const studentName = student ? `${student.firstName} ${student.lastName}` : "A student";
 
@@ -135,7 +174,6 @@ router.post("/payments/simulate", async (req, res) => {
       }),
     });
 
-    // WhatsApp connection suggestion for tutor
     const parentPhone = student?.parentId
       ? await db
           .select({ phone: usersTable.phone })

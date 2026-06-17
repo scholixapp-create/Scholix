@@ -8,3 +8,5 @@ export * from "./invoices";
 export * from "./notifications";
 export * from "./tutor-documents";
 export * from "./student-progress";
+export * from "./reviews";
+export * from "./subject-requests";

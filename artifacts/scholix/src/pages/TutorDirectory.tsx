@@ -100,13 +100,16 @@ export default function TutorDirectory() {
                 >
                   {/* Avatar */}
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <GraduationCap size={22} className="text-primary" />
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 font-bold text-primary text-sm">
+                      {tutor.firstName[0]}{tutor.lastName[0]}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-[#0f2240] truncate">
+                      <Link
+                        href={`/tutor/${tutor.id}`}
+                        className="text-sm font-bold text-[#0f2240] truncate hover:text-primary transition-colors hover:underline block"
+                      >
                         {tutor.firstName} {tutor.lastName}
-                      </p>
+                      </Link>
                       <div className="flex items-center gap-1 mt-0.5">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <Star key={s} size={10} className="fill-amber-400 text-amber-400" />
@@ -146,10 +149,16 @@ export default function TutorDirectory() {
                     </p>
                   )}
 
-                  <div className="mt-auto pt-3 border-t border-gray-100">
+                  <div className="mt-auto pt-3 border-t border-gray-100 grid grid-cols-2 gap-2">
+                    <Link
+                      href={`/tutor/${tutor.id}`}
+                      className="flex items-center justify-center py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:border-primary/40 hover:text-primary transition-colors"
+                    >
+                      View profile
+                    </Link>
                     <Link
                       href="/signup"
-                      className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+                      className="flex items-center justify-center gap-1.5 py-2 rounded-xl bg-primary text-white text-xs font-semibold hover:opacity-90 transition-opacity"
                     >
                       Sign up to book
                       <ArrowRight size={12} />

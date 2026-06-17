@@ -27,6 +27,7 @@ import AdminSessions from "@/pages/admin/Sessions";
 import TutorOnboarding from "@/pages/tutor/Onboarding";
 import ParentInvoices from "@/pages/parent/Invoices";
 import TutorDirectory from "@/pages/TutorDirectory";
+import TutorProfile from "@/pages/TutorProfile";
 import Settings from "@/pages/Settings";
 import { Clock, XCircle } from "lucide-react";
 
@@ -228,8 +229,9 @@ function Router() {
         </RequireAuth>
       </Route>
 
-      {/* Public tutor directory */}
+      {/* Public tutor directory + profile pages */}
       <Route path="/tutors" component={TutorDirectory} />
+      <Route path="/tutor/:id" component={TutorProfile} />
 
       {/* Student routes */}
       <Route path="/student/dashboard">

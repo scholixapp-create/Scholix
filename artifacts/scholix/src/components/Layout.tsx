@@ -29,9 +29,9 @@ interface NavItem {
 
 function getTutorNav(): NavItem[] {
   return [
-    { href: "/tutor/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+    { href: "/tutor/dashboard", label: "Your Teaching Hub", icon: <LayoutDashboard size={18} /> },
     { href: "/tutor/sessions", label: "Sessions", icon: <Calendar size={18} /> },
-    { href: "/tutor/earnings", label: "Earnings", icon: <DollarSign size={18} /> },
+    { href: "/tutor/earnings", label: "Your Growth", icon: <DollarSign size={18} /> },
     { href: "/tutor/students", label: "Students", icon: <Users size={18} /> },
     { href: "/tutor/availability", label: "Availability", icon: <Clock size={18} /> },
   ];
