@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { Shield, Upload, CheckCircle, Clock, FileText, AlertCircle, Sparkles, Trophy, Building2, ExternalLink } from "lucide-react";
+import { Shield, Upload, CheckCircle, Clock, FileText, AlertCircle, Sparkles, Trophy, Building2, ExternalLink, ClipboardCheck } from "lucide-react";
 
 interface TutorMe {
   verificationStatus: string;
@@ -25,6 +25,16 @@ async function apiGet(path: string) {
 async function apiPut(path: string, body: object) {
   const res = await fetch(path, {
     method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function apiPost(path: string, body: object) {
+  const res = await fetch(path, {
+    method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
     body: JSON.stringify(body),
   });
@@ -61,20 +71,11 @@ function FileDropZone({
       >
         <input type="file" accept={accept} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onChange(f); }} />
         {uploaded ? (
-          <>
-            <CheckCircle size={22} className="text-accent" />
-            <span className="text-xs font-medium text-accent">Uploaded</span>
-          </>
+          <><CheckCircle size={22} className="text-accent" /><span className="text-xs font-medium text-accent">Uploaded</span></>
         ) : file ? (
-          <>
-            <FileText size={22} className="text-primary" />
-            <span className="text-xs font-medium text-foreground truncate max-w-full px-2">{file.name}</span>
-          </>
+          <><FileText size={22} className="text-primary" /><span className="text-xs font-medium text-foreground truncate max-w-full px-2">{file.name}</span></>
         ) : (
-          <>
-            <Upload size={22} className="text-muted-foreground" />
-            <span className="text-xs text-muted-foreground text-center">{hint}</span>
-          </>
+          <><Upload size={22} className="text-muted-foreground" /><span className="text-xs text-muted-foreground text-center">{hint}</span></>
         )}
       </label>
     </div>
@@ -97,6 +98,10 @@ export default function TutorOnboarding() {
   const [wwccUploaded, setWwccUploaded] = useState(false);
   const [educationUploaded, setEducationUploaded] = useState(false);
 
+  // Compliance checkboxes
+  const [wwccDeclared, setWwccDeclared] = useState(false);
+  const [codeOfConductAccepted, setCodeOfConductAccepted] = useState(false);
+
   useEffect(() => {
     apiGet("/api/tutors/me").then((data: TutorMe) => {
       setTutorMe(data);
@@ -107,6 +112,12 @@ export default function TutorOnboarding() {
       if (data.abn) setAbn(data.abn);
       if (data.documents?.some((d) => d.docType === "wwcc")) setWwccUploaded(true);
       if (data.documents?.some((d) => d.docType === "education")) setEducationUploaded(true);
+    }).catch(() => {});
+
+    // Load existing compliance state
+    apiGet("/api/tutors/me/compliance").then((data: { wwccDeclared: boolean; codeOfConductAccepted: boolean }) => {
+      setWwccDeclared(data.wwccDeclared);
+      setCodeOfConductAccepted(data.codeOfConductAccepted);
     }).catch(() => {});
   }, []);
 
@@ -120,6 +131,8 @@ export default function TutorOnboarding() {
     if (!wwccNumber.trim()) { setError("WWCC number is required."); return; }
     if (!wwccExpiry) { setError("WWCC expiry date is required."); return; }
     if (!wwccFile && !wwccUploaded) { setError("Please upload your WWCC document."); return; }
+    if (!wwccDeclared) { setError("You must declare that your WWCC is valid and current."); return; }
+    if (!codeOfConductAccepted) { setError("You must accept the Scholix Tutor Code of Conduct."); return; }
 
     setStep("uploading");
 
@@ -134,6 +147,9 @@ export default function TutorOnboarding() {
         await uploadDoc("education", educationFile);
         setEducationUploaded(true);
       }
+
+      // Save compliance declarations
+      await apiPost("/api/tutors/me/compliance", { wwccDeclared, codeOfConductAccepted });
 
       setStep("submitted");
     } catch (err) {
@@ -338,6 +354,56 @@ export default function TutorOnboarding() {
                   uploaded={educationUploaded}
                   onChange={setEducationFile}
                 />
+              </div>
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* Compliance declarations */}
+            <div>
+              <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <ClipboardCheck size={14} className="text-primary" />
+                Compliance Declarations
+                <span className="ml-auto text-[10px] font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">Required</span>
+              </h2>
+              <div className="space-y-3">
+                <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
+                  wwccDeclared ? "border-accent/40 bg-accent/5" : "border-input hover:border-primary/30 hover:bg-muted/30"
+                }`}>
+                  <div className={`w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+                    wwccDeclared ? "bg-accent border-accent" : "border-input bg-background"
+                  }`}>
+                    {wwccDeclared && <CheckCircle size={12} className="text-white" />}
+                  </div>
+                  <input type="checkbox" className="sr-only" checked={wwccDeclared} onChange={(e) => setWwccDeclared(e.target.checked)} />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">My WWCC is valid and current</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      I declare that my Working With Children Check is valid, current, and I will immediately notify Scholix if it lapses or is cancelled.
+                    </p>
+                  </div>
+                </label>
+
+                <label className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
+                  codeOfConductAccepted ? "border-accent/40 bg-accent/5" : "border-input hover:border-primary/30 hover:bg-muted/30"
+                }`}>
+                  <div className={`w-5 h-5 rounded border-2 shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+                    codeOfConductAccepted ? "bg-accent border-accent" : "border-input bg-background"
+                  }`}>
+                    {codeOfConductAccepted && <CheckCircle size={12} className="text-white" />}
+                  </div>
+                  <input type="checkbox" className="sr-only" checked={codeOfConductAccepted} onChange={(e) => setCodeOfConductAccepted(e.target.checked)} />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">I accept the Tutor Code of Conduct</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      I have read and agree to the{" "}
+                      <a href="/tutor-agreement" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        Scholix Tutor Agreement
+                      </a>
+                      {" "}including safeguarding obligations, professional conduct, and payment terms.
+                    </p>
+                  </div>
+                </label>
               </div>
             </div>
 

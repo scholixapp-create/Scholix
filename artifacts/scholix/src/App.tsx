@@ -9,6 +9,8 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import TutorAgreementPage from "@/pages/TutorAgreement";
@@ -27,6 +29,7 @@ import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminUsers from "@/pages/admin/Users";
 import AdminTutorApprovals from "@/pages/admin/TutorApprovals";
 import AdminSessions from "@/pages/admin/Sessions";
+import AdminReports from "@/pages/admin/Reports";
 import TutorOnboarding from "@/pages/tutor/Onboarding";
 import ParentInvoices from "@/pages/parent/Invoices";
 import TutorDirectory from "@/pages/TutorDirectory";
@@ -93,7 +96,6 @@ function RequireTutorApproved({ children }: { children: React.ReactNode }) {
     return <Redirect to="/tutor/onboarding" />;
   }
 
-  // Handle both old ("pending_verification") and new ("pending") status values
   const vs = status.verificationStatus;
   const isPending = vs === "pending" || vs === "pending_verification";
   const isRejected = vs === "rejected";
@@ -194,20 +196,22 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
 
-      {/* Legal pages — public, no auth required */}
+      {/* Legal pages */}
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/tutor-agreement" component={TutorAgreementPage} />
 
-      {/* Tutor onboarding — standalone page, no approval gate */}
+      {/* Tutor onboarding */}
       <Route path="/tutor/onboarding">
         <RequireAuth role="tutor">
           <TutorOnboarding />
         </RequireAuth>
       </Route>
 
-      {/* Tutor routes — hard-blocked until approved */}
+      {/* Tutor routes */}
       <Route path="/tutor/dashboard">
         <RequireAuth role="tutor">
           <RequireTutorApproved>
@@ -271,7 +275,7 @@ function Router() {
         </RequireAuth>
       </Route>
 
-      {/* Public tutor directory + profile pages */}
+      {/* Public tutor directory */}
       <Route path="/tutors" component={TutorDirectory} />
       <Route path="/tutor/:id" component={TutorProfile} />
 
@@ -306,6 +310,11 @@ function Router() {
       <Route path="/admin/sessions">
         <RequireAuth role="admin">
           <Layout><AdminSessions /></Layout>
+        </RequireAuth>
+      </Route>
+      <Route path="/admin/reports">
+        <RequireAuth role="admin">
+          <Layout><AdminReports /></Layout>
         </RequireAuth>
       </Route>
 

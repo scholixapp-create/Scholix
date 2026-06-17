@@ -1,3 +1,5 @@
+- [Drizzle null comparisons](drizzle-null.md) — use `isNull(col)` not `eq(col, null)`; SQL `= NULL` is never true.
+- [OTP login flow](otp-login-flow.md) — login returns `{requiresOtp, pendingUserId}`; verify-otp returns `{user, token}`; rate limit 3/10min per user.
 - [Availability model](availability-model.md) — slots are date+startTime+endTime (not dayOfWeek); isBooked set on payment via payments.ts
 - [Invoice on payment](invoice-on-payment.md) — invoice created in payments.ts at payment time; sessions.ts complete route checks for existing invoice before creating one
 - [esbuild externals](esbuild-externals.md) — `zod/v4` subpath is NOT resolvable by esbuild; use plain validation in API routes or import from @workspace/api-zod

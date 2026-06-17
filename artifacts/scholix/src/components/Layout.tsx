@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationsPanel from "@/components/NotificationsPanel";
 import TestModeBanner from "@/components/TestModeBanner";
+import ReportIssueModal from "@/components/ReportIssueModal";
 import {
   LayoutDashboard,
   Calendar,
@@ -19,6 +20,7 @@ import {
   Bell,
   Settings,
   BarChart2,
+  Flag,
 } from "lucide-react";
 
 interface NavItem {
@@ -60,6 +62,7 @@ function getAdminNav(): NavItem[] {
     { href: "/admin/users", label: "Users", icon: <Users size={18} /> },
     { href: "/admin/tutors", label: "Tutors", icon: <GraduationCap size={18} /> },
     { href: "/admin/sessions", label: "Sessions", icon: <Calendar size={18} /> },
+    { href: "/admin/reports", label: "Reports", icon: <Flag size={18} /> },
   ];
 }
 
@@ -89,6 +92,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const logoutMutation = useLogout();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const { notifications, unreadCount, isLoading: notifsLoading, markRead, markAllRead, dismiss } = useNotifications();
 
   if (!user) return <>{children}</>;
@@ -186,6 +190,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             Settings
           </Link>
           <button
+            onClick={() => setShowReportModal(true)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent transition-colors"
+          >
+            <Flag size={18} />
+            Report Issue
+          </button>
+          <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent transition-colors"
           >
@@ -205,8 +216,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="font-bold text-base tracking-tight">Scholix</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-white/60">{user.firstName}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-white/60 mr-1">{user.firstName}</span>
             {/* Bell — mobile */}
             <div className="relative">
               <button
@@ -232,6 +243,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 />
               )}
             </div>
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors"
+              title="Report Issue"
+            >
+              <Flag size={16} />
+            </button>
             <button onClick={handleLogout} className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors">
               <LogOut size={16} />
             </button>
@@ -243,13 +261,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
-        {/* Legal footer — desktop only (mobile has bottom nav instead) */}
+        {/* Legal footer — desktop only */}
         <footer className="hidden lg:flex items-center justify-between px-6 py-3 border-t border-border bg-background/50 text-[11px] text-muted-foreground shrink-0">
           <span>© {new Date().getFullYear()} Scholix Pty Ltd · ABN 00 000 000 000</span>
           <div className="flex items-center gap-4">
             <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
             <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
             <a href="/tutor-agreement" className="hover:text-foreground transition-colors">Tutor Agreement</a>
+            <button
+              onClick={() => setShowReportModal(true)}
+              className="hover:text-foreground transition-colors flex items-center gap-1"
+            >
+              <Flag size={10} />
+              Report Issue
+            </button>
           </div>
         </footer>
 
@@ -273,6 +298,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
       </div>
     </div>
+
+    {/* Report Issue Modal */}
+    {showReportModal && <ReportIssueModal onClose={() => setShowReportModal(false)} />}
     </div>
   );
 }

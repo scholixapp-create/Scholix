@@ -1,13 +1,24 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable, legalAgreementsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
-import { createHash } from "crypto";
+import { db, usersTable, tutorsTable, legalAgreementsTable, passwordResetTokensTable, authOtpTokensTable, accountDeletionRequestsTable } from "@workspace/db";
+import { eq, and, gt, isNull } from "drizzle-orm";
+import { createHash, randomBytes } from "crypto";
 import { LoginBody, SignupBody } from "@workspace/api-zod";
+import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
+import { sendEmail, passwordResetEmailHtml, otpEmailHtml, accountDeletionConfirmEmailHtml } from "../lib/email";
+import { config } from "../lib/config";
 
 const router = Router();
 
 function hashPassword(password: string): string {
   return createHash("sha256").update(password + "scholix_salt").digest("hex");
+}
+
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 function makeToken(userId: number): string {
@@ -33,6 +44,7 @@ function userToJson(user: typeof usersTable.$inferSelect) {
   };
 }
 
+// Step 1: Validate credentials → issue OTP
 router.post("/auth/login", async (req, res) => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
@@ -53,7 +65,173 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
+  // Rate limit: max 3 OTP requests per user in 10 minutes
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const recentOtps = await db
+    .select({ id: authOtpTokensTable.id })
+    .from(authOtpTokensTable)
+    .where(
+      and(
+        eq(authOtpTokensTable.userId, user.id),
+        gt(authOtpTokensTable.createdAt, tenMinutesAgo)
+      )
+    );
+
+  if (recentOtps.length >= 3) {
+    res.status(429).json({ error: "Too many login attempts. Please wait 10 minutes before trying again." });
+    return;
+  }
+
+  // Invalidate any previous unused OTPs for this user
+  await db
+    .update(authOtpTokensTable)
+    .set({ usedAt: new Date() })
+    .where(
+      and(
+        eq(authOtpTokensTable.userId, user.id),
+        isNull(authOtpTokensTable.usedAt)
+      )
+    );
+
+  // Generate and store OTP
+  const otp = generateOtp();
+  const otpHash = hashToken(otp);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await db.insert(authOtpTokensTable).values({ userId: user.id, otpHash, expiresAt });
+
+  // Send OTP email
+  await sendEmail({
+    to: user.email,
+    subject: "Your Scholix sign-in code",
+    html: otpEmailHtml({ firstName: user.firstName, otp }),
+  });
+
+  res.json({ requiresOtp: true, pendingUserId: user.id, email: user.email });
+});
+
+// Step 2: Verify OTP → return session token
+router.post("/auth/verify-otp", async (req, res) => {
+  const { pendingUserId, otp } = req.body ?? {};
+
+  if (!pendingUserId || !otp) {
+    res.status(400).json({ error: "pendingUserId and otp are required" });
+    return;
+  }
+
+  const userId = parseInt(String(pendingUserId), 10);
+  if (isNaN(userId)) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+
+  const otpHash = hashToken(String(otp));
+  const now = new Date();
+
+  const [otpRecord] = await db
+    .select()
+    .from(authOtpTokensTable)
+    .where(
+      and(
+        eq(authOtpTokensTable.userId, userId),
+        eq(authOtpTokensTable.otpHash, otpHash),
+        gt(authOtpTokensTable.expiresAt, now),
+        isNull(authOtpTokensTable.usedAt)
+      )
+    )
+    .limit(1);
+
+  if (!otpRecord) {
+    res.status(401).json({ error: "Invalid or expired code. Please check the code or request a new one." });
+    return;
+  }
+
+  // Mark OTP as used
+  await db
+    .update(authOtpTokensTable)
+    .set({ usedAt: now })
+    .where(eq(authOtpTokensTable.id, otpRecord.id));
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return;
+  }
+
   res.json({ user: userToJson(user), token: makeToken(user.id) });
+});
+
+// Resend OTP
+router.post("/auth/resend-otp", async (req, res) => {
+  const { pendingUserId } = req.body ?? {};
+  if (!pendingUserId) {
+    res.status(400).json({ error: "pendingUserId is required" });
+    return;
+  }
+
+  const userId = parseInt(String(pendingUserId), 10);
+  if (isNaN(userId)) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+
+  // Rate limit
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const recentOtps = await db
+    .select({ id: authOtpTokensTable.id })
+    .from(authOtpTokensTable)
+    .where(
+      and(
+        eq(authOtpTokensTable.userId, userId),
+        gt(authOtpTokensTable.createdAt, tenMinutesAgo)
+      )
+    );
+
+  if (recentOtps.length >= 3) {
+    res.status(429).json({ error: "Too many OTP requests. Please wait before requesting a new code." });
+    return;
+  }
+
+  // Invalidate existing unused OTPs
+  await db
+    .update(authOtpTokensTable)
+    .set({ usedAt: new Date() })
+    .where(
+      and(
+        eq(authOtpTokensTable.userId, userId),
+        isNull(authOtpTokensTable.usedAt)
+      )
+    );
+
+  const otp = generateOtp();
+  const otpHash = hashToken(otp);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await db.insert(authOtpTokensTable).values({ userId, otpHash, expiresAt });
+
+  await sendEmail({
+    to: user.email,
+    subject: "Your Scholix sign-in code",
+    html: otpEmailHtml({ firstName: user.firstName, otp }),
+  });
+
+  res.json({ ok: true });
 });
 
 router.post("/auth/signup", async (req, res) => {
@@ -65,19 +243,16 @@ router.post("/auth/signup", async (req, res) => {
   const { email, password, firstName, lastName, role } = parsed.data;
   const body = req.body as { termsAccepted?: boolean; phone?: string };
 
-  // Admin accounts cannot be created via public signup
   if (role === "admin") {
     res.status(400).json({ error: "Admin accounts cannot be created through signup" });
     return;
   }
 
-  // Terms acceptance is required
   if (!body.termsAccepted) {
     res.status(400).json({ error: "You must accept the Terms of Service and Privacy Policy to create an account" });
     return;
   }
 
-  // Validate phone
   const phone = body.phone;
   let normalisedPhone: string | null = null;
   if (phone) {
@@ -114,7 +289,6 @@ router.post("/auth/signup", async (req, res) => {
     })
     .returning();
 
-  // Store legal agreement acceptance
   const forwarded = req.headers["x-forwarded-for"];
   const ipAddress = ((Array.isArray(forwarded) ? forwarded[0] : forwarded) ?? req.socket.remoteAddress ?? null)?.split(",")[0]?.trim() ?? null;
 
@@ -164,6 +338,178 @@ router.get("/auth/me", async (req, res) => {
 
 router.post("/auth/logout", (_req, res) => {
   res.json({ success: true });
+});
+
+// Forgot password — send reset link
+router.post("/auth/forgot-password", async (req, res) => {
+  const { email } = req.body ?? {};
+  if (!email || typeof email !== "string") {
+    res.status(400).json({ error: "Email is required" });
+    return;
+  }
+
+  // Always return 200 to prevent email enumeration
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email.toLowerCase().trim()))
+    .limit(1);
+
+  if (user) {
+    // Invalidate existing unused tokens
+    await db
+      .update(passwordResetTokensTable)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(passwordResetTokensTable.userId, user.id),
+          isNull(passwordResetTokensTable.usedAt)
+        )
+      );
+
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    await db.insert(passwordResetTokensTable).values({ userId: user.id, tokenHash, expiresAt });
+
+    const baseUrl = config.isProduction
+      ? (process.env["REPLIT_DOMAINS"]?.split(",")[0] ? `https://${process.env["REPLIT_DOMAINS"].split(",")[0]}` : config.frontendUrl)
+      : config.frontendUrl;
+
+    const resetLink = `${baseUrl}/reset-password?token=${rawToken}`;
+
+    await sendEmail({
+      to: user.email,
+      subject: "Reset your Scholix password",
+      html: passwordResetEmailHtml({ firstName: user.firstName, resetLink }),
+    });
+  }
+
+  res.json({ ok: true });
+});
+
+// Reset password with token
+router.post("/auth/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body ?? {};
+
+  if (!token || typeof token !== "string" || !newPassword || typeof newPassword !== "string") {
+    res.status(400).json({ error: "token and newPassword are required" });
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    res.status(400).json({ error: "Password must be at least 6 characters" });
+    return;
+  }
+
+  const tokenHash = hashToken(token);
+  const now = new Date();
+
+  const [record] = await db
+    .select()
+    .from(passwordResetTokensTable)
+    .where(
+      and(
+        eq(passwordResetTokensTable.tokenHash, tokenHash),
+        gt(passwordResetTokensTable.expiresAt, now),
+        isNull(passwordResetTokensTable.usedAt)
+      )
+    )
+    .limit(1);
+
+  if (!record) {
+    res.status(400).json({ error: "This reset link is invalid or has expired. Please request a new one." });
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({ passwordHash: hashPassword(newPassword) })
+    .where(eq(usersTable.id, record.userId));
+
+  await db
+    .update(passwordResetTokensTable)
+    .set({ usedAt: now })
+    .where(eq(passwordResetTokensTable.id, record.id));
+
+  res.json({ ok: true });
+});
+
+// Change password (requires current password)
+router.post("/auth/change-password", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const { currentPassword, newPassword } = req.body ?? {};
+
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ error: "currentPassword and newPassword are required" });
+    return;
+  }
+
+  if (typeof newPassword !== "string" || newPassword.length < 6) {
+    res.status(400).json({ error: "New password must be at least 6 characters" });
+    return;
+  }
+
+  if (user.passwordHash !== hashPassword(currentPassword)) {
+    res.status(401).json({ error: "Current password is incorrect" });
+    return;
+  }
+
+  await db
+    .update(usersTable)
+    .set({ passwordHash: hashPassword(newPassword) })
+    .where(eq(usersTable.id, user.id));
+
+  res.json({ ok: true });
+});
+
+// Request account deletion
+router.post("/auth/request-deletion", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const { reason } = req.body ?? {};
+
+  // Check for existing pending request
+  const [existing] = await db
+    .select({ id: accountDeletionRequestsTable.id })
+    .from(accountDeletionRequestsTable)
+    .where(
+      and(
+        eq(accountDeletionRequestsTable.userId, user.id),
+        eq(accountDeletionRequestsTable.status, "pending")
+      )
+    )
+    .limit(1);
+
+  if (existing) {
+    res.status(409).json({ error: "You already have a pending deletion request under review." });
+    return;
+  }
+
+  await db.insert(accountDeletionRequestsTable).values({
+    userId: user.id,
+    reason: reason ?? null,
+    status: "pending",
+  });
+
+  // Notify admin
+  const adminEmail = process.env["ADMIN_EMAIL"];
+  if (adminEmail) {
+    await sendEmail({
+      to: adminEmail,
+      subject: "Account deletion request — Scholix",
+      html: `<p>User <strong>${user.firstName} ${user.lastName}</strong> (${user.email}) has requested account deletion.</p>${reason ? `<p>Reason: ${reason}</p>` : ""}`,
+    });
+  }
+
+  // Confirm to user
+  await sendEmail({
+    to: user.email,
+    subject: "Deletion request received — Scholix",
+    html: accountDeletionConfirmEmailHtml({ firstName: user.firstName }),
+  });
+
+  res.json({ ok: true });
 });
 
 export default router;

@@ -11,3 +11,8 @@ export * from "./student-progress";
 export * from "./reviews";
 export * from "./subject-requests";
 export * from "./legal-agreements";
+export * from "./password-reset-tokens";
+export * from "./auth-otp-tokens";
+export * from "./tutor-compliance";
+export * from "./reports";
+export * from "./account-deletion-requests";

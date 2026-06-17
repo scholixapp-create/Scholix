@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable } from "@workspace/db";
+import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable, tutorComplianceTable } from "@workspace/db";
 import { eq, inArray, and } from "drizzle-orm";
 import { UpdateTutorProfileBody, SetTutorAvailabilityBody } from "@workspace/api-zod";
+import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
@@ -215,6 +216,67 @@ router.get("/tutors/:tutorId/students", async (req, res) => {
       createdAt: s.createdAt.toISOString(),
     }))
   );
+});
+
+// GET /tutors/me/compliance
+router.get("/tutors/me/compliance", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const [tutor] = await db
+    .select({ id: tutorsTable.id })
+    .from(tutorsTable)
+    .where(eq(tutorsTable.userId, user.id))
+    .limit(1);
+
+  if (!tutor) {
+    res.status(404).json({ error: "Tutor profile not found" });
+    return;
+  }
+
+  const [compliance] = await db
+    .select()
+    .from(tutorComplianceTable)
+    .where(eq(tutorComplianceTable.tutorId, tutor.id))
+    .limit(1);
+
+  res.json({
+    wwccDeclared: compliance?.wwccDeclared ?? false,
+    codeOfConductAccepted: compliance?.codeOfConductAccepted ?? false,
+    acceptedAt: compliance?.acceptedAt?.toISOString() ?? null,
+  });
+});
+
+// POST /tutors/me/compliance
+router.post("/tutors/me/compliance", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const { wwccDeclared, codeOfConductAccepted } = req.body ?? {};
+
+  if (typeof wwccDeclared !== "boolean" || typeof codeOfConductAccepted !== "boolean") {
+    res.status(400).json({ error: "wwccDeclared and codeOfConductAccepted must be booleans" });
+    return;
+  }
+
+  const [tutor] = await db
+    .select({ id: tutorsTable.id })
+    .from(tutorsTable)
+    .where(eq(tutorsTable.userId, user.id))
+    .limit(1);
+
+  if (!tutor) {
+    res.status(404).json({ error: "Tutor profile not found" });
+    return;
+  }
+
+  const acceptedAt = wwccDeclared && codeOfConductAccepted ? new Date() : null;
+
+  await db
+    .insert(tutorComplianceTable)
+    .values({ tutorId: tutor.id, wwccDeclared, codeOfConductAccepted, acceptedAt })
+    .onConflictDoUpdate({
+      target: tutorComplianceTable.tutorId,
+      set: { wwccDeclared, codeOfConductAccepted, acceptedAt },
+    });
+
+  res.json({ ok: true, wwccDeclared, codeOfConductAccepted, acceptedAt: acceptedAt?.toISOString() ?? null });
 });
 
 export default router;
