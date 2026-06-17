@@ -109,9 +109,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-screen overflow-hidden">
     <TestModeBanner />
-    <div className="flex flex-col lg:flex-row flex-1 bg-background">
+    <div className="flex flex-col lg:flex-row flex-1 min-h-0 bg-background">
       {/* Sidebar — desktop only */}
       <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-sidebar text-sidebar-foreground">
         <div className="px-6 py-6 border-b border-sidebar-border">
@@ -207,7 +207,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile header */}
         <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-sidebar text-white border-b border-sidebar-border">
           <div className="flex items-center gap-2">

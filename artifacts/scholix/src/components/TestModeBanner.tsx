@@ -27,10 +27,10 @@ export default function TestModeBanner() {
       </div>
       <button
         onClick={dismiss}
-        className="shrink-0 p-1 rounded hover:bg-amber-100 transition-colors text-amber-500 hover:text-amber-700"
+        className="shrink-0 p-2 rounded hover:bg-amber-100 transition-colors text-amber-500 hover:text-amber-700 touch-manipulation"
         aria-label="Dismiss"
       >
-        <X size={14} />
+        <X size={16} />
       </button>
     </div>
   );
