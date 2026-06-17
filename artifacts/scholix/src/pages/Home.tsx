@@ -51,12 +51,13 @@ function Navbar() {
 
   const links = [
     { label: "Home", href: "#hero" },
-    { label: "About Us", href: "#trust" },
+    { label: "About Us", href: "/about" },
     { label: "Profiles", href: "#features" },
   ];
 
   const scrollTo = (id: string) => {
     setOpen(false);
+    if (!id.startsWith("#")) { navigate(id); return; }
     const el = document.querySelector(id);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
