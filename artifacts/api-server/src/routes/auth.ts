@@ -2,14 +2,17 @@ import { Router } from "express";
 import { db, usersTable, tutorsTable, legalAgreementsTable, passwordResetTokensTable, authOtpTokensTable, accountDeletionRequestsTable } from "@workspace/db";
 import { eq, and, gt, isNull } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
+import bcrypt from "bcrypt";
 import { LoginBody, SignupBody } from "@workspace/api-zod";
-import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
+import { requireAuth, requireAdmin, type AuthRequest } from "../lib/authMiddleware";
 import { sendEmail, passwordResetEmailHtml, otpEmailHtml, accountDeletionConfirmEmailHtml } from "../lib/email";
 import { config } from "../lib/config";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
-function hashPassword(password: string): string {
+// Legacy SHA-256 hash — used only as fallback for existing accounts
+function legacyHashPassword(password: string): string {
   return createHash("sha256").update(password + "scholix_salt").digest("hex");
 }
 
@@ -23,6 +26,18 @@ function generateOtp(): string {
 
 function makeToken(userId: number): string {
   return Buffer.from(`${userId}:${Date.now()}`).toString("base64");
+}
+
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10);
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  if (stored.startsWith("$2")) {
+    return bcrypt.compare(password, stored);
+  }
+  // Legacy SHA-256 fallback for accounts created before bcrypt migration
+  return stored === legacyHashPassword(password);
 }
 
 function normaliseAuPhone(raw: string): string | null {
@@ -52,18 +67,26 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
   const { email, password } = parsed.data;
-  const hash = hashPassword(password);
+  const normalisedEmail = email.toLowerCase();
 
   const [user] = await db
     .select()
     .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase()))
+    .where(eq(usersTable.email, normalisedEmail))
     .limit(1);
 
-  if (!user || user.passwordHash !== hash) {
+  const passwordMatch = user ? await verifyPassword(password, user.passwordHash) : false;
+
+  if (!user || !passwordMatch) {
+    logger.warn({ email: normalisedEmail, found: !!user }, "Login failed — invalid credentials");
+    if (user?.role === "admin") {
+      logger.error({ email: normalisedEmail }, "ADMIN LOGIN FAILED CHECK SEED");
+    }
     res.status(401).json({ error: "Invalid email or password" });
     return;
   }
+
+  logger.info({ email: normalisedEmail, role: user.role, userId: user.id }, "Login credentials accepted — issuing OTP");
 
   // Rate limit: max 3 OTP requests per user in 10 minutes
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
@@ -100,7 +123,6 @@ router.post("/auth/login", async (req, res) => {
 
   await db.insert(authOtpTokensTable).values({ userId: user.id, otpHash, expiresAt });
 
-  // Send OTP email
   await sendEmail({
     to: user.email,
     subject: "Your Scholix sign-in code",
@@ -163,6 +185,7 @@ router.post("/auth/verify-otp", async (req, res) => {
     return;
   }
 
+  logger.info({ userId: user.id, role: user.role }, "OTP verified — session started");
   res.json({ user: userToJson(user), token: makeToken(user.id) });
 });
 
@@ -281,7 +304,7 @@ router.post("/auth/signup", async (req, res) => {
     .insert(usersTable)
     .values({
       email: email.toLowerCase(),
-      passwordHash: hashPassword(password),
+      passwordHash: await hashPassword(password),
       firstName,
       lastName,
       role,
@@ -425,7 +448,7 @@ router.post("/auth/reset-password", async (req, res) => {
 
   await db
     .update(usersTable)
-    .set({ passwordHash: hashPassword(newPassword) })
+    .set({ passwordHash: await hashPassword(newPassword) })
     .where(eq(usersTable.id, record.userId));
 
   await db
@@ -451,14 +474,15 @@ router.post("/auth/change-password", requireAuth, async (req, res) => {
     return;
   }
 
-  if (user.passwordHash !== hashPassword(currentPassword)) {
+  const passwordMatch = await verifyPassword(currentPassword, user.passwordHash);
+  if (!passwordMatch) {
     res.status(401).json({ error: "Current password is incorrect" });
     return;
   }
 
   await db
     .update(usersTable)
-    .set({ passwordHash: hashPassword(newPassword) })
+    .set({ passwordHash: await hashPassword(newPassword) })
     .where(eq(usersTable.id, user.id));
 
   res.json({ ok: true });
@@ -510,6 +534,28 @@ router.post("/auth/request-deletion", requireAuth, async (req, res) => {
   });
 
   res.json({ ok: true });
+});
+
+// Debug: admin status (admin only, no passwords exposed)
+router.get("/auth/debug/admin-status", requireAdmin, async (req, res) => {
+  const adminEmail = process.env["ADMIN_EMAIL"];
+
+  const [admin] = await db
+    .select({ id: usersTable.id, email: usersTable.email, createdAt: usersTable.createdAt })
+    .from(usersTable)
+    .where(eq(usersTable.role, "admin"))
+    .limit(1);
+
+  const maskedEmail = adminEmail
+    ? adminEmail.replace(/(.{2}).*(@.*)/, "$1***$2")
+    : null;
+
+  res.json({
+    adminExists: !!admin,
+    seedRan: !!adminEmail,
+    configuredEmail: maskedEmail,
+    adminCreatedAt: admin?.createdAt?.toISOString() ?? null,
+  });
 });
 
 export default router;

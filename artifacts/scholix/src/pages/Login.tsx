@@ -296,24 +296,6 @@ export default function Login() {
             </div>
           </div>
 
-          {step === "credentials" && (
-            <div className="mt-6 bg-card border border-card-border rounded-xl p-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Demo accounts</p>
-              <div className="space-y-2 text-xs text-muted-foreground">
-                {[
-                  ["Admin", "admin@scholix.com / admin123"],
-                  ["Tutor", "tutor1@scholix.com / tutor123"],
-                  ["Parent", "parent1@scholix.com / parent123"],
-                  ["Student", "student1@scholix.com / student123"],
-                ].map(([role, creds]) => (
-                  <div key={role} className="flex justify-between">
-                    <span className="font-medium text-foreground">{role}</span>
-                    <span>{creds}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </>

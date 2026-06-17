@@ -17,13 +17,19 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+async function start() {
+  // Seed admin BEFORE accepting requests
+  await seedAdminUser();
 
-  logger.info({ port }, "Server listening");
-  void seedAdminUser();
-  startScheduler();
-});
+  app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+
+    logger.info({ port }, "Server listening");
+    startScheduler();
+  });
+}
+
+void start();

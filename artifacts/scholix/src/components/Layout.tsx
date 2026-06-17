@@ -21,6 +21,8 @@ import {
   Settings,
   BarChart2,
   Flag,
+  UserCircle,
+  Info,
 } from "lucide-react";
 
 interface NavItem {
@@ -179,6 +181,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         <div className="px-3 py-4 border-t border-sidebar-border space-y-0.5">
           <Link
+            href="/profile/me"
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              location === "/profile/me"
+                ? "bg-primary text-white"
+                : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent"
+            }`}
+          >
+            <UserCircle size={18} />
+            Profile
+          </Link>
+          <Link
             href="/settings"
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               location === "/settings"
@@ -188,6 +201,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           >
             <Settings size={18} />
             Settings
+          </Link>
+          <Link
+            href="/about"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent transition-colors"
+          >
+            <Info size={18} />
+            About Scholix
           </Link>
           <button
             onClick={() => setShowReportModal(true)}

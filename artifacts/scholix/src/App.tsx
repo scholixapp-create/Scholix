@@ -35,6 +35,8 @@ import ParentInvoices from "@/pages/parent/Invoices";
 import TutorDirectory from "@/pages/TutorDirectory";
 import TutorProfile from "@/pages/TutorProfile";
 import Settings from "@/pages/Settings";
+import About from "@/pages/About";
+import { ProfileMe, ProfileById } from "@/pages/Profile";
 import { Clock, XCircle, AlertTriangle } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -274,6 +276,13 @@ function Router() {
           <Layout><ParentInvoices /></Layout>
         </RequireAuth>
       </Route>
+
+      {/* About */}
+      <Route path="/about" component={About} />
+
+      {/* Profile */}
+      <Route path="/profile/me" component={ProfileMe} />
+      <Route path="/profile/:id" component={ProfileById} />
 
       {/* Public tutor directory */}
       <Route path="/tutors" component={TutorDirectory} />

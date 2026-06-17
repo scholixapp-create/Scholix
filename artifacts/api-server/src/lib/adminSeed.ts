@@ -1,11 +1,7 @@
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { createHash } from "crypto";
+import bcrypt from "bcrypt";
 import { logger } from "./logger";
-
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password + "scholix_salt").digest("hex");
-}
 
 export async function seedAdminUser(): Promise<void> {
   const isProduction = process.env["NODE_ENV"] === "production";
@@ -28,6 +24,10 @@ export async function seedAdminUser(): Promise<void> {
     return;
   }
 
+  logger.info({ email }, "Seeding admin user...");
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
   const [existing] = await db
     .select({ id: usersTable.id, role: usersTable.role })
     .from(usersTable)
@@ -37,15 +37,20 @@ export async function seedAdminUser(): Promise<void> {
   if (existing) {
     if (existing.role !== "admin") {
       logger.warn({ email }, "A non-admin user with this email already exists — not overwriting");
-    } else {
-      logger.info({ email }, "Admin user already exists — no action needed");
+      return;
     }
+    // Upsert: refresh the password hash in case ADMIN_PASSWORD changed
+    await db
+      .update(usersTable)
+      .set({ passwordHash })
+      .where(eq(usersTable.id, existing.id));
+    logger.info({ email }, "Admin user already exists — password hash refreshed");
     return;
   }
 
   await db.insert(usersTable).values({
     email: email.toLowerCase(),
-    passwordHash: hashPassword(password),
+    passwordHash,
     firstName: "Admin",
     lastName: "Scholix",
     role: "admin",
