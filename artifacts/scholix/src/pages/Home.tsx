@@ -67,6 +67,7 @@ function Navbar() {
         scrolled ? "bg-white/95 backdrop-blur-md shadow-sm" : "bg-transparent"
       }`}
     >
+      <TestModeBanner />
       <nav className="max-w-6xl mx-auto px-5 sm:px-8 flex items-center justify-between h-16">
         {/* Logo */}
         <button onClick={() => scrollTo("#hero")} className="flex items-center gap-2 shrink-0">
@@ -182,7 +183,7 @@ function Hero() {
         />
       </div>
 
-      <motion.div style={{ y, opacity }} className="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 pt-28 pb-20 w-full">
+      <motion.div style={{ y, opacity }} className="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 pt-36 pb-20 w-full">
         <div className="max-w-3xl">
           {/* Tag */}
           <motion.div
@@ -830,10 +831,5 @@ export default function Home() {
   if (isLoading) return null;
   if (user) return null;
 
-  return (
-    <>
-      <TestModeBanner />
-      <LandingPage />
-    </>
-  );
+  return <LandingPage />;
 }
