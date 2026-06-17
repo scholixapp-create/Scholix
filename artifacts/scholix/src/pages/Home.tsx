@@ -52,7 +52,7 @@ function Navbar() {
   const links = [
     { label: "Home", href: "#hero" },
     { label: "About Us", href: "/about" },
-    { label: "Profiles", href: "#features" },
+    { label: "Profiles", href: "/tutors" },
   ];
 
   const scrollTo = (id: string) => {
