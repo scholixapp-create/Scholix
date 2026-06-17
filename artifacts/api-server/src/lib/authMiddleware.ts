@@ -2,6 +2,8 @@ import type { Request, Response, NextFunction } from "express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
+export type AuthRequest = Request & { user: typeof usersTable.$inferSelect };
+
 export function parseUserId(authHeader: string | undefined): number | null {
   if (!authHeader?.startsWith("Bearer ")) return null;
   try {
@@ -28,7 +30,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
         res.status(401).json({ error: "Not authenticated" });
         return;
       }
-      (req as Request & { user: typeof user }).user = user;
+      (req as AuthRequest).user = user;
       next();
     })
     .catch(() => res.status(500).json({ error: "Internal server error" }));
@@ -53,7 +55,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
         res.status(403).json({ error: "Admin access required" });
         return;
       }
-      (req as Request & { user: typeof user }).user = user;
+      (req as AuthRequest).user = user;
       next();
     })
     .catch(() => res.status(500).json({ error: "Internal server error" }));

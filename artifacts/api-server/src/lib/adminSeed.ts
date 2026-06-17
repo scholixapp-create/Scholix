@@ -8,11 +8,23 @@ function hashPassword(password: string): string {
 }
 
 export async function seedAdminUser(): Promise<void> {
+  const isProduction = process.env["NODE_ENV"] === "production";
   const email = process.env["ADMIN_EMAIL"];
   const password = process.env["ADMIN_PASSWORD"];
 
   if (!email || !password) {
-    logger.warn("ADMIN_EMAIL / ADMIN_PASSWORD not set — skipping admin seed. Demo admin@scholix.com account remains active.");
+    if (isProduction) {
+      logger.error(
+        "FATAL: ADMIN_EMAIL and ADMIN_PASSWORD must be set in production. " +
+        "The server will not start without them to prevent an insecure default admin account. " +
+        "Set these environment variables and restart."
+      );
+      process.exit(1);
+    }
+    logger.warn(
+      "ADMIN_EMAIL / ADMIN_PASSWORD not set — skipping admin seed. " +
+      "Demo admin@scholix.com account remains active (development only)."
+    );
     return;
   }
 

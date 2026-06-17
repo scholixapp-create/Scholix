@@ -5,6 +5,7 @@ import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
 import { sessionBookedEmailHtml, sessionCompletedEmailHtml } from "../lib/email";
 import { format } from "date-fns";
+import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
@@ -168,22 +169,67 @@ router.get("/sessions/summary", async (req, res) => {
   res.json(summary);
 });
 
-router.get("/sessions", async (req, res) => {
+router.get("/sessions", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
   const params = ListSessionsQueryParams.safeParse(req.query);
-  const tutorId = params.success ? params.data.tutorId : undefined;
-  const studentId = params.success ? params.data.studentId : undefined;
-  const status = params.success ? params.data.status : undefined;
+  const statusFilter = params.success ? params.data.status : undefined;
 
   const conditions = [];
-  if (tutorId) conditions.push(eq(sessionsTable.tutorId, tutorId));
-  if (studentId) conditions.push(eq(sessionsTable.studentId, studentId));
-  if (status) {
-    conditions.push(eq(sessionsTable.status, status as "pending_payment" | "scheduled" | "completed" | "cancelled"));
-  } else {
-    // By default exclude pending_payment from general session lists (tutors shouldn't see unpaid sessions)
-    if (tutorId && !studentId) {
+
+  if (user.role === "admin") {
+    // Admin can see all sessions with any optional filter
+    const tutorId = params.success ? params.data.tutorId : undefined;
+    const studentId = params.success ? params.data.studentId : undefined;
+    if (tutorId) conditions.push(eq(sessionsTable.tutorId, tutorId));
+    if (studentId) conditions.push(eq(sessionsTable.studentId, studentId));
+  } else if (user.role === "tutor") {
+    // Tutor sees only their own sessions
+    const [tutorRow] = await db
+      .select({ id: tutorsTable.id })
+      .from(tutorsTable)
+      .where(eq(tutorsTable.userId, user.id))
+      .limit(1);
+    if (!tutorRow) { res.json([]); return; }
+    conditions.push(eq(sessionsTable.tutorId, tutorRow.id));
+    // Default: exclude pending_payment for tutors
+    if (!statusFilter) {
       conditions.push(inArray(sessionsTable.status, ["scheduled", "completed", "cancelled"]));
     }
+  } else if (user.role === "parent") {
+    // Parent sees only sessions for their own children
+    const children = await db
+      .select({ id: studentsTable.id })
+      .from(studentsTable)
+      .where(eq(studentsTable.parentId, user.id));
+    const childIds = children.map((c) => c.id);
+    if (childIds.length === 0) { res.json([]); return; }
+    // Honour optional studentId filter but must be one of their children
+    const requestedStudentId = params.success ? params.data.studentId : undefined;
+    if (requestedStudentId) {
+      if (!childIds.includes(requestedStudentId)) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+      conditions.push(eq(sessionsTable.studentId, requestedStudentId));
+    } else {
+      conditions.push(inArray(sessionsTable.studentId, childIds));
+    }
+  } else if (user.role === "student") {
+    // Student sees only sessions linked to their student profile
+    const [studentRow] = await db
+      .select({ id: studentsTable.id })
+      .from(studentsTable)
+      .where(eq(studentsTable.userId, user.id))
+      .limit(1);
+    if (!studentRow) { res.json([]); return; }
+    conditions.push(eq(sessionsTable.studentId, studentRow.id));
+  } else {
+    res.status(403).json({ error: "Access denied" });
+    return;
+  }
+
+  if (statusFilter) {
+    conditions.push(eq(sessionsTable.status, statusFilter as "pending_payment" | "scheduled" | "completed" | "cancelled"));
   }
 
   const sessions = conditions.length > 0
@@ -259,8 +305,9 @@ router.post("/sessions", async (req, res) => {
   res.status(201).json(sessionJson);
 });
 
-router.get("/sessions/:sessionId", async (req, res) => {
-  const sessionId = parseInt(req.params.sessionId, 10);
+router.get("/sessions/:sessionId", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const sessionId = parseInt(req.params["sessionId"] as string, 10);
   const [session] = await db
     .select()
     .from(sessionsTable)
@@ -271,6 +318,44 @@ router.get("/sessions/:sessionId", async (req, res) => {
     res.status(404).json({ error: "Session not found" });
     return;
   }
+
+  if (user.role !== "admin") {
+    if (user.role === "tutor") {
+      const [tutorRow] = await db
+        .select({ id: tutorsTable.id })
+        .from(tutorsTable)
+        .where(eq(tutorsTable.userId, user.id))
+        .limit(1);
+      if (!tutorRow || tutorRow.id !== session.tutorId) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+    } else if (user.role === "parent") {
+      const [student] = await db
+        .select({ parentId: studentsTable.parentId })
+        .from(studentsTable)
+        .where(eq(studentsTable.id, session.studentId))
+        .limit(1);
+      if (!student || student.parentId !== user.id) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+    } else if (user.role === "student") {
+      const [student] = await db
+        .select({ userId: studentsTable.userId })
+        .from(studentsTable)
+        .where(eq(studentsTable.id, session.studentId))
+        .limit(1);
+      if (!student || student.userId !== user.id) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+    } else {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+  }
+
   res.json(await sessionToJson(session));
 });
 
