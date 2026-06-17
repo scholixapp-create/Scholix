@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
 import {
   Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen,
-  Shield, AlertCircle, XCircle, Bell, TrendingUp, UserPlus, Layers, ArrowUp,
+  Shield, AlertCircle, XCircle, Bell, TrendingUp, UserPlus, Layers, ArrowUp, Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
@@ -104,6 +104,36 @@ function GrowEarningsSection({
       </div>
 
       <div className="space-y-3">
+        {/* 0 — Getting Paid During Beta */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+              <Wallet size={14} className="text-amber-600" />
+            </div>
+            <p className="text-sm font-semibold text-amber-800">Getting Paid During Beta</p>
+          </div>
+          <p className="text-xs text-amber-700 leading-relaxed mb-3">
+            Payments are not processed through Scholix yet. To get paid:
+          </p>
+          <div className="space-y-2 mb-3">
+            {[
+              "Agree on a payment method with your student/parent",
+              "Receive payment via PayID, bank transfer, or cash",
+              "Use Scholix to track sessions and generate invoices",
+            ].map((step, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="shrink-0 w-4 h-4 rounded-full bg-amber-200 text-amber-800 text-[9px] font-bold flex items-center justify-center mt-0.5">
+                  {i + 1}
+                </span>
+                <p className="text-xs text-amber-800 leading-relaxed">{step}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-amber-600 font-medium">
+            Full payment processing coming soon.
+          </p>
+        </div>
+
         {/* 1 — Get More Students */}
         <div className="bg-card border border-card-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">

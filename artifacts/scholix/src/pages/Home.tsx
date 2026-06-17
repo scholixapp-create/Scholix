@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import TestModeBanner from "@/components/TestModeBanner";
 import {
   BookOpen, Calendar, CreditCard, BarChart2, Shield, Star,
   CheckCircle, ArrowRight, ChevronDown, Menu, X, Users,
@@ -829,5 +830,10 @@ export default function Home() {
   if (isLoading) return null;
   if (user) return null;
 
-  return <LandingPage />;
+  return (
+    <>
+      <TestModeBanner />
+      <LandingPage />
+    </>
+  );
 }

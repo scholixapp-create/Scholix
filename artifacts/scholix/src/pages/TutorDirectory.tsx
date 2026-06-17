@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { GraduationCap, Star, Search, BookOpen, ArrowRight } from "lucide-react";
+import TestModeBanner from "@/components/TestModeBanner";
 
 interface PublicTutor {
   id: number;
@@ -35,6 +36,8 @@ export default function TutorDirectory() {
   });
 
   return (
+    <>
+    <TestModeBanner />
     <div className="min-h-screen bg-[#f9fafb]">
       {/* Header bar */}
       <div className="bg-[#0f2240] py-14 px-5 text-center">
@@ -171,5 +174,6 @@ export default function TutorDirectory() {
         </div>
       </div>
     </div>
+    </>
   );
 }

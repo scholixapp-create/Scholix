@@ -193,6 +193,37 @@ New tutor signs up → `verificationStatus = pending_verification`, `isApproved 
 - `lib/api-spec/orval.config.ts` — `schemas` block removed to avoid duplicates
 - Run codegen after any OpenAPI spec changes
 
+## Environment Variables
+
+### Backend (`artifacts/api-server/src/lib/config.ts`)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | ✅ Yes | — | PostgreSQL connection string |
+| `PORT` | ✅ Yes | — | Port the Express server listens on (set by workflow) |
+| `RESEND_API_KEY` | No | — | Resend API key; if missing, emails log to console |
+| `FRONTEND_URL` | No | `http://localhost:3000` | Allowed origin for CORS in production |
+| `SESSION_SECRET` | No | — | Session signing secret |
+| `NODE_ENV` | No | `development` | Set to `production` in deployed environments |
+
+If `RESEND_API_KEY` is missing the server logs a WARN and falls back to console-only emails — it does **not** crash.
+
+### Frontend (`artifacts/scholix`)
+
+The frontend uses relative URLs through the shared proxy. No extra env var is needed in Replit.
+For external deployments, set `VITE_API_URL` to the full API base (e.g. `https://your-api.railway.app`) and update the fetch base in `lib/api-client-react`.
+
+### Setting env vars
+
+**Replit:**
+Go to the *Secrets* panel (padlock icon in the sidebar) and add key/value pairs. They are injected as `process.env` in the backend at runtime.
+
+**Vercel (frontend):**
+Project settings → Environment Variables → add `VITE_*` keys. They are inlined at build time.
+
+**Railway (backend):**
+Service → Variables tab → add `DATABASE_URL`, `RESEND_API_KEY`, etc. Railway injects them at runtime.
+
 ## Email Notifications (Resend)
 
 - Email sending is implemented in `artifacts/api-server/src/lib/email.ts` using the `resend` npm package

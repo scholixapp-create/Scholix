@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useLogin } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { BookOpen, AlertCircle } from "lucide-react";
+import TestModeBanner from "@/components/TestModeBanner";
 
 export default function Login() {
   const [, navigate] = useLocation();
@@ -40,6 +41,8 @@ export default function Login() {
   };
 
   return (
+    <>
+    <TestModeBanner />
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
@@ -118,5 +121,6 @@ export default function Login() {
         </div>
       </div>
     </div>
+    </>
   );
 }

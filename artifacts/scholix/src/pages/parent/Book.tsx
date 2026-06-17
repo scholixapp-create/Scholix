@@ -154,6 +154,14 @@ export default function BookSession() {
           </div>
         </div>
 
+        {/* Direct payment reminder */}
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5">
+          <p className="text-xs font-semibold text-amber-800 mb-2">💳 Pay your tutor directly</p>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            Scholix is in beta — payments are simulated. Please pay <strong>{tutor.data.firstName} {tutor.data.lastName}</strong> directly via PayID, bank transfer, or cash. Scholix will handle payments automatically in the future.
+          </p>
+        </div>
+
         {/* Next steps */}
         <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 mb-5">
           <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">Next Steps</p>
@@ -206,6 +214,17 @@ export default function BookSession() {
             <ArrowLeft size={18} />
           </button>
           <h1 className="text-xl font-bold text-foreground">Pay before session</h1>
+        </div>
+
+        {/* Beta payment notice */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4 flex items-start gap-2.5">
+          <span className="text-amber-500 text-base shrink-0 mt-0.5">⚠️</span>
+          <div>
+            <p className="text-xs font-semibold text-amber-800">This is a simulated payment</p>
+            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+              Scholix is in beta — no real charges are made. Please arrange payment with your tutor directly via PayID, bank transfer, or cash.
+            </p>
+          </div>
         </div>
 
         <div className="bg-card border border-card-border rounded-xl p-4 mb-4">

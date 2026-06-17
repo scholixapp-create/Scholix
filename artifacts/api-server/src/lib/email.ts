@@ -1,10 +1,11 @@
 import { logger } from "./logger";
+import { config } from "./config";
 
 let resendClient: any = null;
 
 async function getResend() {
   if (resendClient) return resendClient;
-  const apiKey = process.env["RESEND_API_KEY"];
+  const apiKey = config.resendApiKey;
   if (!apiKey) return null;
   try {
     const { Resend } = await import("resend");

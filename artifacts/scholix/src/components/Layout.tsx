@@ -5,6 +5,7 @@ import { useLogout } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationsPanel from "@/components/NotificationsPanel";
+import TestModeBanner from "@/components/TestModeBanner";
 import {
   LayoutDashboard,
   Calendar,
@@ -104,7 +105,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-background">
+    <div className="flex flex-col min-h-screen">
+    <TestModeBanner />
+    <div className="flex flex-col lg:flex-row flex-1 bg-background">
       {/* Sidebar — desktop only */}
       <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-sidebar text-sidebar-foreground">
         <div className="px-6 py-6 border-b border-sidebar-border">
@@ -259,6 +262,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
       </div>
+    </div>
     </div>
   );
 }
