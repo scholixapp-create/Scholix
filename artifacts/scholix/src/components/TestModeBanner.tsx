@@ -1,20 +1,14 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { X } from "lucide-react";
 
-const DISMISS_KEY = "scholix_testmode_dismissed";
-
 export default function TestModeBanner() {
-  const [visible, setVisible] = useState(false);
+  const [location] = useLocation();
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const dismissed = sessionStorage.getItem(DISMISS_KEY);
-    if (!dismissed) setVisible(true);
-  }, []);
-
-  const dismiss = () => {
-    sessionStorage.setItem(DISMISS_KEY, "1");
-    setVisible(false);
-  };
+    setVisible(true);
+  }, [location]);
 
   if (!visible) return null;
 
@@ -26,7 +20,7 @@ export default function TestModeBanner() {
         </span>
       </div>
       <button
-        onClick={dismiss}
+        onClick={() => setVisible(false)}
         className="shrink-0 p-2 rounded hover:bg-amber-100 transition-colors text-amber-500 hover:text-amber-700 touch-manipulation"
         aria-label="Dismiss"
       >
