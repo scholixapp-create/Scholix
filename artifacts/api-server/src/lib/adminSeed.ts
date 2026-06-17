@@ -5,8 +5,8 @@ import { logger } from "./logger";
 
 export async function seedAdminUser(): Promise<void> {
   const isProduction = process.env["NODE_ENV"] === "production";
-  const email = process.env["ADMIN_EMAIL"];
-  const password = process.env["ADMIN_PASSWORD"];
+  const email = process.env["ADMIN_EMAIL"]?.trim();
+  const password = process.env["ADMIN_PASSWORD"]?.trim();
 
   if (!email || !password) {
     if (isProduction) {
