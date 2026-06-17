@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { BookOpen, AlertCircle, ShieldCheck, RefreshCw, ArrowLeft } from "lucide-react";
+import { BookOpen, AlertCircle, ShieldCheck, RefreshCw, ArrowLeft, FlaskConical } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 function getDashboard(role: string) {
@@ -22,6 +22,7 @@ export default function Login() {
   const [step, setStep] = useState<"credentials" | "otp">("credentials");
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
+  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   // Form state
   const [email, setEmail] = useState("");
@@ -60,6 +61,10 @@ export default function Login() {
       if (data.requiresOtp) {
         setPendingUserId(data.pendingUserId);
         setPendingEmail(data.email ?? email);
+        if (data.devOtp) {
+          setDevOtp(data.devOtp);
+          setOtp(String(data.devOtp).split(""));
+        }
         setStep("otp");
         setResendCooldown(30);
       }
@@ -112,8 +117,15 @@ export default function Login() {
         body: JSON.stringify({ pendingUserId }),
       });
       if (res.ok) {
-        setOtp(["", "", "", "", "", ""]);
-        otpRefs.current[0]?.focus();
+        const resendData = await res.json().catch(() => ({})) as { devOtp?: string };
+        if (resendData.devOtp) {
+          setDevOtp(resendData.devOtp);
+          setOtp(String(resendData.devOtp).split(""));
+        } else {
+          setDevOtp(null);
+          setOtp(["", "", "", "", "", ""]);
+          otpRefs.current[0]?.focus();
+        }
         setResendCooldown(30);
       } else {
         const data = await res.json().catch(() => ({}));
@@ -231,6 +243,19 @@ export default function Login() {
                     <ShieldCheck size={22} className="text-primary" />
                   </div>
                 </div>
+
+                {/* Dev mode banner */}
+                {devOtp && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-violet-50 border border-violet-200 text-violet-800 text-xs">
+                    <FlaskConical size={14} className="shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">Email delivery in test mode</p>
+                      <p className="mt-0.5 text-violet-600">
+                        No email provider configured. Your code <strong className="font-mono tracking-widest">{devOtp}</strong> has been pre-filled.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* 6-digit input */}
                 <div>

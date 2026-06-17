@@ -123,13 +123,21 @@ router.post("/auth/login", async (req, res) => {
 
   await db.insert(authOtpTokensTable).values({ userId: user.id, otpHash, expiresAt });
 
+  const emailConfigured = !!config.resendApiKey;
+
+  if (!emailConfigured) {
+    logger.warn({ userId: user.id }, "EMAIL SERVICE NOT CONFIGURED - USING DEV MODE OTP DELIVERY");
+    logger.info({ userId: user.id, otp }, "DEV OTP code");
+  }
+
   await sendEmail({
     to: user.email,
     subject: "Your Scholix sign-in code",
     html: otpEmailHtml({ firstName: user.firstName, otp }),
   });
 
-  res.json({ requiresOtp: true, pendingUserId: user.id, email: user.email });
+  const devOtp = !emailConfigured && !config.isProduction ? otp : undefined;
+  res.json({ requiresOtp: true, pendingUserId: user.id, email: user.email, devOtp });
 });
 
 // Step 2: Verify OTP → return session token
@@ -248,13 +256,21 @@ router.post("/auth/resend-otp", async (req, res) => {
 
   await db.insert(authOtpTokensTable).values({ userId, otpHash, expiresAt });
 
+  const emailConfigured = !!config.resendApiKey;
+
+  if (!emailConfigured) {
+    logger.warn({ userId }, "EMAIL SERVICE NOT CONFIGURED - USING DEV MODE OTP DELIVERY");
+    logger.info({ userId, otp }, "DEV OTP code (resend)");
+  }
+
   await sendEmail({
     to: user.email,
     subject: "Your Scholix sign-in code",
     html: otpEmailHtml({ firstName: user.firstName, otp }),
   });
 
-  res.json({ ok: true });
+  const devOtp = !emailConfigured && !config.isProduction ? otp : undefined;
+  res.json({ ok: true, devOtp });
 });
 
 router.post("/auth/signup", async (req, res) => {
