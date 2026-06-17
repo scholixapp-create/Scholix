@@ -212,6 +212,11 @@ router.post("/sessions", async (req, res) => {
     return;
   }
 
+  if (tutor.verificationStatus === "expired") {
+    res.status(403).json({ error: "This tutor's WWCC verification has expired. New bookings are not available until they renew." });
+    return;
+  }
+
   const totalAmount = (tutor.hourlyRate * parsed.data.durationMinutes) / 60;
 
   // If an availability slot is requested, verify it exists and is not already booked

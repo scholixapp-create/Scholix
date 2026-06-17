@@ -1,9 +1,12 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentProgressTable } from "@workspace/db";
-import { eq, sql, and } from "drizzle-orm";
-import { ApproveTutorBody } from "@workspace/api-zod";
+import { db, usersTable, tutorsTable, sessionsTable, invoicesTable } from "@workspace/db";
+import { eq, sql } from "drizzle-orm";
+import { requireAdmin } from "../lib/authMiddleware";
 
 const router = Router();
+
+// All admin routes require admin role
+router.use(requireAdmin);
 
 router.get("/admin/users", async (_req, res) => {
   const users = await db.select().from(usersTable);
@@ -17,48 +20,6 @@ router.get("/admin/users", async (_req, res) => {
       createdAt: u.createdAt.toISOString(),
     }))
   );
-});
-
-router.post("/admin/tutors/:tutorId/approve", async (req, res) => {
-  const tutorId = parseInt(req.params.tutorId, 10);
-  const parsed = ApproveTutorBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request body" });
-    return;
-  }
-
-  await db
-    .update(tutorsTable)
-    .set({
-      isApproved: parsed.data.approved,
-      verificationStatus: parsed.data.approved ? "approved" : "rejected",
-    })
-    .where(eq(tutorsTable.id, tutorId));
-
-  const [row] = await db
-    .select()
-    .from(tutorsTable)
-    .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
-    .where(eq(tutorsTable.id, tutorId))
-    .limit(1);
-
-  if (!row) {
-    res.status(404).json({ error: "Tutor not found" });
-    return;
-  }
-
-  res.json({
-    id: row.tutors.id,
-    userId: row.tutors.userId,
-    firstName: row.users.firstName,
-    lastName: row.users.lastName,
-    email: row.users.email,
-    bio: row.tutors.bio ?? null,
-    subjects: row.tutors.subjects ?? [],
-    hourlyRate: row.tutors.hourlyRate,
-    isApproved: row.tutors.isApproved,
-    createdAt: row.tutors.createdAt.toISOString(),
-  });
 });
 
 router.get("/admin/stats", async (_req, res) => {
@@ -82,7 +43,7 @@ router.get("/admin/stats", async (_req, res) => {
     .from(usersTable)
     .where(eq(usersTable.role, "student"));
 
-  const freeSessions = sessions.filter((s) => (s as any).isCommissionFree).length;
+  const freeSessions = sessions.filter((s) => (s as { isCommissionFree?: boolean }).isCommissionFree).length;
   const commissionRevenueLost = invoices
     .filter((inv) => inv.commissionRate === 0)
     .reduce((sum, inv) => sum + inv.totalAmount * 0.3, 0);
@@ -104,7 +65,6 @@ router.get("/admin/stats", async (_req, res) => {
 
 router.get("/admin/commission-stats", async (_req, res) => {
   const invoices = await db.select().from(invoicesTable);
-  const sessions = await db.select().from(sessionsTable);
 
   const freeInvoices = invoices.filter((inv) => inv.commissionRate === 0);
   const firstStudentFree = freeInvoices.filter((inv) => inv.commissionTier === "first_student_free");

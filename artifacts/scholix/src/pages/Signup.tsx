@@ -36,6 +36,7 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [error, setError] = useState("");
 
@@ -50,7 +51,6 @@ export default function Signup() {
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
-    // Only allow digits and spaces
     const cleaned = raw.replace(/[^\d\s]/g, "");
     setPhone(formatAuPhone(cleaned.replace(/\s/g, "")));
     setPhoneError("");
@@ -66,8 +66,13 @@ export default function Signup() {
       return;
     }
 
+    if (!termsAccepted) {
+      setError("You must accept the Terms of Service and Privacy Policy to create an account");
+      return;
+    }
+
     signupMutation.mutate(
-      { data: { firstName, lastName, email, password, role, phone } },
+      { data: { firstName, lastName, email, password, role, phone, termsAccepted } as any },
       {
         onSuccess: (data) => {
           login(data.user as any, data.token);
@@ -216,9 +221,50 @@ export default function Signup() {
               />
             </div>
 
+            {/* Terms acceptance */}
+            <label className="flex items-start gap-2.5 cursor-pointer group">
+              <div className="relative shrink-0 mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                  termsAccepted
+                    ? "bg-primary border-primary"
+                    : "border-input bg-background group-hover:border-primary/50"
+                }`}>
+                  {termsAccepted && (
+                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                      <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <span className="text-xs text-muted-foreground leading-relaxed">
+                I agree to the{" "}
+                <Link href="/terms" className="text-primary hover:underline font-medium">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-primary hover:underline font-medium">
+                  Privacy Policy
+                </Link>
+                {role === "tutor" && (
+                  <>
+                    {" "}and the{" "}
+                    <Link href="/tutor-agreement" className="text-primary hover:underline font-medium">
+                      Tutor Agreement
+                    </Link>
+                  </>
+                )}
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={signupMutation.isPending}
+              disabled={signupMutation.isPending || !termsAccepted}
               className="w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity"
             >
               {signupMutation.isPending ? "Creating account..." : "Create account"}

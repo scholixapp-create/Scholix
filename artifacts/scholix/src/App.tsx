@@ -9,6 +9,9 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
+import TutorAgreementPage from "@/pages/TutorAgreement";
 import TutorDashboard from "@/pages/tutor/Dashboard";
 import TutorAvailability from "@/pages/tutor/Availability";
 import TutorStudents from "@/pages/tutor/Students";
@@ -29,7 +32,7 @@ import ParentInvoices from "@/pages/parent/Invoices";
 import TutorDirectory from "@/pages/TutorDirectory";
 import TutorProfile from "@/pages/TutorProfile";
 import Settings from "@/pages/Settings";
-import { Clock, XCircle } from "lucide-react";
+import { Clock, XCircle, AlertTriangle } from "lucide-react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -90,7 +93,13 @@ function RequireTutorApproved({ children }: { children: React.ReactNode }) {
     return <Redirect to="/tutor/onboarding" />;
   }
 
-  if (status.verificationStatus === "pending_verification") {
+  // Handle both old ("pending_verification") and new ("pending") status values
+  const vs = status.verificationStatus;
+  const isPending = vs === "pending" || vs === "pending_verification";
+  const isRejected = vs === "rejected";
+  const isExpired = vs === "expired";
+
+  if (isPending) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6">
         <div className="max-w-sm w-full text-center">
@@ -120,7 +129,7 @@ function RequireTutorApproved({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (status.verificationStatus === "rejected") {
+  if (isRejected) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6">
         <div className="max-w-sm w-full text-center">
@@ -148,6 +157,34 @@ function RequireTutorApproved({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (isExpired) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <div className="max-w-sm w-full text-center">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-5">
+            <AlertTriangle size={28} className="text-red-600" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground">WWCC Expired</h1>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+            Your Working With Children Check has expired. Your account is suspended until you renew and re-submit your WWCC.
+          </p>
+          <a
+            href="/tutor/onboarding"
+            className="block mt-6 py-3 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            Update WWCC
+          </a>
+          <button
+            onClick={() => { localStorage.removeItem("scholix_token"); window.location.href = "/login"; }}
+            className="mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }
 
@@ -157,6 +194,11 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+
+      {/* Legal pages — public, no auth required */}
+      <Route path="/terms" component={Terms} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/tutor-agreement" component={TutorAgreementPage} />
 
       {/* Tutor onboarding — standalone page, no approval gate */}
       <Route path="/tutor/onboarding">

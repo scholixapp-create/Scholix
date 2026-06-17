@@ -10,12 +10,17 @@ export const tutorsTable = pgTable("tutors", {
   subjects: text("subjects").array().notNull().default([]),
   hourlyRate: real("hourly_rate").notNull().default(65),
   isApproved: boolean("is_approved").notNull().default(false),
-  verificationStatus: text("verification_status").notNull().default("pending_verification"),
+  verificationStatus: text("verification_status").notNull().default("pending"),
   wwccNumber: text("wwcc_number"),
   wwccExpiry: text("wwcc_expiry"),
   educationDetails: text("education_details"),
   firstStudentId: integer("first_student_id"),
   abn: text("abn"),
+  // Verification audit trail
+  wwccVerifiedBy: integer("wwcc_verified_by"),
+  wwccVerifiedAt: timestamp("wwcc_verified_at"),
+  wwccVerificationMethod: text("wwcc_verification_method"),
+  wwccVerificationNotes: text("wwcc_verification_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -243,6 +243,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
+        {/* Legal footer — desktop only (mobile has bottom nav instead) */}
+        <footer className="hidden lg:flex items-center justify-between px-6 py-3 border-t border-border bg-background/50 text-[11px] text-muted-foreground shrink-0">
+          <span>© {new Date().getFullYear()} Scholix Pty Ltd · ABN 00 000 000 000</span>
+          <div className="flex items-center gap-4">
+            <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
+            <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
+            <a href="/tutor-agreement" className="hover:text-foreground transition-colors">Tutor Agreement</a>
+          </div>
+        </footer>
+
         {/* Bottom nav — mobile */}
         <nav className="lg:hidden flex items-center border-t border-border bg-card px-2 py-1 shrink-0">
           {navItems.map((item) => {

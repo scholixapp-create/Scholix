@@ -20,7 +20,7 @@ function tutorToJson(
     subjects: tutor.subjects ?? [],
     hourlyRate: tutor.hourlyRate,
     isApproved: tutor.isApproved,
-    verificationStatus: tutor.verificationStatus ?? "pending_verification",
+    verificationStatus: tutor.verificationStatus ?? "pending",
     educationDetails: (tutor as Record<string, unknown>).educationDetails as string | null ?? null,
     sessionCount,
     createdAt: tutor.createdAt.toISOString(),

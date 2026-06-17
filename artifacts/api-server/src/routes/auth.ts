@@ -1,11 +1,8 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable } from "@workspace/db";
+import { db, usersTable, tutorsTable, legalAgreementsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { createHash } from "crypto";
-import {
-  LoginBody,
-  SignupBody,
-} from "@workspace/api-zod";
+import { LoginBody, SignupBody } from "@workspace/api-zod";
 
 const router = Router();
 
@@ -17,20 +14,10 @@ function makeToken(userId: number): string {
   return Buffer.from(`${userId}:${Date.now()}`).toString("base64");
 }
 
-/** Normalise and validate Australian mobile numbers.
- *  Accepts: 04XX XXX XXX, 04XXXXXXXX, +61 4XX XXX XXX, +614XXXXXXXX
- *  Returns null if invalid.
- */
 function normaliseAuPhone(raw: string): string | null {
   const digits = raw.replace(/\D/g, "");
-  // +614XXXXXXXX → 04XXXXXXXX
-  if (digits.startsWith("614") && digits.length === 11) {
-    return "0" + digits.slice(2);
-  }
-  // 04XXXXXXXX
-  if (digits.startsWith("04") && digits.length === 10) {
-    return digits;
-  }
+  if (digits.startsWith("614") && digits.length === 11) return "0" + digits.slice(2);
+  if (digits.startsWith("04") && digits.length === 10) return digits;
   return null;
 }
 
@@ -75,9 +62,23 @@ router.post("/auth/signup", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { email, password, firstName, lastName, role, phone } = parsed.data;
+  const { email, password, firstName, lastName, role } = parsed.data;
+  const body = req.body as { termsAccepted?: boolean; phone?: string };
 
-  // Validate phone if provided
+  // Admin accounts cannot be created via public signup
+  if (role === "admin") {
+    res.status(400).json({ error: "Admin accounts cannot be created through signup" });
+    return;
+  }
+
+  // Terms acceptance is required
+  if (!body.termsAccepted) {
+    res.status(400).json({ error: "You must accept the Terms of Service and Privacy Policy to create an account" });
+    return;
+  }
+
+  // Validate phone
+  const phone = body.phone;
   let normalisedPhone: string | null = null;
   if (phone) {
     normalisedPhone = normaliseAuPhone(phone);
@@ -86,7 +87,6 @@ router.post("/auth/signup", async (req, res) => {
       return;
     }
   } else {
-    // Phone is required — must be provided
     res.status(400).json({ error: "Australian mobile number is required" });
     return;
   }
@@ -114,12 +114,23 @@ router.post("/auth/signup", async (req, res) => {
     })
     .returning();
 
+  // Store legal agreement acceptance
+  const forwarded = req.headers["x-forwarded-for"];
+  const ipAddress = ((Array.isArray(forwarded) ? forwarded[0] : forwarded) ?? req.socket.remoteAddress ?? null)?.split(",")[0]?.trim() ?? null;
+
+  await db.insert(legalAgreementsTable).values({
+    userId: user.id,
+    agreementVersion: "1.0",
+    ipAddress,
+  });
+
   if (role === "tutor") {
     await db.insert(tutorsTable).values({
       userId: user.id,
       subjects: [],
       hourlyRate: 65,
       isApproved: false,
+      verificationStatus: "pending",
     });
   }
 

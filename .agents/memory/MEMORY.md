@@ -1,3 +1,6 @@
 - [Availability model](availability-model.md) — slots are date+startTime+endTime (not dayOfWeek); isBooked set on payment via payments.ts
 - [Invoice on payment](invoice-on-payment.md) — invoice created in payments.ts at payment time; sessions.ts complete route checks for existing invoice before creating one
 - [esbuild externals](esbuild-externals.md) — `zod/v4` subpath is NOT resolvable by esbuild; use plain validation in API routes or import from @workspace/api-zod
+- [Express 5 middleware param types](express5-middleware-params.md) — req.params.xxx needs `as string` cast when chaining custom middleware in a route handler signature.
+- [Drizzle lib rebuild after schema changes](drizzle-lib-rebuild.md) — must run `pnpm run typecheck:libs` after adding DB schema columns before api-server typecheck picks them up.
+- [SignupBody generated type gaps](signup-body-extra-fields.md) — OpenAPI-generated SignupBody omits phone/termsAccepted; extract extra fields from req.body directly to avoid codegen churn.

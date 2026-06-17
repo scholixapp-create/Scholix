@@ -10,3 +10,4 @@ export * from "./tutor-documents";
 export * from "./student-progress";
 export * from "./reviews";
 export * from "./subject-requests";
+export * from "./legal-agreements";

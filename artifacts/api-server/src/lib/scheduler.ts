@@ -1,4 +1,4 @@
-import { db, sessionsTable, tutorsTable, studentsTable } from "@workspace/db";
+import { db, sessionsTable, tutorsTable, studentsTable, usersTable } from "@workspace/db";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { createNotification } from "./notify";
 import { logger } from "./logger";
@@ -57,7 +57,6 @@ export async function sendSessionReminders(): Promise<void> {
       const dateStr = formatDate(session.scheduledAt);
       const timeStr = formatTime(session.scheduledAt);
 
-      // Notify tutor
       await createNotification({
         userId: session.tutorUserId,
         type: "session_reminder",
@@ -79,7 +78,6 @@ export async function sendSessionReminders(): Promise<void> {
           </div>`,
       });
 
-      // Notify student (only if they have a user account)
       if (session.studentUserId != null) {
         await createNotification({
           userId: session.studentUserId,
@@ -99,7 +97,6 @@ export async function sendSessionReminders(): Promise<void> {
         });
       }
 
-      // Mark reminder as sent
       await db
         .update(sessionsTable)
         .set({ reminderSent: true })
@@ -112,15 +109,92 @@ export async function sendSessionReminders(): Promise<void> {
   }
 }
 
-const INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+/** Check WWCC expiry for all approved tutors.
+ *  - Sends a warning notification 90 days before expiry.
+ *  - Marks tutors as "expired" and removes approval if WWCC has passed.
+ */
+export async function checkWwccExpiry(): Promise<void> {
+  try {
+    const tutors = await db
+      .select({
+        id: tutorsTable.id,
+        userId: tutorsTable.userId,
+        wwccExpiry: tutorsTable.wwccExpiry,
+        verificationStatus: tutorsTable.verificationStatus,
+        firstName: usersTable.firstName,
+      })
+      .from(tutorsTable)
+      .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
+      .where(eq(tutorsTable.isApproved, true));
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const warnDate = new Date(today);
+    warnDate.setDate(warnDate.getDate() + 90);
+
+    for (const tutor of tutors) {
+      if (!tutor.wwccExpiry) continue;
+
+      let expiryDate: Date;
+      try {
+        expiryDate = new Date(tutor.wwccExpiry);
+        if (isNaN(expiryDate.getTime())) continue;
+      } catch {
+        continue;
+      }
+
+      expiryDate.setHours(0, 0, 0, 0);
+
+      if (expiryDate < today) {
+        // WWCC has expired — suspend the tutor
+        if (tutor.verificationStatus !== "expired") {
+          await db
+            .update(tutorsTable)
+            .set({ verificationStatus: "expired", isApproved: false })
+            .where(eq(tutorsTable.id, tutor.id));
+
+          await createNotification({
+            userId: tutor.userId,
+            type: "session_booked",
+            title: "WWCC expired — account suspended",
+            message: `Your Working With Children Check expired on ${tutor.wwccExpiry}. New bookings are paused until you renew and submit your updated WWCC.`,
+            actionUrl: "/tutor/onboarding",
+            actionLabel: "Update WWCC",
+          });
+
+          logger.info({ tutorId: tutor.id, wwccExpiry: tutor.wwccExpiry }, "Tutor WWCC expired — account suspended");
+        }
+      } else if (expiryDate <= warnDate) {
+        // WWCC expires within 90 days — warn once (check notification doesn't already exist)
+        const daysLeft = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        await createNotification({
+          userId: tutor.userId,
+          type: "session_booked",
+          title: `WWCC expiring in ${daysLeft} days`,
+          message: `Your Working With Children Check expires on ${tutor.wwccExpiry}. Renew it soon to keep your account active.`,
+          actionUrl: "/tutor/onboarding",
+          actionLabel: "Update WWCC",
+        });
+
+        logger.info({ tutorId: tutor.id, daysLeft }, "WWCC expiry warning sent");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "WWCC expiry check failed");
+  }
+}
+
+const REMINDER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const WWCC_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function startScheduler(): void {
   logger.info("Scheduler started — session reminders will check every hour");
 
-  // Run once on startup to catch any sessions we might have missed
   void sendSessionReminders();
+  setInterval(() => { void sendSessionReminders(); }, REMINDER_INTERVAL_MS);
 
-  setInterval(() => {
-    void sendSessionReminders();
-  }, INTERVAL_MS);
+  // WWCC expiry check runs daily
+  void checkWwccExpiry();
+  setInterval(() => { void checkWwccExpiry(); }, WWCC_CHECK_INTERVAL_MS);
 }
