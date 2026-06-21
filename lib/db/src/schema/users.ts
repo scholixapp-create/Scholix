@@ -13,6 +13,11 @@ export const usersTable = pgTable("users", {
   role: userRoleEnum("role").notNull(),
   phone: text("phone"),
   emailNotificationsEnabled: boolean("email_notifications_enabled").notNull().default(true),
+  notifBookingConfirmation: boolean("notif_booking_confirmation").notNull().default(true),
+  notifSessionReminder: boolean("notif_session_reminder").notNull().default(true),
+  notifSessionCompleted: boolean("notif_session_completed").notNull().default(true),
+  notifPaymentConfirmed: boolean("notif_payment_confirmed").notNull().default(true),
+  notifApprovalUpdates: boolean("notif_approval_updates").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

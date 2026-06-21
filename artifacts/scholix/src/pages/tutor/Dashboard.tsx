@@ -1,5 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
-import { useListSessions, useGetSessionSummary, useListTutors } from "@workspace/api-client-react";
+import { useListSessions, useGetSessionSummary, useListTutors, useGetTutorAvailability } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
 import {
@@ -81,9 +81,13 @@ const COMMISSION_TIERS = [
 function GrowEarningsSection({
   completedSessions,
   hourlyRate,
+  profileComplete,
+  hasAvailability,
 }: {
   completedSessions: number;
   hourlyRate: number;
+  profileComplete: boolean;
+  hasAvailability: boolean;
 }) {
   const currentTier = COMMISSION_TIERS.find(
     (t) => completedSessions >= t.min && completedSessions <= t.max
@@ -144,8 +148,8 @@ function GrowEarningsSection({
           </div>
           <div className="space-y-2">
             {[
-              { done: true,  text: "Complete your profile with a bio and subjects" },
-              { done: true,  text: "Set your weekly availability" },
+              { done: profileComplete, text: "Complete your profile with a bio and subjects" },
+              { done: hasAvailability, text: "Set your weekly availability" },
               { done: false, text: "Share your Scholix profile link with students" },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-2">
@@ -280,11 +284,22 @@ export default function TutorDashboard() {
   const tutorId = tutorProfile?.id;
   const hourlyRate = tutorProfile?.hourlyRate ?? 65;
 
+  const availability = useGetTutorAvailability(tutorId ?? 0, {
+    query: { enabled: !!tutorId } as any,
+  });
+  const hasAvailability = (availability.data?.filter((s: { isBooked?: boolean }) => !s.isBooked).length ?? 0) > 0;
+  const profileComplete = !!(tutorProfile?.bio?.trim() && (tutorProfile?.subjects?.length ?? 0) > 0);
+
   useEffect(() => {
-    fetch("/api/tutors/me", { headers: { Authorization: `Bearer ${getToken()}` } })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setVerif(data); })
-      .catch(() => {});
+    const fetchVerif = () => {
+      fetch("/api/tutors/me", { headers: { Authorization: `Bearer ${getToken()}` } })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => { if (data) setVerif(data); })
+        .catch(() => {});
+    };
+    fetchVerif();
+    const interval = setInterval(fetchVerif, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   const sessions = useListSessions(tutorId ? { tutorId } : undefined, {
@@ -429,7 +444,12 @@ export default function TutorDashboard() {
       </div>
 
       {/* Grow Your Earnings */}
-      <GrowEarningsSection completedSessions={completedSessions} hourlyRate={hourlyRate} />
+      <GrowEarningsSection
+        completedSessions={completedSessions}
+        hourlyRate={hourlyRate}
+        profileComplete={profileComplete}
+        hasAvailability={hasAvailability}
+      />
 
       {/* Coming soon */}
       <div className="mb-6">

@@ -3,9 +3,18 @@ import { useAuth } from "@/context/AuthContext";
 import { useListTutors, useGetTutorAvailability, useSetTutorAvailability, useUpdateTutorProfile } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetTutorAvailabilityQueryKey, getListTutorsQueryKey } from "@workspace/api-client-react";
-import { Plus, Trash2, CheckCircle, DollarSign, BookOpen, Calendar } from "lucide-react";
-import { format, parseISO, isBefore, startOfToday } from "date-fns";
+import { CheckCircle, DollarSign, BookOpen, AlertCircle } from "lucide-react";
 import { VICTORIAN_SUBJECTS } from "@/lib/subjects";
+import { addDays, format, startOfTomorrow } from "date-fns";
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+type DayKey = typeof DAYS[number];
+// JS getDay(): 0=Sun,1=Mon,...,6=Sat  →  our index: Mon=0,...,Sun=6
+const JS_DAY_TO_IDX: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 };
+const IDX_TO_JS_DAY: Record<number, number> = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 0 };
+
+interface DaySchedule { start: string; end: string; }
+type Schedule = Partial<Record<DayKey, DaySchedule>>;
 
 interface Slot {
   id?: number;
@@ -15,10 +24,44 @@ interface Slot {
   isBooked?: boolean;
 }
 
-function slotDuration(startTime: string, endTime: string): number {
-  const [sh, sm] = startTime.split(":").map(Number);
-  const [eh, em] = endTime.split(":").map(Number);
-  return (eh * 60 + em) - (sh * 60 + sm);
+function generateSlots(schedule: Schedule, weeksAhead = 8): { date: string; startTime: string; endTime: string }[] {
+  const result: { date: string; startTime: string; endTime: string }[] = [];
+  const start = startOfTomorrow();
+  for (let d = 0; d < weeksAhead * 7; d++) {
+    const date = addDays(start, d);
+    const jsDay = date.getDay();
+    const idx = JS_DAY_TO_IDX[jsDay];
+    const dayKey = DAYS[idx];
+    const sched = schedule[dayKey];
+    if (sched && sched.end > sched.start) {
+      result.push({
+        date: format(date, "yyyy-MM-dd"),
+        startTime: sched.start,
+        endTime: sched.end,
+      });
+    }
+  }
+  return result;
+}
+
+function inferSchedule(slots: Slot[]): Schedule {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const future = slots.filter((s) => !s.isBooked && s.date >= today);
+  const byDay: Record<number, { start: string; end: string; count: number }> = {};
+  for (const s of future) {
+    const jsDay = new Date(s.date + "T00:00:00").getDay();
+    const idx = JS_DAY_TO_IDX[jsDay];
+    // Most frequent time pair per day
+    if (!byDay[idx] || true) {
+      byDay[idx] = { start: s.startTime, end: s.endTime, count: (byDay[idx]?.count ?? 0) + 1 };
+    }
+  }
+  const result: Schedule = {};
+  for (const [idx, info] of Object.entries(byDay)) {
+    const dayKey = DAYS[Number(idx)];
+    if (dayKey) result[dayKey] = { start: info.start, end: info.end };
+  }
+  return result;
 }
 
 export default function TutorAvailability() {
@@ -29,39 +72,25 @@ export default function TutorAvailability() {
   const tutorId = tutorProfile?.id;
 
   const availability = useGetTutorAvailability(tutorId ?? 0, {
-    query: { enabled: !!tutorId },
+    query: { enabled: !!tutorId } as any,
   });
   const setAvailMutation = useSetTutorAvailability();
   const updateProfileMutation = useUpdateTutorProfile();
 
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [schedule, setSchedule] = useState<Schedule>({});
   const [hourlyRate, setHourlyRate] = useState(tutorProfile?.hourlyRate ?? 65);
-  const [saved, setSaved] = useState(false);
+  const [schedSaved, setSchedSaved] = useState(false);
   const [rateSaved, setRateSaved] = useState(false);
   const [subjectsSaved, setSubjectsSaved] = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(tutorProfile?.subjects ?? []);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+  const [schedError, setSchedError] = useState("");
 
-  const [newDate, setNewDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split("T")[0];
-  });
-  const [newStart, setNewStart] = useState("09:00");
-  const [newEnd, setNewEnd] = useState("10:00");
-  const [addError, setAddError] = useState("");
-
+  // Infer schedule from existing availability data
   useEffect(() => {
-    if (availability.data) {
-      setSlots(
-        availability.data.map((s) => ({
-          id: s.id,
-          date: s.date,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          isBooked: s.isBooked,
-        }))
-      );
+    if (availability.data && availability.data.length > 0) {
+      const inferred = inferSchedule(availability.data as Slot[]);
+      setSchedule(inferred);
     }
   }, [availability.data]);
 
@@ -72,310 +101,296 @@ export default function TutorAvailability() {
     }
   }, [tutorProfile?.hourlyRate, tutorProfile?.subjects]);
 
-  const addSlot = () => {
-    setAddError("");
-    if (!newDate) { setAddError("Select a date"); return; }
-    if (newEnd <= newStart) { setAddError("End time must be after start time"); return; }
-    const dur = slotDuration(newStart, newEnd);
-    if (dur < 30) { setAddError("Minimum slot duration is 30 minutes"); return; }
-    setSlots([...slots, { date: newDate, startTime: newStart, endTime: newEnd, isBooked: false }]);
-  };
-
-  const removeSlot = (i: number) => {
-    setSlots(slots.filter((_, idx) => idx !== i));
-  };
-
-  const handleSave = () => {
-    if (!tutorId) return;
-    setAvailMutation.mutate(
-      { tutorId, data: { slots: slots.map((s) => ({ date: s.date, startTime: s.startTime, endTime: s.endTime })) } },
-      {
-        onSuccess: () => {
-          qc.invalidateQueries({ queryKey: getGetTutorAvailabilityQueryKey(tutorId) });
-          setSaved(true);
-          setTimeout(() => setSaved(false), 2500);
-        },
+  const toggleDay = (day: DayKey) => {
+    setSchedule((prev) => {
+      if (prev[day]) {
+        const next = { ...prev };
+        delete next[day];
+        return next;
       }
-    );
+      return { ...prev, [day]: { start: "09:00", end: "10:00" } };
+    });
   };
 
-  const handleSaveRate = () => {
+  const updateDayTime = (day: DayKey, field: "start" | "end", value: string) => {
+    setSchedule((prev) => ({
+      ...prev,
+      [day]: { ...(prev[day] ?? { start: "09:00", end: "10:00" }), [field]: value },
+    }));
+  };
+
+  const handleSaveSchedule = async () => {
     if (!tutorId) return;
-    if (hourlyRate < 65) { alert("Minimum rate is $65/hr"); return; }
-    updateProfileMutation.mutate(
-      { tutorId, data: { hourlyRate: hourlyRate } },
-      {
-        onSuccess: () => {
-          qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });
-          setRateSaved(true);
-          setTimeout(() => setRateSaved(false), 2500);
-        },
+    setSchedError("");
+
+    // Validate all days have valid times
+    for (const [day, times] of Object.entries(schedule) as [DayKey, DaySchedule][]) {
+      if (times.end <= times.start) {
+        setSchedError(`${day}: end time must be after start time`);
+        return;
       }
-    );
+    }
+
+    // Keep booked slots; replace all unbooked future slots with new schedule
+    const today = format(new Date(), "yyyy-MM-dd");
+    const bookedSlots = (availability.data ?? [])
+      .filter((s) => s.isBooked)
+      .map((s) => ({ date: s.date, startTime: s.startTime, endTime: s.endTime }));
+
+    const newSlots = generateSlots(schedule);
+    const allSlots = [...bookedSlots, ...newSlots];
+
+    try {
+      await setAvailMutation.mutateAsync({ tutorId, data: { slots: allSlots } });
+      await qc.invalidateQueries({ queryKey: getGetTutorAvailabilityQueryKey(tutorId) });
+      setSchedSaved(true);
+      setTimeout(() => setSchedSaved(false), 2500);
+    } catch {
+      setSchedError("Failed to save schedule. Please try again.");
+    }
   };
 
-  const toggleSubject = (sub: string) => {
-    setSelectedSubjects((prev) =>
-      prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub]
-    );
-  };
-
-  const handleSaveSubjects = () => {
+  const handleSaveRate = async () => {
     if (!tutorId) return;
-    updateProfileMutation.mutate(
-      { tutorId, data: { subjects: selectedSubjects } },
-      {
-        onSuccess: () => {
-          qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });
-          setSubjectsSaved(true);
-          setShowSubjectPicker(false);
-          setTimeout(() => setSubjectsSaved(false), 2500);
-        },
-      }
-    );
+    if (hourlyRate < 65) { setRateSaved(false); return; }
+    await updateProfileMutation.mutateAsync({ tutorId, data: { hourlyRate } });
+    await qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });
+    setRateSaved(true);
+    setTimeout(() => setRateSaved(false), 2500);
   };
 
-  const today = startOfToday();
-  const futureSlots = slots.filter((s) => {
-    try { return !isBefore(parseISO(s.date), today); } catch { return true; }
-  });
-  const pastSlots = slots.filter((s) => {
-    try { return isBefore(parseISO(s.date), today); } catch { return false; }
-  });
+  const handleSaveSubjects = async () => {
+    if (!tutorId || selectedSubjects.length === 0) return;
+    await updateProfileMutation.mutateAsync({ tutorId, data: { subjects: selectedSubjects } });
+    await qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });
+    setSubjectsSaved(true);
+    setShowSubjectPicker(false);
+    setTimeout(() => setSubjectsSaved(false), 2500);
+  };
+
+  const activeDays = DAYS.filter((d) => schedule[d]);
+  const totalSlotsPerWeek = activeDays.length;
 
   return (
-    <div className="p-4 md:p-6 max-w-lg mx-auto">
+    <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-foreground">Availability & Profile</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Set your schedule, rate and teaching subjects</p>
+        <h1 className="text-xl font-bold text-foreground">Availability</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Set your weekly teaching schedule</p>
+      </div>
+
+      {/* Weekly schedule */}
+      <div className="bg-card border border-card-border rounded-2xl overflow-hidden mb-4">
+        <div className="px-5 py-4 border-b border-border">
+          <p className="text-sm font-semibold text-foreground">Weekly Schedule</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Select which days you're available. Slots are generated for the next 8 weeks.
+          </p>
+        </div>
+
+        <div className="px-5 pt-4 pb-2">
+          {/* Day pills */}
+          <div className="flex gap-1.5 flex-wrap mb-4">
+            {DAYS.map((day) => {
+              const active = !!schedule[day];
+              return (
+                <button
+                  key={day}
+                  onClick={() => toggleDay(day)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    active
+                      ? "bg-primary text-white"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Time inputs for active days */}
+          {activeDays.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Tap a day above to add it to your schedule
+            </p>
+          ) : (
+            <div className="space-y-3 mb-4">
+              {activeDays.map((day) => {
+                const times = schedule[day]!;
+                return (
+                  <div key={day} className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-foreground w-8 shrink-0">{day}</span>
+                    <div className="flex items-center gap-2 flex-1">
+                      <input
+                        type="time"
+                        value={times.start}
+                        onChange={(e) => updateDayTime(day, "start", e.target.value)}
+                        className="flex-1 px-2.5 py-2 rounded-lg border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+                      />
+                      <span className="text-xs text-muted-foreground shrink-0">to</span>
+                      <input
+                        type="time"
+                        value={times.end}
+                        onChange={(e) => updateDayTime(day, "end", e.target.value)}
+                        className="flex-1 px-2.5 py-2 rounded-lg border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {schedError && (
+          <div className="mx-5 mb-3 flex items-center gap-2 text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+            <AlertCircle size={13} />
+            <span className="text-xs">{schedError}</span>
+          </div>
+        )}
+
+        <div className="px-5 pb-4 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">
+            {totalSlotsPerWeek > 0
+              ? `${totalSlotsPerWeek} day${totalSlotsPerWeek !== 1 ? "s" : ""}/week · ~${totalSlotsPerWeek * 8} slots generated`
+              : "No days selected"}
+          </span>
+          <div className="flex items-center gap-2">
+            {schedSaved && (
+              <span className="flex items-center gap-1 text-xs text-accent font-medium">
+                <CheckCircle size={12} /> Saved
+              </span>
+            )}
+            <button
+              onClick={handleSaveSchedule}
+              disabled={setAvailMutation.isPending || activeDays.length === 0}
+              className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-60 transition-all"
+            >
+              {setAvailMutation.isPending ? "Saving…" : "Save schedule"}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Hourly rate */}
-      <div className="bg-card border border-card-border rounded-xl p-4 mb-4">
-        <div className="flex items-center gap-2 mb-3">
-          <DollarSign size={16} className="text-accent" />
-          <h2 className="text-sm font-semibold text-foreground">Hourly rate</h2>
+      <div className="bg-card border border-card-border rounded-2xl overflow-hidden mb-4">
+        <div className="px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <DollarSign size={15} className="text-accent" />
+            <p className="text-sm font-semibold text-foreground">Hourly Rate</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">Minimum rate is $65/hr</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 flex items-center border border-input rounded-lg overflow-hidden">
-            <span className="px-3 py-2.5 bg-muted text-sm text-muted-foreground font-medium border-r border-input">$</span>
+        <div className="px-5 py-4 flex items-center gap-3">
+          <div className="relative flex-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">$</span>
             <input
               type="number"
               min={65}
               step={5}
               value={hourlyRate}
               onChange={(e) => setHourlyRate(Number(e.target.value))}
-              className="flex-1 px-3 py-2.5 bg-background text-sm focus:outline-none"
+              className="w-full pl-7 pr-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
             />
-            <span className="px-3 py-2.5 bg-muted text-sm text-muted-foreground border-l border-input">/hr</span>
           </div>
-          <button
-            onClick={handleSaveRate}
-            disabled={updateProfileMutation.isPending}
-            className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center gap-1.5 shrink-0"
-          >
-            {rateSaved ? <><CheckCircle size={14} /> Saved</> : "Save rate"}
-          </button>
+          <span className="text-sm text-muted-foreground shrink-0">/hr</span>
+          <div className="flex items-center gap-2">
+            {rateSaved && (
+              <span className="flex items-center gap-1 text-xs text-accent font-medium">
+                <CheckCircle size={12} /> Saved
+              </span>
+            )}
+            <button
+              onClick={handleSaveRate}
+              disabled={updateProfileMutation.isPending || hourlyRate < 65}
+              className="px-4 py-2.5 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-60 transition-all"
+            >
+              Save
+            </button>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">Minimum $65/hr. Parents see this when browsing tutors.</p>
+        {hourlyRate < 65 && (
+          <div className="px-5 pb-4">
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle size={11} /> Minimum rate is $65/hr
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Subjects */}
-      <div className="bg-card border border-card-border rounded-xl p-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
+      <div className="bg-card border border-card-border rounded-2xl overflow-hidden mb-4">
+        <div className="px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <BookOpen size={16} className="text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Teaching subjects</h2>
+            <BookOpen size={15} className="text-primary" />
+            <p className="text-sm font-semibold text-foreground">Subjects</p>
           </div>
-          <button
-            onClick={() => setShowSubjectPicker(!showSubjectPicker)}
-            className="text-xs text-primary font-medium hover:underline"
-          >
-            {showSubjectPicker ? "Close" : "Edit"}
-          </button>
+          <p className="text-xs text-muted-foreground mt-0.5">Select the subjects you teach</p>
         </div>
-
-        {selectedSubjects.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No subjects set. Click Edit to add subjects.</p>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {selectedSubjects.map((sub) => (
-              <span key={sub} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                {sub}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {showSubjectPicker && (
-          <div className="mt-4">
-            <p className="text-xs text-muted-foreground mb-3">Tap to toggle. Victorian curriculum subjects.</p>
-            <div className="flex flex-wrap gap-1.5 max-h-64 overflow-y-auto">
-              {VICTORIAN_SUBJECTS.map((sub) => (
+        <div className="px-5 py-4">
+          {selectedSubjects.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {selectedSubjects.map((s) => (
                 <button
-                  key={sub}
-                  type="button"
-                  onClick={() => toggleSubject(sub)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                    selectedSubjects.includes(sub)
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                  }`}
+                  key={s}
+                  onClick={() => setSelectedSubjects((prev) => prev.filter((x) => x !== s))}
+                  className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-destructive/10 hover:text-destructive transition-colors group"
                 >
-                  {selectedSubjects.includes(sub) ? "✓ " : ""}{sub}
+                  {s} <span className="group-hover:inline hidden">×</span>
                 </button>
               ))}
             </div>
+          )}
+
+          {showSubjectPicker ? (
+            <div className="space-y-3">
+              <div className="max-h-48 overflow-y-auto border border-border rounded-xl">
+                {VICTORIAN_SUBJECTS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      if (selectedSubjects.includes(s)) {
+                        setSelectedSubjects((prev) => prev.filter((x) => x !== s));
+                      } else {
+                        setSelectedSubjects((prev) => [...prev, s]);
+                      }
+                    }}
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b border-border last:border-0 ${
+                      selectedSubjects.includes(s)
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowSubjectPicker(false)}
+                  className="flex-1 px-3 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveSubjects}
+                  disabled={updateProfileMutation.isPending || selectedSubjects.length === 0}
+                  className="flex-1 px-3 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-all"
+                >
+                  {subjectsSaved ? "Saved ✓" : "Save subjects"}
+                </button>
+              </div>
+            </div>
+          ) : (
             <button
-              onClick={handleSaveSubjects}
-              disabled={updateProfileMutation.isPending}
-              className="mt-3 w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center justify-center gap-2"
+              onClick={() => setShowSubjectPicker(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
             >
-              {subjectsSaved ? <><CheckCircle size={14} /> Subjects saved!</> : `Save ${selectedSubjects.length} subjects`}
+              {selectedSubjects.length === 0 ? "Add subjects" : "Edit subjects"}
             </button>
-          </div>
-        )}
-      </div>
-
-      {/* Availability slots */}
-      <div className="bg-card border border-card-border rounded-xl p-4 mb-4">
-        <div className="flex items-center gap-2 mb-4">
-          <Calendar size={16} className="text-accent" />
-          <h2 className="text-sm font-semibold text-foreground">Available date slots</h2>
-        </div>
-
-        {/* Add slot form */}
-        <div className="bg-muted/40 rounded-xl p-3 mb-4">
-          <p className="text-xs font-semibold text-foreground mb-3">Add a new slot</p>
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            <div className="col-span-3">
-              <label className="text-[11px] text-muted-foreground font-medium">Date</label>
-              <input
-                type="date"
-                value={newDate}
-                min={new Date().toISOString().split("T")[0]}
-                onChange={(e) => setNewDate(e.target.value)}
-                className="w-full mt-0.5 px-2.5 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] text-muted-foreground font-medium">Start</label>
-              <input
-                type="time"
-                value={newStart}
-                onChange={(e) => setNewStart(e.target.value)}
-                className="w-full mt-0.5 px-2.5 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] text-muted-foreground font-medium">End</label>
-              <input
-                type="time"
-                value={newEnd}
-                onChange={(e) => setNewEnd(e.target.value)}
-                className="w-full mt-0.5 px-2.5 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={addSlot}
-                className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-1"
-              >
-                <Plus size={14} /> Add
-              </button>
-            </div>
-          </div>
-          {addError && <p className="text-xs text-destructive mt-1">{addError}</p>}
-          {newStart && newEnd && newEnd > newStart && (
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Duration: {slotDuration(newStart, newEnd)} min
-            </p>
           )}
         </div>
-
-        {/* Slot list */}
-        {availability.isLoading ? (
-          <div className="space-y-2">
-            {[1, 2].map((i) => <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />)}
-          </div>
-        ) : slots.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            No slots yet. Add your first available date above.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {futureSlots.length > 0 && (
-              <>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Upcoming</p>
-                {futureSlots.map((slot, i) => {
-                  const globalIdx = slots.indexOf(slot);
-                  const dur = slotDuration(slot.startTime, slot.endTime);
-                  let dateLabel = slot.date;
-                  try { dateLabel = format(parseISO(slot.date), "EEE, d MMM yyyy"); } catch { /* noop */ }
-                  return (
-                    <div
-                      key={i}
-                      className={`flex items-center gap-2 p-3 rounded-xl border ${
-                        slot.isBooked
-                          ? "bg-amber-50 border-amber-200"
-                          : "bg-accent/5 border-accent/20"
-                      }`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground">{dateLabel}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {slot.startTime} – {slot.endTime} · {dur} min
-                          {slot.isBooked && <span className="ml-2 text-amber-600 font-medium">· Booked</span>}
-                        </p>
-                      </div>
-                      {!slot.isBooked && (
-                        <button
-                          onClick={() => removeSlot(globalIdx)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            )}
-            {pastSlots.length > 0 && (
-              <>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-3">Past</p>
-                {pastSlots.map((slot, i) => {
-                  const globalIdx = slots.indexOf(slot);
-                  let dateLabel = slot.date;
-                  try { dateLabel = format(parseISO(slot.date), "EEE, d MMM yyyy"); } catch { /* noop */ }
-                  return (
-                    <div key={i} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-muted/30 opacity-60">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground line-through">{dateLabel}</p>
-                        <p className="text-xs text-muted-foreground">{slot.startTime} – {slot.endTime}</p>
-                      </div>
-                      <button
-                        onClick={() => removeSlot(globalIdx)}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        )}
       </div>
-
-      <button
-        onClick={handleSave}
-        disabled={setAvailMutation.isPending}
-        className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center justify-center gap-2"
-      >
-        {saved ? <><CheckCircle size={16} /> Schedule saved!</> : setAvailMutation.isPending ? "Saving..." : "Save schedule"}
-      </button>
     </div>
   );
 }

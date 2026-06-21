@@ -12,10 +12,11 @@ import { format, parseISO } from "date-fns";
 function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
 
 const GRADE_LEVELS = [
-  "Kindergarten", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5",
-  "Grade 6", "Grade 7", "Grade 8", "Grade 9 (Freshman)", "Grade 10 (Sophomore)",
-  "Grade 11 (Junior)", "Grade 12 (Senior)", "College Freshman", "College Sophomore",
-  "College Junior", "College Senior", "Graduate Student",
+  "Prep",
+  "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6",
+  "Year 7", "Year 8", "Year 9", "Year 10",
+  "VCE Year 11", "VCE Year 12",
+  "Other",
 ];
 
 interface ProgressEntry {
@@ -345,11 +346,11 @@ function AddStudentModal({
           <div className="border border-border rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Shield size={14} className="text-primary" />
-              <p className="text-xs font-semibold text-foreground">Identity Verification</p>
-              <span className="text-[10px] text-muted-foreground">(optional, but required for First Session Free)</span>
+              <p className="text-xs font-semibold text-foreground">Student Identity</p>
+              <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              To prevent abuse of our free first-session offer, we ask you to verify your child's identity with their date of birth.
+              Providing your child's date of birth helps tutors verify the student's identity for safeguarding and age-appropriate teaching.
             </p>
             <div>
               <label className="block text-xs font-medium text-foreground mb-1.5">Date of birth</label>
@@ -376,7 +377,7 @@ function AddStudentModal({
             {dateOfBirth && verified && (
               <div className="flex items-center gap-1.5 text-accent text-[11px] font-semibold">
                 <CheckCircle size={12} />
-                Identity declared — First Session Free applies
+                Identity declared ✓
               </div>
             )}
           </div>

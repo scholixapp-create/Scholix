@@ -84,7 +84,8 @@ router.post("/students", requireAuth, async (req, res) => {
 
   const parsed = CreateStudentBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request body" });
+    const fields = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+    res.status(400).json({ error: fields || "Invalid request body" });
     return;
   }
 

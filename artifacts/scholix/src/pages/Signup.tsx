@@ -7,6 +7,20 @@ import TestModeBanner from "@/components/TestModeBanner";
 
 type Role = "tutor" | "parent" | "student";
 
+function getPasswordStrength(pwd: string): { score: number; label: string; color: string } {
+  if (!pwd) return { score: 0, label: "", color: "" };
+  let score = 0;
+  if (pwd.length >= 6) score++;
+  if (pwd.length >= 10) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  if (score <= 1) return { score, label: "Weak", color: "bg-red-400" };
+  if (score === 2) return { score, label: "Fair", color: "bg-amber-400" };
+  if (score === 3) return { score, label: "Good", color: "bg-blue-400" };
+  return { score, label: "Strong", color: "bg-accent" };
+}
+
 const roles: { value: Role; label: string; desc: string }[] = [
   { value: "tutor", label: "Tutor", desc: "Manage sessions and grow your practice" },
   { value: "parent", label: "Parent", desc: "Book sessions for your children" },
@@ -219,6 +233,21 @@ export default function Signup() {
                 required
                 className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
               />
+              {password && (() => {
+                const str = getPasswordStrength(password);
+                const filled = str.score <= 1 ? 1 : str.score === 2 ? 2 : str.score === 3 ? 3 : 4;
+                const textColor = str.score <= 1 ? "text-red-500" : str.score === 2 ? "text-amber-500" : str.score === 3 ? "text-blue-500" : "text-accent";
+                return (
+                  <div className="mt-1.5 space-y-1">
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i <= filled ? str.color : "bg-muted"}`} />
+                      ))}
+                    </div>
+                    <p className={`text-[11px] font-medium ${textColor}`}>{str.label} password</p>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Terms acceptance */}

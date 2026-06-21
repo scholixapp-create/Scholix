@@ -6,9 +6,11 @@ import StatusBadge from "@/components/StatusBadge";
 import {
   Calendar, BookOpen, Clock, GraduationCap,
   ChevronRight, CheckCircle2, XCircle, Inbox,
-  BarChart2, Bell, Copy, Check,
+  BarChart2, Bell,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+
+function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
 
 type Tab = "upcoming" | "history";
 
@@ -74,7 +76,7 @@ function UpcomingCard({ session }: { session: Session }) {
             </div>
           </div>
         </div>
-        <StatusBadge status={session.status} />
+        <StatusBadge status={session.status as any} />
       </div>
     </div>
   );
@@ -120,18 +122,21 @@ function HistoryCard({ session }: { session: Session }) {
   );
 }
 
-function RequestSessionCard({ studentName }: { studentName: string }) {
-  const [copied, setCopied] = useState(false);
+function RequestSessionCard({ studentName: _studentName, parentId }: { studentName: string; parentId: number | null }) {
+  const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
 
-  const message = `Hi! Can you book a tutoring session for me on Scholix? My name is ${studentName}. You can find tutors at scholix.replit.app`;
-
-  const handleCopy = async () => {
+  const handleRequest = async () => {
+    if (!parentId) return;
+    setState("sending");
     try {
-      await navigator.clipboard.writeText(message);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      const res = await fetch("/api/notifications/request-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({}),
+      });
+      setState(res.ok ? "sent" : "idle");
     } catch {
-      /* ignore */
+      setState("idle");
     }
   };
 
@@ -143,16 +148,28 @@ function RequestSessionCard({ studentName }: { studentName: string }) {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-foreground">Want a session?</p>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-            Ask a parent or guardian to book a session for you. Copy the message below to share with them.
-          </p>
-          <button
-            onClick={handleCopy}
-            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 transition-all"
-          >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
-            {copied ? "Copied!" : "Copy message for parent"}
-          </button>
+          {!parentId ? (
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+              Ask a parent or guardian to create your account and book a tutoring session for you.
+            </p>
+          ) : state === "sent" ? (
+            <div className="mt-3 flex items-center gap-1.5 text-accent text-xs font-semibold">
+              <CheckCircle2 size={13} /> Request sent to your parent!
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                Tap the button below to notify your parent that you'd like to book a tutoring session.
+              </p>
+              <button
+                onClick={handleRequest}
+                disabled={state === "sending"}
+                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-60 transition-all"
+              >
+                {state === "sending" ? "Sending…" : "Request a session"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -283,7 +300,10 @@ export default function StudentDashboard() {
       {/* Request session card */}
       {!isLoading && (
         <div className="mb-5">
-          <RequestSessionCard studentName={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()} />
+          <RequestSessionCard
+          studentName={`${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim()}
+          parentId={myStudent?.parentId ?? null}
+        />
         </div>
       )}
 

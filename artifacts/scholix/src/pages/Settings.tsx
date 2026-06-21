@@ -1,136 +1,146 @@
-import { useState, useEffect } from "react";
-import { Bell, Mail, CheckCircle, Calendar, BookOpen, Settings as SettingsIcon, Lock, Trash2, Eye, EyeOff, AlertCircle, KeyRound } from "lucide-react";
+import { useState, useEffect, type ElementType } from "react";
+import { Bell, Mail, CheckCircle, Calendar, BookOpen, Settings as SettingsIcon, Lock, Trash2, Eye, EyeOff, AlertCircle, KeyRound, DollarSign, Shield } from "lucide-react";
 
 function getToken() {
   return localStorage.getItem("scholix_token") ?? "";
 }
 
-const EVENT_DESCRIPTIONS = [
-  {
-    icon: BookOpen,
-    title: "Booking confirmation",
-    desc: "When a session is booked — sent to both tutor and parent.",
-    color: "text-primary",
-    bg: "bg-primary/10",
-  },
-  {
-    icon: Bell,
-    title: "Session reminder",
-    desc: "24 hours before a scheduled session starts.",
-    color: "text-purple-600",
-    bg: "bg-purple-100",
-  },
-  {
-    icon: CheckCircle,
-    title: "Session completed",
-    desc: "When a tutor marks a session as complete, including invoice summary.",
-    color: "text-accent",
-    bg: "bg-accent/10",
-  },
+type Prefs = {
+  emailNotificationsEnabled: boolean;
+  notifBookingConfirmation: boolean;
+  notifSessionReminder: boolean;
+  notifSessionCompleted: boolean;
+  notifPaymentConfirmed: boolean;
+  notifApprovalUpdates: boolean;
+};
+
+const DEFAULT_PREFS: Prefs = {
+  emailNotificationsEnabled: true,
+  notifBookingConfirmation: true,
+  notifSessionReminder: true,
+  notifSessionCompleted: true,
+  notifPaymentConfirmed: true,
+  notifApprovalUpdates: true,
+};
+
+const EVENT_PREFS: {
+  key: keyof Omit<Prefs, "emailNotificationsEnabled">;
+  icon: ElementType;
+  title: string;
+  desc: string;
+  color: string;
+  bg: string;
+}[] = [
+  { key: "notifBookingConfirmation", icon: BookOpen, title: "Booking confirmation", desc: "When a session is booked — sent to both tutor and parent.", color: "text-primary", bg: "bg-primary/10" },
+  { key: "notifSessionReminder", icon: Bell, title: "Session reminder", desc: "24 hours before a scheduled session starts.", color: "text-purple-600", bg: "bg-purple-100" },
+  { key: "notifSessionCompleted", icon: CheckCircle, title: "Session completed", desc: "When a tutor marks a session as complete, including invoice summary.", color: "text-accent", bg: "bg-accent/10" },
+  { key: "notifPaymentConfirmed", icon: DollarSign, title: "Payment confirmed", desc: "When your session payment is processed successfully.", color: "text-green-600", bg: "bg-green-100" },
+  { key: "notifApprovalUpdates", icon: Shield, title: "Account & approval updates", desc: "Tutor verification decisions and important account notices.", color: "text-amber-600", bg: "bg-amber-100" },
 ];
 
+function Toggle({ on, onToggle, disabled }: { on: boolean; onToggle: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={disabled}
+      className={`relative w-10 h-5 rounded-full transition-colors focus:outline-none shrink-0 ${on ? "bg-primary" : "bg-muted-foreground/30"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${on ? "translate-x-5" : "translate-x-0"}`} />
+    </button>
+  );
+}
+
 function NotificationsTab() {
-  const [enabled, setEnabled] = useState(true);
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/settings", {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    })
+    fetch("/api/settings", { headers: { Authorization: `Bearer ${getToken()}` } })
       .then((r) => r.json())
-      .then((data) => {
-        setEnabled(data.emailNotificationsEnabled ?? true);
-        setLoading(false);
-      })
+      .then((data) => { setPrefs({ ...DEFAULT_PREFS, ...data }); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
-  const handleToggle = async (next: boolean) => {
-    setEnabled(next);
-    setSaving(true);
-    setSaved(false);
+  const savePref = async (key: keyof Prefs, next: boolean) => {
+    setPrefs((p) => ({ ...p, [key]: next }));
+    setSavingKey(key);
     try {
       await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ emailNotificationsEnabled: next }),
+        body: JSON.stringify({ [key]: next }),
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
     } catch {
-      setEnabled(!next);
+      setPrefs((p) => ({ ...p, [key]: !next }));
     } finally {
-      setSaving(false);
+      setSavingKey(null);
     }
   };
 
+  const masterOn = prefs.emailNotificationsEnabled;
+
   return (
     <div className="space-y-4">
+      {/* Master toggle */}
       <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2 mb-0.5">
             <Mail size={15} className="text-foreground" />
             <h2 className="text-sm font-semibold text-foreground">Email Notifications</h2>
           </div>
-          <p className="text-xs text-muted-foreground">Control whether Scholix sends you email updates</p>
+          <p className="text-xs text-muted-foreground">Master switch for all email updates from Scholix</p>
         </div>
         <div className="px-5 py-4">
           {loading ? (
             <div className="h-10 rounded-lg bg-muted animate-pulse" />
           ) : (
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-foreground">Email notifications</p>
+                <p className="text-sm font-medium text-foreground">
+                  {masterOn ? "Email notifications on" : "All email notifications paused"}
+                </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {enabled ? "You'll receive emails for the events below" : "All email notifications are paused"}
+                  {masterOn ? "Toggle individual events below" : "Turn on to configure per-event preferences"}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                {saved && <span className="text-xs text-accent font-medium">Saved</span>}
-                <button
-                  onClick={() => handleToggle(!enabled)}
-                  disabled={saving}
-                  className={`relative w-12 h-6 rounded-full transition-colors focus:outline-none ${enabled ? "bg-primary" : "bg-muted-foreground/30"} ${saving ? "opacity-60" : ""}`}
-                  aria-label="Toggle email notifications"
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${enabled ? "translate-x-6" : "translate-x-0"}`} />
-                </button>
-              </div>
+              <Toggle
+                on={masterOn}
+                onToggle={() => savePref("emailNotificationsEnabled", !masterOn)}
+                disabled={savingKey === "emailNotificationsEnabled"}
+              />
             </div>
           )}
         </div>
       </div>
 
-      <div className={`bg-card border border-card-border rounded-2xl overflow-hidden transition-opacity ${enabled ? "opacity-100" : "opacity-40"}`}>
+      {/* Per-event toggles */}
+      <div className={`bg-card border border-card-border rounded-2xl overflow-hidden transition-opacity ${masterOn ? "opacity-100" : "opacity-50 pointer-events-none"}`}>
         <div className="px-5 py-3.5 border-b border-border">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email Events</p>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email events</p>
         </div>
         <div className="divide-y divide-border">
-          {EVENT_DESCRIPTIONS.map(({ icon: Icon, title, desc, color, bg }) => (
-            <div key={title} className="flex items-start gap-3 px-5 py-4">
+          {EVENT_PREFS.map(({ key, icon: Icon, title, desc, color, bg }) => (
+            <div key={key} className="flex items-center gap-3 px-5 py-4">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
                 <Icon size={15} className={color} />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground">{title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{desc}</p>
               </div>
-              <div className="ml-auto shrink-0 mt-0.5">
-                {enabled ? (
-                  <span className="text-[10px] font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full">Active</span>
-                ) : (
-                  <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Paused</span>
-                )}
-              </div>
+              <Toggle
+                on={prefs[key]}
+                onToggle={() => savePref(key, !prefs[key])}
+                disabled={!masterOn || savingKey === key}
+              />
             </div>
           ))}
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center mt-2 leading-relaxed">
-        In-app notifications are always on regardless of this setting.
+      <p className="text-xs text-muted-foreground text-center leading-relaxed">
+        In-app notifications are always delivered regardless of these settings.
       </p>
     </div>
   );

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, notificationsTable } from "@workspace/db";
+import { db, notificationsTable, studentsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 
 const router = Router();
@@ -72,6 +72,40 @@ router.delete("/notifications/:id", async (req, res) => {
   await db
     .delete(notificationsTable)
     .where(and(eq(notificationsTable.id, id), eq(notificationsTable.userId, userId)));
+
+  res.json({ ok: true });
+});
+
+// Student requests a session — notifies their parent
+router.post("/notifications/request-session", async (req, res) => {
+  const userId = getUserIdFromToken(req.headers.authorization);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const [student] = await db
+    .select()
+    .from(studentsTable)
+    .where(eq(studentsTable.userId, userId))
+    .limit(1);
+
+  if (!student) {
+    res.status(400).json({ error: "No student profile found for this account" });
+    return;
+  }
+
+  if (!student.parentId) {
+    res.status(400).json({ error: "No parent linked to this student account" });
+    return;
+  }
+
+  await db.insert(notificationsTable).values({
+    userId: student.parentId,
+    type: "session_booked" as any,
+    title: "Session request from your student",
+    message: `${student.firstName} is asking you to book a tutoring session. Browse available tutors to get started.`,
+    actionUrl: "/parent/tutors",
+    actionLabel: "Browse tutors",
+    isRead: false,
+  });
 
   res.json({ ok: true });
 });

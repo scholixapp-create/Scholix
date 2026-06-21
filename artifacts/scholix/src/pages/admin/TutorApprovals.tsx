@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { GraduationCap, CheckCircle, XCircle, Clock, FileText, Download, Eye, Shield, AlertTriangle, ChevronDown } from "lucide-react";
 
 interface TutorWithDocs {
@@ -194,7 +195,12 @@ export default function AdminTutorApprovals() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-bold text-foreground">{tutor.firstName} {tutor.lastName}</p>
+                      <Link
+                        href={`/admin/tutors/${tutor.id}/review`}
+                        className="text-sm font-bold text-foreground hover:text-primary hover:underline transition-colors"
+                      >
+                        {tutor.firstName} {tutor.lastName}
+                      </Link>
                       <StatusBadge status={tutor.verificationStatus} />
                     </div>
                     <p className="text-xs text-muted-foreground">{tutor.email}</p>

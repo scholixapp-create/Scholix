@@ -251,7 +251,7 @@ export default function TutorOnboarding() {
                 <span className="ml-auto text-[10px] font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">Required</span>
               </h2>
               <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
-                As a contractor on Scholix you operate as a sole trader. Your ABN is required for tax and payment purposes under Australian law.
+                As a contractor on Scholix you operate as a sole trader. Your ABN is required for invoicing and tax purposes. If your annual tutoring income exceeds $75,000, you must register for GST and add 10% to your session fees.
               </p>
               <div className="space-y-2">
                 <div>
@@ -267,19 +267,22 @@ export default function TutorOnboarding() {
                   <p className="text-[11px] text-muted-foreground mt-1">11 digits — spaces are fine</p>
                 </div>
                 <a
-                  href="https://abr.business.gov.au/ABN/Default"
+                  href="https://abr.business.gov.au/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                 >
                   <ExternalLink size={11} />
-                  Look up your ABN on the Australian Business Register
+                  Look up or verify your ABN on the Australian Business Register
                 </a>
-                <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                <div className="bg-muted/50 rounded-lg p-3 border border-border space-y-1.5">
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    <strong className="text-foreground">Don't have an ABN?</strong> You can apply for free at{" "}
-                    <a href="https://abr.business.gov.au" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">abr.business.gov.au</a>.
-                    Most applications are processed within minutes. You'll need your Tax File Number (TFN) handy.
+                    <strong className="text-foreground">Don't have an ABN?</strong> Apply for free at{" "}
+                    <a href="https://abr.business.gov.au/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">abr.business.gov.au</a>{" "}
+                    — most applications are approved within minutes. Have your Tax File Number (TFN) ready.
+                  </p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    <strong className="text-foreground">GST note:</strong> If your annual tutoring income exceeds $75,000 you must register for GST. Below this threshold, registration is optional — but you may register voluntarily and claim GST credits.
                   </p>
                 </div>
               </div>

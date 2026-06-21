@@ -19,6 +19,7 @@ import TutorAvailability from "@/pages/tutor/Availability";
 import TutorStudents from "@/pages/tutor/Students";
 import TutorSessions from "@/pages/tutor/Sessions";
 import TutorEarnings from "@/pages/tutor/Earnings";
+import TutorProfilePage from "@/pages/tutor/Profile";
 import ParentDashboard from "@/pages/parent/Dashboard";
 import ParentTutors from "@/pages/parent/Tutors";
 import ParentBook from "@/pages/parent/Book";
@@ -28,6 +29,7 @@ import StudentProgress from "@/pages/student/Progress";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminUsers from "@/pages/admin/Users";
 import AdminTutorApprovals from "@/pages/admin/TutorApprovals";
+import AdminTutorReview from "@/pages/admin/TutorReview";
 import AdminSessions from "@/pages/admin/Sessions";
 import AdminReports from "@/pages/admin/Reports";
 import TutorOnboarding from "@/pages/tutor/Onboarding";
@@ -249,6 +251,11 @@ function Router() {
           </RequireTutorApproved>
         </RequireAuth>
       </Route>
+      <Route path="/tutor/profile">
+        <RequireAuth role="tutor">
+          <Layout><TutorProfilePage /></Layout>
+        </RequireAuth>
+      </Route>
 
       {/* Parent routes */}
       <Route path="/parent/dashboard">
@@ -309,6 +316,11 @@ function Router() {
       <Route path="/admin/users">
         <RequireAuth role="admin">
           <Layout><AdminUsers /></Layout>
+        </RequireAuth>
+      </Route>
+      <Route path="/admin/tutors/:id/review">
+        <RequireAuth role="admin">
+          <Layout><AdminTutorReview /></Layout>
         </RequireAuth>
       </Route>
       <Route path="/admin/tutors">

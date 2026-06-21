@@ -2,7 +2,7 @@ import { Router, Request } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { db, tutorsTable, tutorDocumentsTable, usersTable } from "@workspace/db";
+import { db, tutorsTable, tutorDocumentsTable, usersTable, notificationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../lib/authMiddleware";
 
@@ -231,13 +231,13 @@ router.get("/admin/tutors/all", requireAdmin, async (_req, res) => {
 router.post("/admin/tutors/:tutorId/verify", requireAdmin, async (req, res) => {
   const tutorId = parseInt(req.params["tutorId"] as string, 10);
   const { action, notes, method } = req.body as {
-    action: "approve" | "reject";
+    action: "approve" | "reject" | "request_info";
     notes?: string;
     method?: string;
   };
 
-  if (!["approve", "reject"].includes(action)) {
-    res.status(400).json({ error: "action must be 'approve' or 'reject'" });
+  if (!["approve", "reject", "request_info"].includes(action)) {
+    res.status(400).json({ error: "action must be 'approve', 'reject', or 'request_info'" });
     return;
   }
 
@@ -251,7 +251,10 @@ router.post("/admin/tutors/:tutorId/verify", requireAdmin, async (req, res) => {
     } catch { /* noop */ }
   }
 
-  const verificationStatus = action === "approve" ? "verified" : "rejected";
+  const verificationStatus =
+    action === "approve" ? "verified" :
+    action === "request_info" ? "info_requested" :
+    "rejected";
   const isApproved = action === "approve";
 
   await db
@@ -265,6 +268,35 @@ router.post("/admin/tutors/:tutorId/verify", requireAdmin, async (req, res) => {
       wwccVerificationNotes: notes ?? null,
     })
     .where(eq(tutorsTable.id, tutorId));
+
+  // Notify the tutor of the decision
+  const [tutorRow] = await db
+    .select({ userId: tutorsTable.userId })
+    .from(tutorsTable)
+    .where(eq(tutorsTable.id, tutorId))
+    .limit(1);
+
+  if (tutorRow?.userId) {
+    const notifTitle =
+      action === "approve" ? "Account approved ✓" :
+      action === "request_info" ? "More information required" :
+      "Verification update";
+    const notifMessage =
+      action === "approve"
+        ? "Your tutor account has been verified. You can now appear in search results and accept bookings."
+        : action === "request_info"
+        ? notes ? `Our team needs more information: ${notes}` : "Our team has requested additional information to complete your verification."
+        : notes ? `Your application was not approved: ${notes}` : "Your verification application was not approved. Please resubmit with updated documents.";
+    await db.insert(notificationsTable).values({
+      userId: tutorRow.userId,
+      type: action === "approve" ? ("session_completed" as any) : ("action_upload_notes" as any),
+      title: notifTitle,
+      message: notifMessage,
+      actionUrl: action === "approve" ? "/tutor/dashboard" : "/tutor/onboarding",
+      actionLabel: action === "approve" ? "Go to dashboard" : "Update application",
+      isRead: false,
+    });
+  }
 
   res.json({ success: true, verificationStatus });
 });
