@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startScheduler } from "./lib/scheduler";
 import { seedAdminUser } from "./lib/adminSeed";
+import { seedAcademyArticles } from "./lib/seedAcademy";
 
 const rawPort = process.env["PORT"];
 
@@ -20,6 +21,7 @@ if (Number.isNaN(port) || port <= 0) {
 async function start() {
   // Seed admin BEFORE accepting requests
   await seedAdminUser();
+  await seedAcademyArticles();
 
   app.listen(port, (err) => {
     if (err) {

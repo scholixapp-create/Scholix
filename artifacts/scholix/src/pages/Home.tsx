@@ -666,6 +666,130 @@ function Trust() {
   );
 }
 
+// ── Teach. Earn. Grow. ─────────────────────────────────────────────────────
+
+function TeachEarnGrow() {
+  const pillars = [
+    {
+      icon: GraduationCap,
+      title: "Teach",
+      color: "bg-primary/10 text-primary",
+      desc: "Deliver verified, professional sessions to students across Australia. Set your own subjects, your own availability, and your own style.",
+      points: [
+        "Admin-verified WWCC for every tutor",
+        "Session management built in",
+        "Progress notes and student tracking",
+      ],
+    },
+    {
+      icon: TrendingUp,
+      title: "Earn",
+      color: "bg-accent/10 text-accent",
+      desc: "Start at 70% of every session — and keep more as you grow. Our tier system rewards commitment with lower commissions.",
+      points: [
+        "30% → 15% platform fee as you level up",
+        "First student & first session are commission-free",
+        "Minimum $65/hr rate protects your value",
+      ],
+    },
+    {
+      icon: Zap,
+      title: "Grow",
+      color: "bg-violet-100 text-violet-600",
+      desc: "Access the Scholix Academy — free guides on ABN basics, tax obligations, pricing strategy, and building a sustainable tutoring business.",
+      points: [
+        "Tax & GST guides for contractors",
+        "Pricing and student acquisition strategy",
+        "Professional development modules",
+      ],
+    },
+  ];
+
+  return (
+    <section className="py-24 bg-[#f9fafb]">
+      <div className="max-w-6xl mx-auto px-5 sm:px-8">
+        <FadeUp className="text-center mb-16">
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">For tutors</p>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2240] tracking-tight">
+            Teach. Earn.{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-emerald-400">
+              Grow.
+            </span>
+          </h2>
+          <p className="text-gray-500 text-sm mt-3 max-w-lg mx-auto">
+            Scholix isn't just a booking tool. It's a complete ecosystem to help you build a thriving, sustainable tutoring business — from day one.
+          </p>
+        </FadeUp>
+
+        <motion.div
+          variants={stagger(0.1)}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-60px" }}
+          className="grid md:grid-cols-3 gap-6 mb-12"
+        >
+          {pillars.map((p) => (
+            <motion.div
+              key={p.title}
+              variants={fadeUp}
+              className="bg-white rounded-3xl border border-gray-100 p-8 flex flex-col"
+            >
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 ${p.color}`}>
+                <p.icon size={22} />
+              </div>
+              <h3 className="text-2xl font-extrabold text-[#0f2240] mb-3">{p.title}</h3>
+              <p className="text-sm text-gray-500 leading-relaxed mb-5">{p.desc}</p>
+              <ul className="space-y-2 mt-auto">
+                {p.points.map((point) => (
+                  <li key={point} className="flex items-start gap-2 text-sm text-gray-700">
+                    <CheckCircle size={14} className="text-accent shrink-0 mt-0.5" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Commission tiers */}
+        <FadeUp delay={0.1}>
+          <div className="bg-[#0f2240] rounded-3xl p-8 text-white">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-8">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-blue-300 mb-2">Commission tiers</p>
+                <h3 className="text-2xl font-extrabold">The more you tutor, the more you keep</h3>
+                <p className="text-white/50 text-sm mt-1">Tier resets never. Progress always carries forward.</p>
+              </div>
+              <Link
+                href="/signup"
+                className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-all shadow-lg shadow-primary/30"
+              >
+                Start earning <ArrowRight size={15} />
+              </Link>
+            </div>
+            <div className="grid sm:grid-cols-4 gap-3">
+              {[
+                { tier: "Starter", sessions: "0–9", fee: "30%", keep: "70%", color: "bg-white/5" },
+                { tier: "Growth", sessions: "10–24", fee: "25%", keep: "75%", color: "bg-white/8" },
+                { tier: "Established", sessions: "25–49", fee: "20%", keep: "80%", color: "bg-white/10" },
+                { tier: "Expert", sessions: "50+", fee: "15%", keep: "85%", color: "bg-accent/15 border-accent/30" },
+              ].map((t) => (
+                <div key={t.tier} className={`rounded-2xl border border-white/10 p-4 ${t.color}`}>
+                  <p className="text-xs font-semibold text-white/50 mb-1">{t.sessions} sessions</p>
+                  <p className="text-base font-extrabold text-white">{t.tier}</p>
+                  <p className="text-2xl font-extrabold text-accent mt-2">{t.keep}</p>
+                  <p className="text-[11px] text-white/40 mt-0.5">you keep · {t.fee} fee</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-white/30 mt-4 text-center">First student pair: 0% commission forever · First session with any new student: always free</p>
+          </div>
+        </FadeUp>
+      </div>
+    </section>
+  );
+}
+
 // ── Final CTA ──────────────────────────────────────────────────────────────
 
 function FinalCTA() {
@@ -776,9 +900,10 @@ function Footer() {
             <div>
               <p className="text-white font-semibold mb-4">Legal</p>
               <ul className="space-y-2.5">
-                <li><a href="#" className="hover:text-white transition-colors">Terms</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacy</a></li>
-                <li><a href="mailto:hello@scholix.app" className="hover:text-white transition-colors">Contact</a></li>
+                <li><Link href="/terms" className="hover:text-white transition-colors">Terms</Link></li>
+                <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link></li>
+                <li><Link href="/tutor-agreement" className="hover:text-white transition-colors">Tutor Agreement</Link></li>
+                <li><a href="mailto:support@scholix.com.au" className="hover:text-white transition-colors">Contact</a></li>
               </ul>
             </div>
           </div>
@@ -808,6 +933,7 @@ function LandingPage() {
       <SocialProof />
       <Features />
       <Trust />
+      <TeachEarnGrow />
       <FinalCTA />
       <Footer />
     </div>

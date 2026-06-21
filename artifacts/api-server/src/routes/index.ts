@@ -13,6 +13,7 @@ import progressRouter from "./progress";
 import settingsRouter from "./settings";
 import reviewsRouter from "./reviews";
 import reportsRouter from "./reports";
+import academyRouter from "./academy";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(invoicesRouter);
 router.use(settingsRouter);
 router.use(reviewsRouter);
 router.use(reportsRouter);
+router.use(academyRouter);
 
 export default router;

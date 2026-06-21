@@ -39,6 +39,10 @@ import TutorProfile from "@/pages/TutorProfile";
 import Settings from "@/pages/Settings";
 import About from "@/pages/About";
 import { ProfileMe, ProfileById } from "@/pages/Profile";
+import TutorCodeOfConduct from "@/pages/TutorCodeOfConduct";
+import TutorAcademy from "@/pages/tutor/Academy";
+import AcademyArticle from "@/pages/tutor/AcademyArticle";
+import AdminAcademy from "@/pages/admin/Academy";
 import { Clock, XCircle, AlertTriangle } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -207,6 +211,7 @@ function Router() {
       <Route path="/terms" component={Terms} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/tutor-agreement" component={TutorAgreementPage} />
+      <Route path="/tutor/code-of-conduct" component={TutorCodeOfConduct} />
 
       {/* Tutor onboarding */}
       <Route path="/tutor/onboarding">
@@ -254,6 +259,20 @@ function Router() {
       <Route path="/tutor/profile">
         <RequireAuth role="tutor">
           <Layout><TutorProfilePage /></Layout>
+        </RequireAuth>
+      </Route>
+      <Route path="/tutor/academy/:id">
+        <RequireAuth role="tutor">
+          <RequireTutorApproved>
+            <Layout><AcademyArticle /></Layout>
+          </RequireTutorApproved>
+        </RequireAuth>
+      </Route>
+      <Route path="/tutor/academy">
+        <RequireAuth role="tutor">
+          <RequireTutorApproved>
+            <Layout><TutorAcademy /></Layout>
+          </RequireTutorApproved>
         </RequireAuth>
       </Route>
 
@@ -336,6 +355,11 @@ function Router() {
       <Route path="/admin/reports">
         <RequireAuth role="admin">
           <Layout><AdminReports /></Layout>
+        </RequireAuth>
+      </Route>
+      <Route path="/admin/academy">
+        <RequireAuth role="admin">
+          <Layout><AdminAcademy /></Layout>
         </RequireAuth>
       </Route>
 

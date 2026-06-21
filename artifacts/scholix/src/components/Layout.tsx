@@ -23,6 +23,8 @@ import {
   Flag,
   UserCircle,
   Info,
+  Sparkles,
+  User,
 } from "lucide-react";
 
 interface NavItem {
@@ -38,6 +40,8 @@ function getTutorNav(): NavItem[] {
     { href: "/tutor/earnings", label: "Your Growth", icon: <DollarSign size={18} /> },
     { href: "/tutor/students", label: "Students", icon: <Users size={18} /> },
     { href: "/tutor/availability", label: "Availability", icon: <Clock size={18} /> },
+    { href: "/tutor/profile", label: "My Profile", icon: <User size={18} /> },
+    { href: "/tutor/academy", label: "Scholix Academy", icon: <Sparkles size={18} /> },
   ];
 }
 
@@ -65,6 +69,7 @@ function getAdminNav(): NavItem[] {
     { href: "/admin/tutors", label: "Tutors", icon: <GraduationCap size={18} /> },
     { href: "/admin/sessions", label: "Sessions", icon: <Calendar size={18} /> },
     { href: "/admin/reports", label: "Reports", icon: <Flag size={18} /> },
+    { href: "/admin/academy", label: "Academy CMS", icon: <Sparkles size={18} /> },
   ];
 }
 

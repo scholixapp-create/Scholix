@@ -1,0 +1,391 @@
+Act as a startup legal operations designer and update the Scholix legal agreement system.
+
+The goal is to make the agreements suitable for a scalable Australian tutoring marketplace platform.
+
+Do not create overly restrictive language. Make the documents professional, parent-friendly and tutor-friendly.
+
+Update the following:
+
+1. Terms of Service
+
+Rewrite/update to include:
+
+Platform role:
+- Scholix is a technology marketplace connecting tutors, parents and students.
+- Scholix provides scheduling, verification, communication and payment infrastructure.
+- Scholix does not directly employ tutors.
+
+Tutor independence:
+- Tutors control their own availability, teaching methods, rates (within platform rules), and professional development.
+- Tutors are independent contractors.
+
+Payment system:
+Include future-ready wording:
+
+- Parents pay through Scholix payment infrastructure.
+- Scholix deducts platform fees/commission.
+- Tutors receive payouts according to platform payout rules.
+- Refunds, disputes and payment processing may be handled through Scholix.
+
+Beta mode:
+Keep current beta wording:
+- payments may be simulated
+- users may need to arrange payments separately during beta
+
+Tutor requirements:
+Include:
+- valid WWCC where required
+- accurate qualifications
+- professional conduct
+- ABN/tax responsibilities
+- safeguarding requirements
+
+Prohibited conduct:
+Add:
+- harassment
+- inappropriate communication
+- discrimination
+- academic cheating
+- completing assessments/exams on behalf of students
+- misuse of student data
+- attempting to bypass Scholix fees
+
+Safety:
+Add:
+- users can report safety concerns
+- Scholix may investigate and suspend accounts
+
+Limitation:
+Keep reasonable limitation wording but avoid claiming Scholix has zero responsibility.
+
+Update contact emails:
+support@scholix.com.au
+privacy@scholix.com.au
+legal@scholix.com.au
+
+
+2. Tutor Agreement
+
+Rewrite to include:
+
+Independent contractor:
+- not employee
+- responsible for tax obligations
+- responsible for superannuation where applicable
+- responsible for insurance
+
+Tutor responsibilities:
+- maintain accurate profile
+- arrive prepared
+- provide quality tutoring
+- update progress notes
+- maintain confidentiality
+
+Add academic integrity:
+
+Tutors must not:
+- complete graded work for students
+- assist with cheating
+- misrepresent student work
+
+Add communication rules:
+
+- communicate professionally
+- do not request inappropriate private contact
+- do not move clients off platform to avoid fees
+
+Payment:
+
+Future:
+- parents pay Scholix
+- commission deducted
+- tutor receives payout
+
+Beta:
+- direct payment may temporarily occur
+
+Add tutor growth section:
+
+Tutors can increase earnings through:
+- completing teaching modules
+- improving ratings
+- teaching more sessions
+- group sessions
+- higher demand subjects
+
+Add termination:
+
+Immediate suspension possible for:
+- WWCC expiry
+- misconduct
+- fraud
+- safety concerns
+
+
+3. Privacy Policy
+
+Update to include:
+
+Personal data:
+- account details
+- tutor verification data
+- student learning information
+- payment records
+
+Security:
+Add:
+- encryption in transit
+- encryption at rest where supported
+- role-based access
+- access logging for sensitive verification documents
+
+WWCC:
+Clarify:
+- WWCC documents are only accessible by authorised administrators
+- never public
+- access may be logged
+- deleted according to retention schedule
+
+Third parties:
+Mention:
+- database providers
+- email providers
+- payment providers
+- cloud storage providers
+
+User rights:
+Include:
+- access
+- correction
+- deletion requests
+
+Update emails:
+
+privacy@scholix.com.au
+
+
+4. Add tutor agreement acceptance tracking
+
+Ensure database records:
+
+agreement version
+timestamp
+user id
+IP address
+
+For:
+- Terms of Service
+- Privacy Policy
+- Tutor Agreement
+- Tutor Code of Conduct
+
+
+5. Add a Tutor Code of Conduct page
+
+Include:
+
+Professional teaching standards:
+- respect
+- punctuality
+- preparation
+- appropriate boundaries
+- safeguarding
+- inclusive teaching
+
+Require acceptance before tutor approval.
+
+
+Do not remove beta language, but structure documents so they can transition into production payments later without rewriting.
+
+THEN
+
+Act as a senior full-stack engineer and product strategist.
+
+Build a scalable "Tutor Growth Hub" inside Scholix called:
+
+👉 Tutor Handbook / Scholix Academy
+
+This is NOT just a static help page.
+
+It is a core strategic feature that:
+- helps tutors grow their income
+- improves tutor quality
+- increases platform retention
+- strengthens Scholix brand positioning as a "business enablement platform for tutors"
+
+---
+
+# 1. Feature Overview
+
+Create a new section accessible to tutors:
+
+Route:
+/academy (or /tutor/academy if role-scoped)
+
+This should be:
+- mobile responsive
+- clean, modern UI
+- blog/article style system
+- admin-editable content
+
+---
+
+# 2. Content Structure
+
+Create a database-backed content system:
+
+Table: tutor_articles
+
+Fields:
+- id
+- title
+- category (enum)
+- content (rich text / markdown)
+- type (article | video | mixed)
+- videoUrl (optional)
+- createdAt
+- updatedAt
+- isPublished
+- author (admin only for now)
+
+---
+
+# 3. Categories (must be pre-seeded)
+
+Create these categories:
+
+- ABN Basics
+- Tax Responsibilities
+- GST Explained
+- Superannuation Basics
+- Setting Aside Tax
+- Pricing Strategy
+- Professional Tutoring Tips
+- Business Growth
+- Student Acquisition
+- Teaching Methods
+
+---
+
+# 4. Tutor UI (/academy)
+
+Create:
+
+A. Main Academy page:
+- category filters
+- search bar
+- article cards
+- featured "recommended for you" section
+
+B. Article page:
+- title
+- category tag
+- readable content layout
+- optional embedded video
+- "related articles" section
+
+C. Simple UX tone:
+- "Learn how to grow your tutoring income"
+- "Build your own tutoring business with Scholix"
+
+---
+
+# 5. Admin CMS (IMPORTANT)
+
+Add admin-only interface:
+
+/admin/academy
+
+Must allow:
+- create article
+- edit article
+- delete article
+- upload video link (YouTube/Vimeo/embed only)
+- publish/unpublish toggle
+
+No need for full rich text editor initially — markdown is fine.
+
+---
+
+# 6. Tutor Growth Integration (IMPORTANT PRODUCT FEATURE)
+
+Integrate academy into tutor dashboard:
+
+Add a "Grow Your Earnings" section that includes:
+- recommended articles
+- "increase your rate" guidance
+- "get more students" tips
+- badge system placeholder
+
+This should directly link academy content.
+
+---
+
+# 7. Marketing Integration (VERY IMPORTANT)
+
+Update landing page (/Home) to include:
+
+Section:
+"Teach. Earn. Grow."
+
+Explain:
+Scholix is not just a booking platform — it helps tutors build independent tutoring businesses.
+
+Include:
+- Tutor Academy
+- Business training
+- Pricing guidance
+- Student acquisition support
+
+This is a key differentiator vs other tutoring marketplaces.
+
+---
+
+# 8. Safety / Disclaimer
+
+At the bottom of every academy page:
+
+Add disclaimer:
+
+"Scholix provides educational content for general business and tutoring guidance only. This does not constitute financial, tax, or legal advice. Tutors are responsible for their own compliance obligations."
+
+---
+
+# 9. Future Expansion (DO NOT BUILD YET)
+
+Leave placeholders for:
+
+- video courses
+- tutor certification badges
+- AI tutoring coach
+- onboarding learning paths
+- quizzes / completion tracking
+
+---
+
+# 10. Goal of this Feature
+
+This system should position Scholix as:
+
+👉 "A tutoring marketplace + business operating system for independent tutors"
+
+NOT just:
+- booking software
+- marketplace listing site
+
+---
+
+# 11. Technical Requirements
+
+- use existing auth system
+- admin-only write access
+- tutors read-only access
+- ensure security via role-based guards
+- integrate with existing database patterns (Drizzle ORM)
+- no breaking changes to booking/payment system
+
+---
+
+Build this as a production-ready module that fits into the existing Scholix architecture cleanly.
+
+Provide a summary of updates

@@ -271,6 +271,34 @@ function GrowEarningsSection({
             </p>
           </div>
         </div>
+
+        {/* 5 — Scholix Academy */}
+        <div className="bg-gradient-to-br from-primary/5 to-violet-50 border border-primary/20 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <BookOpen size={14} className="text-primary" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">Scholix Academy</p>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">Free</span>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+            Guides on ABN basics, tax obligations, pricing strategy, and building a sustainable tutoring business.
+          </p>
+          <div className="grid grid-cols-2 gap-1.5 mb-3">
+            {["ABN Basics", "Tax Responsibilities", "Pricing Strategy", "Student Acquisition"].map((topic) => (
+              <div key={topic} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Star size={9} className="text-primary shrink-0" />
+                {topic}
+              </div>
+            ))}
+          </div>
+          <Link
+            href="/tutor/academy"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+          >
+            Open Academy <ChevronRight size={11} />
+          </Link>
+        </div>
       </div>
     </div>
   );
