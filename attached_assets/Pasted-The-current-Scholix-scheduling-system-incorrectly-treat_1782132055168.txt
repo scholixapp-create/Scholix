@@ -1,0 +1,324 @@
+The current Scholix scheduling system incorrectly treats tutor availability ranges as bookable blocks.
+
+Example current behaviour:
+Tutor sets availability:
+Monday 10:00 - 14:00
+
+The system creates one 4-hour slot.
+
+Parents can only book the entire 4-hour block.
+
+This is incorrect.
+
+Redesign the availability and booking engine to work like a professional tutoring marketplace.
+
+Goal:
+
+Tutors define their AVAILABLE WINDOWS.
+
+Parents select a SESSION LENGTH and book any available time inside those windows.
+
+Example:
+
+Tutor availability:
+Monday:
+10:00 - 14:00
+
+Tutor session lengths offered:
+60 minutes
+90 minutes
+
+Parent sees:
+
+10:00 - 11:00 Available
+11:00 - 12:00 Available
+12:00 - 1:00 Available
+1:00 - 2:00 Available
+
+For 90 minutes:
+
+10:00 - 11:30 Available
+10:30 - 12:00 Available
+11:00 - 12:30 Available
+11:30 - 1:00 Available
+12:00 - 1:30 Available
+12:30 - 2:00 Available
+
+Only show valid options.
+
+---
+
+DATABASE CHANGES
+
+Review existing availability schema.
+
+Separate:
+
+1. Tutor availability rules
+
+Stores recurring availability:
+
+Example:
+
+availability_rules
+
+id
+tutor_id
+day_of_week
+start_time
+end_time
+timezone
+active
+
+
+Example:
+
+Sarah
+Wednesday
+16:00
+20:00
+
+
+2. Tutor booking settings
+
+Store:
+
+minimum session length
+allowed durations
+
+Example:
+
+60 minutes
+90 minutes
+
+Tutor can choose:
+
+☑ 60 minutes
+☑ 90 minutes
+
+---
+
+3. Generated booking slots
+
+Create a system that generates available slots dynamically.
+
+Do NOT permanently create thousands of slots.
+
+Instead:
+
+Calculate availability:
+
+Tutor availability window
+MINUS
+existing booked sessions
+MINUS
+blocked times
+
+
+Return available times.
+
+---
+
+BOOKING LOGIC
+
+When parent selects:
+
+Tutor:
+Sarah Chen
+
+Date:
+Wednesday
+
+Time:
+5:00 PM
+
+Duration:
+60 minutes
+
+System must:
+
+1. Check availability
+2. Check no overlapping session exists
+3. Temporarily reserve slot
+4. Create pending booking
+5. Generate invoice
+6. Process payment
+7. Confirm booking
+
+
+If payment fails:
+
+Release slot.
+
+---
+
+OVERLAP PROTECTION
+
+Implement conflict checking.
+
+A tutor cannot have:
+
+Session A:
+4:00-5:30
+
+and
+
+Session B:
+5:00-6:00
+
+
+Prevent overlapping bookings.
+
+Return:
+
+"That time is no longer available."
+
+---
+
+TUTOR EXPERIENCE
+
+Tutor availability page should show:
+
+Weekly schedule:
+
+Monday
+[Available]
+9:00 AM — 12:00 PM
+
+Tuesday
+[Available]
+4:00 PM — 8:00 PM
+
+
+Tutor can:
+
+Add availability window
+Edit availability window
+Delete availability window
+
+
+Tutor should NOT manually create every slot.
+
+---
+
+PARENT EXPERIENCE
+
+Booking page:
+
+Replace manual date/time inputs.
+
+New flow:
+
+1.
+Select tutor
+
+2.
+Select subject
+
+Only show tutor's subjects
+
+3.
+Select duration
+
+60 min
+90 min
+
+4.
+Calendar appears
+
+Available dates highlighted
+
+5.
+Available times shown as buttons
+
+
+Example:
+
+Wednesday 14 May
+
+Available:
+
+4:00 PM
+5:00 PM
+6:30 PM
+
+
+Unavailable times hidden.
+
+---
+
+ADMIN EXPERIENCE
+
+Admin should be able to view:
+
+Tutor calendar
+
+All bookings
+
+Blocked times
+
+Conflicts
+
+
+---
+
+NOTIFICATIONS
+
+When booking confirmed:
+
+Tutor receives:
+
+"New booking:
+Student:
+Subject:
+Date:
+Time:
+Duration"
+
+Parent receives confirmation.
+
+---
+
+TEST CASES
+
+Create automated/manual tests:
+
+Tutor:
+Availability:
+Monday 10-2
+
+Parent:
+
+Book:
+10-11 → works
+
+Book:
+11-12 → works
+
+Book:
+1-2 → works
+
+Book:
+2-3 → blocked
+
+
+Then create booking:
+
+11-12
+
+Attempt second booking:
+
+11:30-12:30
+
+Must fail.
+
+---
+
+Keep existing:
+- commission system
+- invoices
+- payment flow
+- tutor rates
+- first session free logic
+
+Only replace scheduling logic.

@@ -147,14 +147,47 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect) {
   };
 }
 
-router.get("/sessions/summary", async (req, res) => {
+router.get("/sessions/summary", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
   const params = ListSessionsQueryParams.safeParse(req.query);
   const tutorId = params.success ? params.data.tutorId : undefined;
   const studentId = params.success ? params.data.studentId : undefined;
 
   const conditions = [];
-  if (tutorId) conditions.push(eq(sessionsTable.tutorId, tutorId));
-  if (studentId) conditions.push(eq(sessionsTable.studentId, studentId));
+
+  if (user.role === "parent") {
+    // Only count sessions for this parent's children
+    const children = await db
+      .select({ id: studentsTable.id })
+      .from(studentsTable)
+      .where(eq(studentsTable.parentId, user.id));
+    const childIds = children.map((c) => c.id);
+    if (childIds.length === 0) {
+      res.json({ scheduled: 0, completed: 0, cancelled: 0, total: 0 });
+      return;
+    }
+    if (studentId && childIds.includes(studentId)) {
+      conditions.push(eq(sessionsTable.studentId, studentId));
+    } else {
+      conditions.push(inArray(sessionsTable.studentId, childIds));
+    }
+  } else if (user.role === "tutor") {
+    const [tutorRow] = await db
+      .select({ id: tutorsTable.id })
+      .from(tutorsTable)
+      .where(eq(tutorsTable.userId, user.id))
+      .limit(1);
+    if (!tutorRow) {
+      res.json({ scheduled: 0, completed: 0, cancelled: 0, total: 0 });
+      return;
+    }
+    conditions.push(eq(sessionsTable.tutorId, tutorRow.id));
+  } else {
+    // admin — can filter by tutorId or studentId query param
+    if (tutorId) conditions.push(eq(sessionsTable.tutorId, tutorId));
+    if (studentId) conditions.push(eq(sessionsTable.studentId, studentId));
+  }
+
   // Exclude pending_payment from summary counts
   conditions.push(inArray(sessionsTable.status, ["scheduled", "completed", "cancelled"]));
 
