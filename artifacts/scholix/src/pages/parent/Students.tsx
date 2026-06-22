@@ -5,18 +5,23 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import {
   GraduationCap, Plus, X, CheckCircle, AlertCircle, User,
-  TrendingUp, ChevronDown, ChevronUp, Calendar, Star, Shield,
+  TrendingUp, ChevronDown, ChevronUp, Star, Shield, BookOpen,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
-function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
-
-const GRADE_LEVELS = [
+const YEAR_LEVELS = [
   "Prep",
   "Year 1", "Year 2", "Year 3", "Year 4", "Year 5", "Year 6",
   "Year 7", "Year 8", "Year 9", "Year 10",
   "VCE Year 11", "VCE Year 12",
   "Other",
+];
+
+const SUBJECT_OPTIONS = [
+  "Maths", "English", "Science", "Biology", "Chemistry", "Physics",
+  "History", "Geography", "Economics", "Accounting", "Legal Studies",
+  "Psychology", "Further Maths", "Specialist Maths", "Literature",
+  "French", "Japanese", "Chinese", "Music", "Art", "PE",
 ];
 
 interface ProgressEntry {
@@ -29,6 +34,8 @@ interface ProgressEntry {
   durationMinutes: number;
   createdAt: string;
 }
+
+function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
 
 function ScoreBar({ score }: { score: number }) {
   const pct = (score / 10) * 100;
@@ -78,7 +85,6 @@ function ProgressTimeline({ studentId }: { studentId: number }) {
     );
   }
 
-  // Compute trend: last 3 avg vs earlier avg
   const avgScore = entries.reduce((s, e) => s + e.score, 0) / entries.length;
   const recent3 = entries.slice(0, 3);
   const recent3Avg = recent3.reduce((s, e) => s + e.score, 0) / recent3.length;
@@ -87,7 +93,6 @@ function ProgressTimeline({ studentId }: { studentId: number }) {
 
   return (
     <div className="mt-3 space-y-3">
-      {/* Trend summary */}
       <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border">
         <div className="text-center shrink-0">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg Score</p>
@@ -107,11 +112,10 @@ function ProgressTimeline({ studentId }: { studentId: number }) {
         </div>
       </div>
 
-      {/* Timeline entries */}
       <div className="relative">
         <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
         <div className="space-y-3 pl-8">
-          {entries.map((entry, idx) => {
+          {entries.map((entry) => {
             const scoreColor = entry.score <= 3 ? "bg-red-400" : entry.score <= 5 ? "bg-amber-400" : entry.score <= 7 ? "bg-primary" : "bg-accent";
             return (
               <div key={entry.id} className="relative">
@@ -149,9 +153,11 @@ interface StudentCardProps {
   student: {
     id: number;
     firstName: string;
-    lastName: string;
-    email: string;
-    gradeLevel: string | null;
+    lastName?: string | null;
+    yearLevel?: string | null;
+    school?: string | null;
+    subjects?: string | null;
+    goals?: string | null;
     dateOfBirth?: string | null;
     isIdentityVerified?: boolean;
     createdAt: string;
@@ -160,7 +166,16 @@ interface StudentCardProps {
 
 function StudentCard({ student }: StudentCardProps) {
   const [showProgress, setShowProgress] = useState(false);
-  const initials = `${student.firstName[0]}${student.lastName[0]}`.toUpperCase();
+  const initials = student.lastName
+    ? `${student.firstName[0]}${student.lastName[0]}`.toUpperCase()
+    : student.firstName.slice(0, 2).toUpperCase();
+  const displayName = student.lastName
+    ? `${student.firstName} ${student.lastName}`
+    : student.firstName;
+
+  const subjectList = student.subjects
+    ? student.subjects.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
 
   return (
     <div className="bg-card border border-card-border rounded-xl overflow-hidden">
@@ -169,21 +184,32 @@ function StudentCard({ student }: StudentCardProps) {
           <span className="text-sm font-bold text-primary">{initials}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-semibold text-foreground">{student.firstName} {student.lastName}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-foreground">{displayName}</p>
             {student.isIdentityVerified && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-accent/10 text-accent text-[10px] font-semibold">
                 <Shield size={9} /> Verified
               </span>
             )}
           </div>
-          {student.gradeLevel && (
+          {student.yearLevel && (
             <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-medium">
-              {student.gradeLevel}
+              {student.yearLevel}
             </span>
           )}
-          <p className="text-xs text-muted-foreground mt-1.5">{student.email}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
+          {student.school && (
+            <p className="text-xs text-muted-foreground mt-1">{student.school}</p>
+          )}
+          {subjectList.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {subjectList.map((s) => (
+                <span key={s} className="px-1.5 py-0.5 rounded bg-muted text-[10px] text-muted-foreground font-medium">
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground mt-1.5">
             Added {format(parseISO(student.createdAt), "MMM d, yyyy")}
           </p>
         </div>
@@ -196,6 +222,14 @@ function StudentCard({ student }: StudentCardProps) {
           {showProgress ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         </button>
       </div>
+
+      {student.goals && (
+        <div className="px-4 pb-3 -mt-1">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            <span className="font-medium text-foreground">Goals: </span>{student.goals}
+          </p>
+        </div>
+      )}
 
       {showProgress && (
         <div className="px-4 pb-4 border-t border-border pt-3">
@@ -222,11 +256,19 @@ function AddStudentModal({
   const createStudent = useCreateStudent();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [gradeLevel, setGradeLevel] = useState("");
+  const [yearLevel, setYearLevel] = useState("");
+  const [school, setSchool] = useState("");
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [goals, setGoals] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
+
+  const toggleSubject = (sub: string) => {
+    setSelectedSubjects((prev) =>
+      prev.includes(sub) ? prev.filter((s) => s !== sub) : [...prev, sub]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,16 +277,18 @@ function AddStudentModal({
     createStudent.mutate(
       {
         data: {
-          firstName,
-          lastName,
-          email,
-          gradeLevel: gradeLevel || undefined,
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || undefined,
+          yearLevel: yearLevel || undefined,
+          school: school.trim() || undefined,
+          subjects: selectedSubjects.length > 0 ? selectedSubjects.join(", ") : undefined,
+          goals: goals.trim() || undefined,
+          dateOfBirth: dateOfBirth || undefined,
           parentId,
-        },
+        } as any,
       },
       {
         onSuccess: async (newStudent) => {
-          // If DOB + declaration provided, mark identity verified
           if (dateOfBirth && verified && newStudent?.id) {
             try {
               await fetch(`/api/students/${newStudent.id}/verify-identity`, {
@@ -270,10 +314,10 @@ function AddStudentModal({
         className="w-full max-w-sm bg-card border border-card-border rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border sticky top-0 bg-card">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border sticky top-0 bg-card z-10">
           <div>
-            <h2 className="text-base font-bold text-foreground">Add a student</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Enter your child's details</p>
+            <h2 className="text-base font-bold text-foreground">Add student profile</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">No account needed — you manage everything</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <X size={16} className="text-muted-foreground" />
@@ -288,65 +332,116 @@ function AddStudentModal({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">First name</label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Emma"
-                required
-                className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-foreground mb-1.5">Last name</label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Smith"
-                required
-                className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-              />
+          {/* Explanation banner */}
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/15">
+            <BookOpen size={14} className="text-primary mt-0.5 shrink-0" />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Students don't need their own account. You manage bookings and payments on their behalf.
+            </p>
+          </div>
+
+          {/* Required fields */}
+          <div>
+            <p className="text-xs font-semibold text-foreground mb-3">Required</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1.5">First name</label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Emma"
+                  required
+                  className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1.5">
+                  Last name <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Smith"
+                  className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
+                />
+              </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">Email address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="emma@example.com"
-              required
-              className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">Used for session reminders and communication</p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-foreground mb-1.5">
-              Grade level <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Year level</label>
             <select
-              value={gradeLevel}
-              onChange={(e) => setGradeLevel(e.target.value)}
+              value={yearLevel}
+              onChange={(e) => setYearLevel(e.target.value)}
+              required
               className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">Select grade...</option>
-              {GRADE_LEVELS.map((g) => (
+              <option value="">Select year level...</option>
+              {YEAR_LEVELS.map((g) => (
                 <option key={g} value={g}>{g}</option>
               ))}
             </select>
           </div>
 
-          {/* Identity verification section */}
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-2">
+              Subjects needed
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {SUBJECT_OPTIONS.map((sub) => (
+                <button
+                  key={sub}
+                  type="button"
+                  onClick={() => toggleSubject(sub)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                    selectedSubjects.includes(sub)
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+            {selectedSubjects.length === 0 && (
+              <p className="text-[10px] text-muted-foreground mt-1">Select at least one subject</p>
+            )}
+          </div>
+
+          {/* Optional fields */}
+          <div className="border-t border-border pt-4 space-y-3">
+            <p className="text-xs font-semibold text-foreground">Optional</p>
+
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">School</label>
+              <input
+                type="text"
+                value={school}
+                onChange={(e) => setSchool(e.target.value)}
+                placeholder="e.g. Melbourne High School"
+                className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1.5">Learning goals</label>
+              <textarea
+                value={goals}
+                onChange={(e) => setGoals(e.target.value)}
+                placeholder="e.g. Improve confidence in algebra, prepare for SAC exams..."
+                rows={2}
+                className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Identity verification */}
           <div className="border border-border rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Shield size={14} className="text-primary" />
-              <p className="text-xs font-semibold text-foreground">Student Identity</p>
+              <p className="text-xs font-semibold text-foreground">Identity verification</p>
               <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
@@ -392,10 +487,10 @@ function AddStudentModal({
             </button>
             <button
               type="submit"
-              disabled={createStudent.isPending}
+              disabled={createStudent.isPending || selectedSubjects.length === 0 || !yearLevel}
               className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center justify-center gap-1.5"
             >
-              {createStudent.isPending ? "Adding..." : <><Plus size={14} /> Add student</>}
+              {createStudent.isPending ? "Adding..." : <><Plus size={14} /> Add student profile</>}
             </button>
           </div>
         </form>
@@ -422,7 +517,10 @@ export default function ParentStudents() {
         ?.filter((s) => s.parentId === user?.id || s.parentId == null)
         .at(-1);
       if (newest) {
-        setJustAdded(`${newest.firstName} ${newest.lastName}`);
+        const name = newest.lastName
+          ? `${newest.firstName} ${newest.lastName}`
+          : newest.firstName;
+        setJustAdded(name);
         setTimeout(() => setJustAdded(null), 4000);
       }
     });
@@ -439,7 +537,7 @@ export default function ParentStudents() {
         />
       )}
 
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex items-start justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-foreground">My Students</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -455,10 +553,21 @@ export default function ParentStudents() {
         </button>
       </div>
 
+      {/* Explanation banner */}
+      <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-primary/5 border border-primary/15 mb-5">
+        <User size={14} className="text-primary mt-0.5 shrink-0" />
+        <div>
+          <p className="text-xs font-medium text-foreground">Managing students is simple</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            Students don't need their own account. You manage bookings and payments on their behalf.
+          </p>
+        </div>
+      </div>
+
       {justAdded && (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-accent/10 text-accent text-sm font-medium mb-4 border border-accent/20">
           <CheckCircle size={16} />
-          {justAdded} has been added successfully!
+          {justAdded}'s profile has been created successfully!
         </div>
       )}
 
@@ -493,14 +602,14 @@ export default function ParentStudents() {
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border text-sm text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors"
           >
             <Plus size={16} />
-            Add another student
+            Add another student profile
           </button>
         </div>
       )}
 
       <div className="mt-6 bg-muted/50 border border-border rounded-xl p-4">
         <div className="flex items-start gap-2">
-          <User size={14} className="text-muted-foreground mt-0.5 shrink-0" />
+          <TrendingUp size={14} className="text-muted-foreground mt-0.5 shrink-0" />
           <div>
             <p className="text-xs font-medium text-foreground">How progress tracking works</p>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">

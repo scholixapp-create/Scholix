@@ -230,7 +230,7 @@ export default function BookSession() {
             {selectedStudent && (
               <div className="flex justify-between py-2.5">
                 <span className="text-sm text-muted-foreground">Student</span>
-                <span className="text-sm font-semibold text-foreground">{selectedStudent.firstName} {selectedStudent.lastName}</span>
+                <span className="text-sm font-semibold text-foreground">{selectedStudent.firstName}{(selectedStudent as any).lastName ? ` ${(selectedStudent as any).lastName}` : ""}</span>
               </div>
             )}
             <div className="flex justify-between py-2.5">
@@ -625,12 +625,16 @@ export default function BookSession() {
           <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-input bg-muted/40">
             <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
               <span className="text-[11px] font-bold text-primary">
-                {myStudents[0].firstName[0]}{myStudents[0].lastName[0]}
+                {(myStudents[0] as any).lastName
+                  ? `${myStudents[0].firstName[0]}${(myStudents[0] as any).lastName[0]}`
+                  : myStudents[0].firstName.slice(0, 2).toUpperCase()}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">{myStudents[0].firstName} {myStudents[0].lastName}</p>
-              {myStudents[0].gradeLevel && <p className="text-[11px] text-muted-foreground">{myStudents[0].gradeLevel}</p>}
+              <p className="text-sm font-medium text-foreground">
+                {myStudents[0].firstName}{(myStudents[0] as any).lastName ? ` ${(myStudents[0] as any).lastName}` : ""}
+              </p>
+              {(myStudents[0] as any).yearLevel && <p className="text-[11px] text-muted-foreground">{(myStudents[0] as any).yearLevel}</p>}
             </div>
             <span className="text-[10px] font-medium text-accent bg-accent/10 px-2 py-0.5 rounded-full">Auto-selected</span>
           </div>
@@ -646,7 +650,7 @@ export default function BookSession() {
             <option value={0}>Select a student...</option>
             {myStudents.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.firstName} {s.lastName}{s.gradeLevel ? ` · ${s.gradeLevel}` : ""}
+                {s.firstName}{(s as any).lastName ? ` ${(s as any).lastName}` : ""}{(s as any).yearLevel ? ` · ${(s as any).yearLevel}` : ""}
               </option>
             ))}
           </select>

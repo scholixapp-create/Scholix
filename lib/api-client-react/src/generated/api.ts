@@ -28,6 +28,7 @@ import type {
   GetSessionSummaryParams,
   GetTutorAvailableSlotsParams,
   HealthStatus,
+  InviteStudentBody,
   ListPaymentsParams,
   ListSessionsParams,
   LoginBody,
@@ -1324,6 +1325,93 @@ export function useGetStudent<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Invite student to create their own account (future feature)
+ */
+export const getInviteStudentUrl = (studentId: number) => {
+  return `/api/students/${studentId}/invite`;
+};
+
+export const inviteStudent = async (
+  studentId: number,
+  inviteStudentBody: InviteStudentBody,
+  options?: RequestInit,
+): Promise<unknown> => {
+  return customFetch<unknown>(getInviteStudentUrl(studentId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(inviteStudentBody),
+  });
+};
+
+export const getInviteStudentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inviteStudent>>,
+    TError,
+    { studentId: number; data: BodyType<InviteStudentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof inviteStudent>>,
+  TError,
+  { studentId: number; data: BodyType<InviteStudentBody> },
+  TContext
+> => {
+  const mutationKey = ["inviteStudent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof inviteStudent>>,
+    { studentId: number; data: BodyType<InviteStudentBody> }
+  > = (props) => {
+    const { studentId, data } = props ?? {};
+
+    return inviteStudent(studentId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InviteStudentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof inviteStudent>>
+>;
+export type InviteStudentMutationBody = BodyType<InviteStudentBody>;
+export type InviteStudentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Invite student to create their own account (future feature)
+ */
+export const useInviteStudent = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inviteStudent>>,
+    TError,
+    { studentId: number; data: BodyType<InviteStudentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof inviteStudent>>,
+  TError,
+  { studentId: number; data: BodyType<InviteStudentBody> },
+  TContext
+> => {
+  return useMutation(getInviteStudentMutationOptions(options));
+};
 
 /**
  * @summary List sessions (filtered by role context)

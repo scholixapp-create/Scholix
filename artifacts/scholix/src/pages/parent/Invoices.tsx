@@ -32,7 +32,7 @@ export default function ParentInvoices() {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
       .then((r) => r.json())
-      .then((data) => setInvoices(data))
+      .then((data) => setInvoices(Array.isArray(data) ? data : []))
       .catch(() => setInvoices([]))
       .finally(() => setLoading(false));
   }, [user?.id]);

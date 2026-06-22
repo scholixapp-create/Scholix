@@ -239,10 +239,15 @@ export const GetTutorStudentsResponseItem = zod.object({
   id: zod.number(),
   userId: zod.number().nullish(),
   firstName: zod.string(),
-  lastName: zod.string(),
-  email: zod.string(),
-  gradeLevel: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  yearLevel: zod.string().nullish(),
+  school: zod.string().nullish(),
+  subjects: zod.string().nullish(),
+  goals: zod.string().nullish(),
   parentId: zod.number().nullish(),
+  dateOfBirth: zod.string().nullish(),
+  isIdentityVerified: zod.boolean(),
   createdAt: zod.string(),
 });
 export const GetTutorStudentsResponse = zod.array(GetTutorStudentsResponseItem);
@@ -254,10 +259,15 @@ export const ListStudentsResponseItem = zod.object({
   id: zod.number(),
   userId: zod.number().nullish(),
   firstName: zod.string(),
-  lastName: zod.string(),
-  email: zod.string(),
-  gradeLevel: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  yearLevel: zod.string().nullish(),
+  school: zod.string().nullish(),
+  subjects: zod.string().nullish(),
+  goals: zod.string().nullish(),
   parentId: zod.number().nullish(),
+  dateOfBirth: zod.string().nullish(),
+  isIdentityVerified: zod.boolean(),
   createdAt: zod.string(),
 });
 export const ListStudentsResponse = zod.array(ListStudentsResponseItem);
@@ -267,9 +277,13 @@ export const ListStudentsResponse = zod.array(ListStudentsResponseItem);
  */
 export const CreateStudentBody = zod.object({
   firstName: zod.string(),
-  lastName: zod.string(),
-  email: zod.string(),
-  gradeLevel: zod.string().optional(),
+  lastName: zod.string().optional(),
+  email: zod.string().optional(),
+  yearLevel: zod.string().optional(),
+  school: zod.string().optional(),
+  subjects: zod.string().optional(),
+  goals: zod.string().optional(),
+  dateOfBirth: zod.string().optional(),
   parentId: zod.number().optional(),
 });
 
@@ -284,11 +298,27 @@ export const GetStudentResponse = zod.object({
   id: zod.number(),
   userId: zod.number().nullish(),
   firstName: zod.string(),
-  lastName: zod.string(),
-  email: zod.string(),
-  gradeLevel: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  email: zod.string().nullish(),
+  yearLevel: zod.string().nullish(),
+  school: zod.string().nullish(),
+  subjects: zod.string().nullish(),
+  goals: zod.string().nullish(),
   parentId: zod.number().nullish(),
+  dateOfBirth: zod.string().nullish(),
+  isIdentityVerified: zod.boolean(),
   createdAt: zod.string(),
+});
+
+/**
+ * @summary Invite student to create their own account (future feature)
+ */
+export const InviteStudentParams = zod.object({
+  studentId: zod.coerce.number(),
+});
+
+export const InviteStudentBody = zod.object({
+  email: zod.string(),
 });
 
 /**

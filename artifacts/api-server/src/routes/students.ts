@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { db, studentsTable, tutorsTable, sessionsTable } from "@workspace/db";
 import { eq, inArray, and } from "drizzle-orm";
-import { CreateStudentBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
@@ -11,9 +10,12 @@ function studentToJson(s: typeof studentsTable.$inferSelect) {
     id: s.id,
     userId: s.userId ?? null,
     firstName: s.firstName,
-    lastName: s.lastName,
-    email: s.email,
-    gradeLevel: s.gradeLevel ?? null,
+    lastName: s.lastName ?? null,
+    email: s.email ?? null,
+    yearLevel: s.gradeLevel ?? null,
+    school: s.school ?? null,
+    subjects: s.subjects ?? null,
+    goals: s.goals ?? null,
     parentId: s.parentId ?? null,
     dateOfBirth: s.dateOfBirth ?? null,
     isIdentityVerified: s.isIdentityVerified ?? false,
@@ -82,24 +84,28 @@ router.post("/students", requireAuth, async (req, res) => {
     return;
   }
 
-  const parsed = CreateStudentBody.safeParse(req.body);
-  if (!parsed.success) {
-    const fields = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
-    res.status(400).json({ error: fields || "Invalid request body" });
+  const { firstName, lastName, yearLevel, school, subjects, goals, dateOfBirth, parentId: bodyParentId } = req.body ?? {};
+
+  if (!firstName || typeof firstName !== "string" || firstName.trim() === "") {
+    res.status(400).json({ error: "firstName is required" });
     return;
   }
 
   const parentId = user.role === "admin"
-    ? (parsed.data.parentId ?? null)
+    ? (bodyParentId ?? null)
     : user.id;
 
   const [student] = await db
     .insert(studentsTable)
     .values({
-      firstName: parsed.data.firstName,
-      lastName: parsed.data.lastName,
-      email: parsed.data.email,
-      gradeLevel: parsed.data.gradeLevel ?? null,
+      firstName: firstName.trim(),
+      lastName: lastName ? String(lastName).trim() : null,
+      email: null,
+      gradeLevel: yearLevel ? String(yearLevel).trim() : null,
+      school: school ? String(school).trim() : null,
+      subjects: subjects ? String(subjects).trim() : null,
+      goals: goals ? String(goals).trim() : null,
+      dateOfBirth: dateOfBirth ? String(dateOfBirth).trim() : null,
       parentId,
     })
     .returning();
@@ -209,6 +215,10 @@ router.post("/students/:studentId/verify-identity", requireAuth, async (req, res
   }
 
   res.json(studentToJson(updated));
+});
+
+router.post("/students/:studentId/invite", requireAuth, async (req, res) => {
+  res.status(501).json({ error: "Student account invitations are not yet available. This feature is coming soon." });
 });
 
 export default router;

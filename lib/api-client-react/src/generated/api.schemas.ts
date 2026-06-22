@@ -130,19 +130,32 @@ export interface Student {
   id: number;
   userId?: number | null;
   firstName: string;
-  lastName: string;
-  email: string;
-  gradeLevel?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  yearLevel?: string | null;
+  school?: string | null;
+  subjects?: string | null;
+  goals?: string | null;
   parentId?: number | null;
+  dateOfBirth?: string | null;
+  isIdentityVerified: boolean;
   createdAt: string;
 }
 
 export interface CreateStudentBody {
   firstName: string;
-  lastName: string;
-  email: string;
-  gradeLevel?: string;
+  lastName?: string;
+  email?: string;
+  yearLevel?: string;
+  school?: string;
+  subjects?: string;
+  goals?: string;
+  dateOfBirth?: string;
   parentId?: number;
+}
+
+export interface InviteStudentBody {
+  email: string;
 }
 
 export type SessionStatus = (typeof SessionStatus)[keyof typeof SessionStatus];
