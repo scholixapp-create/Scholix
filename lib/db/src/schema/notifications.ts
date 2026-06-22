@@ -11,6 +11,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "action_upload_notes",
   "action_rate_session",
   "whatsapp_connect",
+  "invoice_generated",
 ]);
 
 export const notificationsTable = pgTable("notifications", {

@@ -2,19 +2,74 @@ import { Router } from "express";
 import PDFDocument from "pdfkit";
 import { db, invoicesTable, sessionsTable, tutorsTable, studentsTable, usersTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
+import { requireAuth } from "../lib/authMiddleware";
 
 const router = Router();
 
 // GET /api/invoices?parentId=X  — all invoices for a parent's students
-router.get("/invoices", async (req, res) => {
+// GET /api/invoices?tutorId=X   — all invoices for a tutor (tutorId = user.id)
+router.get("/invoices", requireAuth, async (req, res) => {
   const parentId = req.query.parentId ? parseInt(req.query.parentId as string, 10) : undefined;
+  const tutorUserId = req.query.tutorId ? parseInt(req.query.tutorId as string, 10) : undefined;
 
-  if (!parentId) {
-    res.json([]);
+  // --- Tutor view ---
+  if (tutorUserId) {
+    const [tutorRow] = await db
+      .select({ id: tutorsTable.id })
+      .from(tutorsTable)
+      .where(eq(tutorsTable.userId, tutorUserId))
+      .limit(1);
+
+    if (!tutorRow) { res.json([]); return; }
+
+    const sessions = await db
+      .select()
+      .from(sessionsTable)
+      .where(eq(sessionsTable.tutorId, tutorRow.id));
+
+    if (sessions.length === 0) { res.json([]); return; }
+
+    const sessionIds = sessions.map((s) => s.id);
+    const invoices = await db
+      .select()
+      .from(invoicesTable)
+      .where(inArray(invoicesTable.sessionId, sessionIds));
+
+    const studentIds = [...new Set(sessions.map((s) => s.studentId))];
+    const students = studentIds.length
+      ? await db.select().from(studentsTable).where(inArray(studentsTable.id, studentIds))
+      : [];
+
+    const result = invoices.map((inv) => {
+      const session = sessions.find((s) => s.id === inv.sessionId);
+      const student = session ? students.find((s) => s.id === session.studentId) : undefined;
+      const studentName = student
+        ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
+        : "";
+
+      return {
+        id: inv.id,
+        sessionId: inv.sessionId,
+        totalAmount: inv.totalAmount,
+        platformCommission: inv.platformCommission,
+        tutorEarnings: inv.tutorEarnings,
+        commissionRate: inv.commissionRate,
+        commissionTier: inv.commissionTier,
+        generatedAt: inv.generatedAt.toISOString(),
+        studentName,
+        subject: session?.subject ?? "",
+        scheduledAt: session?.scheduledAt.toISOString() ?? "",
+        durationMinutes: session?.durationMinutes ?? 0,
+      };
+    });
+
+    res.json(result.sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()));
     return;
   }
 
-  // Get all students belonging to this parent
+  // --- Parent view ---
+  if (!parentId) { res.json([]); return; }
+
   const students = await db
     .select()
     .from(studentsTable)
@@ -24,7 +79,6 @@ router.get("/invoices", async (req, res) => {
 
   const studentIds = students.map((s) => s.id);
 
-  // Get all sessions for those students that have invoices
   const sessions = await db
     .select()
     .from(sessionsTable)
@@ -55,13 +109,17 @@ router.get("/invoices", async (req, res) => {
         if (tutorRow) tutorName = `${tutorRow.firstName} ${tutorRow.lastName}`;
       }
 
+      const studentName = student
+        ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
+        : "";
+
       return {
         id: inv.id,
         sessionId: inv.sessionId,
         totalAmount: inv.totalAmount,
         generatedAt: inv.generatedAt.toISOString(),
         tutorName,
-        studentName: student ? `${student.firstName} ${student.lastName}` : "",
+        studentName,
         subject: session?.subject ?? "",
         scheduledAt: session?.scheduledAt.toISOString() ?? "",
         durationMinutes: session?.durationMinutes ?? 0,
@@ -74,7 +132,7 @@ router.get("/invoices", async (req, res) => {
 
 // GET /api/invoices/:invoiceId/pdf
 router.get("/invoices/:invoiceId/pdf", async (req, res) => {
-  const invoiceId = parseInt(req.params.invoiceId, 10);
+  const invoiceId = parseInt(req.params.invoiceId as string, 10);
   if (isNaN(invoiceId)) { res.status(400).json({ error: "Invalid invoice ID" }); return; }
 
   const [invoice] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).limit(1);
@@ -104,7 +162,9 @@ router.get("/invoices/:invoiceId/pdf", async (req, res) => {
 
   const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "Tutor";
   const tutorEmail = tutorRow?.email ?? "";
-  const studentName = student ? `${student.firstName} ${student.lastName}` : "Student";
+  const studentName = student
+    ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
+    : "Student";
   const parentName = parentFirstName ? `${parentFirstName} ${parentLastName}` : "Parent";
   const invoiceDate = invoice.generatedAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
   const sessionDate = session.scheduledAt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -146,9 +206,22 @@ router.get("/invoices/:invoiceId/pdf", async (req, res) => {
   doc.fontSize(9).fillColor(DARK).font("Helvetica").text(studentName, 310, y + 13);
   doc.fontSize(11).fillColor(DARK).font("Helvetica-Bold").text(`$${session.totalAmount.toFixed(2)}`, 0, y + 10, { align: "right" });
 
+  // Commission breakdown for tutor reference
   y += 60;
+  const commissionRate = invoice.commissionRate ?? 0;
+  const tutorEarnings = invoice.tutorEarnings ?? session.totalAmount;
+  const platformCommission = invoice.platformCommission ?? 0;
+  doc.rect(50, y, doc.page.width - 100, 1).fill("#e5e7eb");
+  y += 12;
+  doc.fontSize(8).fillColor(MID_GRAY).font("Helvetica").text(`Platform commission (${(commissionRate * 100).toFixed(0)}%)`, 50, y);
+  doc.fontSize(8).fillColor(DARK).font("Helvetica-Bold").text(`$${platformCommission.toFixed(2)}`, 0, y, { align: "right" });
+  y += 16;
+  doc.fontSize(8).fillColor(ACCENT).font("Helvetica-Bold").text("TUTOR EARNINGS", 50, y);
+  doc.fontSize(8).fillColor(ACCENT).font("Helvetica-Bold").text(`$${tutorEarnings.toFixed(2)}`, 0, y, { align: "right" });
+
+  y += 30;
   doc.rect(doc.page.width - 200, y, 150, 40).fill(NAV);
-  doc.fontSize(8).fillColor("rgba(255,255,255,0.65)").font("Helvetica").text("TOTAL DUE", doc.page.width - 192, y + 8);
+  doc.fontSize(8).fillColor("rgba(255,255,255,0.65)").font("Helvetica").text("TOTAL PAID", doc.page.width - 192, y + 8);
   doc.fontSize(16).fillColor("#ffffff").font("Helvetica-Bold").text(`$${session.totalAmount.toFixed(2)}`, doc.page.width - 192, y + 18);
 
   const footerY = doc.page.height - 60;

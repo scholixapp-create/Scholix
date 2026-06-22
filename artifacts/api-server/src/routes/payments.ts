@@ -107,6 +107,14 @@ router.post("/payments/simulate", async (req, res) => {
   const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "your tutor";
   const dateStr = format(session.scheduledAt, "EEE, MMM d 'at' h:mm a");
 
+  // Fetch the new invoice ID for notification links
+  const [newInvoice] = await db
+    .select({ id: invoicesTable.id })
+    .from(invoicesTable)
+    .where(eq(invoicesTable.sessionId, sessionId))
+    .limit(1);
+  const invoiceNum = newInvoice ? `#${String(newInvoice.id).padStart(5, "0")}` : "";
+
   if (student?.parentId) {
     const [parentUser] = await db
       .select({ firstName: usersTable.firstName, phone: usersTable.phone })
@@ -117,10 +125,10 @@ router.post("/payments/simulate", async (req, res) => {
     await createNotification({
       userId: student.parentId,
       type: "payment_confirmed",
-      title: "Session confirmed — payment received",
-      message: `Your ${session.subject} session with ${tutorName} on ${dateStr} is locked in`,
-      actionUrl: "/parent/sessions",
-      actionLabel: "View session",
+      title: "Payment confirmed — invoice ready",
+      message: `Invoice ${invoiceNum} for your ${session.subject} session with ${tutorName} on ${dateStr} is now available`,
+      actionUrl: "/parent/invoices",
+      actionLabel: "View invoice",
       emailSubject: `Payment confirmed — ${session.subject} with ${tutorName}`,
       emailHtml: paymentConfirmedEmailHtml({
         recipientName: parentUser?.firstName ?? "there",
@@ -148,7 +156,18 @@ router.post("/payments/simulate", async (req, res) => {
   }
 
   if (tutorRow) {
-    const studentName = student ? `${student.firstName} ${student.lastName}` : "A student";
+    const studentName = student
+      ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
+      : "A student";
+
+    await createNotification({
+      userId: tutorRow.userId,
+      type: "invoice_generated",
+      title: `Invoice ${invoiceNum} generated`,
+      message: `Invoice for your ${session.subject} session with ${studentName} on ${dateStr} is ready — available in your Invoices section`,
+      actionUrl: "/tutor/invoices",
+      actionLabel: "View invoices",
+    });
 
     await createNotification({
       userId: tutorRow.userId,

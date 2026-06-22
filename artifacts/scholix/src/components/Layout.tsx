@@ -25,6 +25,7 @@ import {
   Info,
   Sparkles,
   User,
+  Receipt,
 } from "lucide-react";
 
 interface NavItem {
@@ -40,6 +41,7 @@ function getTutorNav(): NavItem[] {
     { href: "/tutor/earnings", label: "Your Growth", icon: <DollarSign size={18} /> },
     { href: "/tutor/students", label: "Students", icon: <Users size={18} /> },
     { href: "/tutor/availability", label: "Availability", icon: <Clock size={18} /> },
+    { href: "/tutor/invoices", label: "Invoices", icon: <Receipt size={18} /> },
     { href: "/tutor/profile", label: "My Profile", icon: <User size={18} /> },
     { href: "/tutor/academy", label: "Scholix Academy", icon: <Sparkles size={18} /> },
   ];

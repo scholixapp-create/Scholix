@@ -5,8 +5,11 @@ import { requireAdmin } from "../lib/authMiddleware";
 
 const router = Router();
 
-// All admin routes require admin role
-router.use(requireAdmin);
+// Only guard actual /admin/* paths — skip this router for other paths
+router.use((req, res, next) => {
+  if (!req.path.startsWith("/admin")) return next("router");
+  return requireAdmin(req, res, next);
+});
 
 router.get("/admin/users", async (_req, res) => {
   const users = await db.select().from(usersTable);

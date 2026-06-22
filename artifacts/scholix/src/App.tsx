@@ -19,6 +19,7 @@ import TutorAvailability from "@/pages/tutor/Availability";
 import TutorStudents from "@/pages/tutor/Students";
 import TutorSessions from "@/pages/tutor/Sessions";
 import TutorEarnings from "@/pages/tutor/Earnings";
+import TutorInvoices from "@/pages/tutor/Invoices";
 import TutorProfilePage from "@/pages/tutor/Profile";
 import ParentDashboard from "@/pages/parent/Dashboard";
 import ParentTutors from "@/pages/parent/Tutors";
@@ -253,6 +254,13 @@ function Router() {
         <RequireAuth role="tutor">
           <RequireTutorApproved>
             <Layout><TutorEarnings /></Layout>
+          </RequireTutorApproved>
+        </RequireAuth>
+      </Route>
+      <Route path="/tutor/invoices">
+        <RequireAuth role="tutor">
+          <RequireTutorApproved>
+            <Layout><TutorInvoices /></Layout>
           </RequireTutorApproved>
         </RequireAuth>
       </Route>
