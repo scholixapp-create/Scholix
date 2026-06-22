@@ -12,6 +12,7 @@ export const usersTable = pgTable("users", {
   lastName: text("last_name").notNull(),
   role: userRoleEnum("role").notNull(),
   phone: text("phone"),
+  address: text("address"),
   emailNotificationsEnabled: boolean("email_notifications_enabled").notNull().default(true),
   notifBookingConfirmation: boolean("notif_booking_confirmation").notNull().default(true),
   notifSessionReminder: boolean("notif_session_reminder").notNull().default(true),

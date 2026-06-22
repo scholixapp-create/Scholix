@@ -5,6 +5,7 @@ import { format, parseISO } from "date-fns";
 
 interface ParentInvoice {
   id: number;
+  invoiceNumber: string;
   sessionId: number;
   totalAmount: number;
   generatedAt: string;
@@ -109,7 +110,7 @@ export default function ParentInvoices() {
                 <div className="text-right shrink-0">
                   <p className="text-base font-bold text-foreground">${inv.totalAmount.toFixed(2)}</p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
-                    #{String(inv.id).padStart(5, "0")}
+                    #{inv.invoiceNumber ?? String(inv.id).padStart(5, "0")}
                   </p>
                 </div>
               </div>

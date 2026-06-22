@@ -84,6 +84,7 @@ lib/
 
 ### users table — extra columns
 - `phone`: text, nullable — Australian mobile number (04XXXXXXXX format, stored as 10-digit string). Required on signup. Used for WhatsApp deep-links.
+- `address`: text, nullable — Home address (free text, e.g. "123 Main St, Suburb VIC 3000"). Set via Settings → Profile tab. Appears on invoice PDFs in the parent "TO" section.
 
 ### Session status flow
 `pending_payment` → `scheduled` (after `POST /api/payments/simulate`) → `completed` | `cancelled`
@@ -123,6 +124,16 @@ Actionable notifications render an amber "actions required" banner + a button in
 - Uploaded files stored in `artifacts/api-server/uploads/`
 - `docType`: `wwcc` | `education`
 - Served via `GET /api/admin/documents/:docId` (admin only)
+
+## Invoice Number Format
+
+`YYMMDD` + 3-digit student ID (zero-padded) + 3-digit tutor profile ID (zero-padded)
+
+Example: session on 22 Jun 2026, student ID 1, tutor ID 4 → `260622001004`
+
+Computed from `session.scheduledAt`, `session.studentId`, `session.tutorId`. Returned as `invoiceNumber` in both parent and tutor list API responses. PDFs use this as the filename and header reference.
+
+Invoice PDFs are parent-directed — no platform commission breakdown shown. Commission is visible only in the tutor's `/tutor/invoices` list view (frontend only, not on the PDF).
 
 ## API Routes
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, type ElementType } from "react";
-import { Bell, Mail, CheckCircle, Calendar, BookOpen, Settings as SettingsIcon, Lock, Trash2, Eye, EyeOff, AlertCircle, KeyRound, DollarSign, Shield } from "lucide-react";
+import { Bell, Mail, CheckCircle, Calendar, BookOpen, Settings as SettingsIcon, Lock, Trash2, Eye, EyeOff, AlertCircle, KeyRound, DollarSign, Shield, User, MapPin, Phone, Save } from "lucide-react";
 
 function getToken() {
   return localStorage.getItem("scholix_token") ?? "";
@@ -387,8 +387,98 @@ function SecurityTab() {
   );
 }
 
+function ProfileTab() {
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings", { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        setPhone(data.phone ?? "");
+        setAddress(data.address ?? "");
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({ phone, address }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2 mb-0.5">
+            <User size={15} className="text-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Contact Details</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">Shown on invoice PDFs issued to you</p>
+        </div>
+
+        {loading ? (
+          <div className="p-5 space-y-3">
+            <div className="h-10 rounded-lg bg-muted animate-pulse" />
+            <div className="h-10 rounded-lg bg-muted animate-pulse" />
+          </div>
+        ) : (
+          <div className="p-5 space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                <Phone size={12} /> Mobile number
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="04XX XXX XXX"
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-1.5">
+                <MapPin size={12} /> Home address
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="123 Street, Suburb VIC 3000"
+                className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition"
+              />
+            </div>
+            <button
+              onClick={save}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors"
+            >
+              <Save size={14} />
+              {saving ? "Saving…" : saved ? "Saved!" : "Save changes"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState<"notifications" | "security">("notifications");
+  const [activeTab, setActiveTab] = useState<"notifications" | "security" | "profile">("notifications");
 
   return (
     <div className="p-4 md:p-6 max-w-lg mx-auto">
@@ -416,6 +506,17 @@ export default function Settings() {
           Notifications
         </button>
         <button
+          onClick={() => setActiveTab("profile")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === "profile"
+              ? "bg-card shadow-sm text-foreground border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <User size={14} />
+          Profile
+        </button>
+        <button
           onClick={() => setActiveTab("security")}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
             activeTab === "security"
@@ -428,7 +529,7 @@ export default function Settings() {
         </button>
       </div>
 
-      {activeTab === "notifications" ? <NotificationsTab /> : <SecurityTab />}
+      {activeTab === "notifications" ? <NotificationsTab /> : activeTab === "profile" ? <ProfileTab /> : <SecurityTab />}
     </div>
   );
 }

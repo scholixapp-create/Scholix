@@ -25,6 +25,8 @@ router.get("/settings", async (req, res) => {
       notifSessionCompleted: usersTable.notifSessionCompleted,
       notifPaymentConfirmed: usersTable.notifPaymentConfirmed,
       notifApprovalUpdates: usersTable.notifApprovalUpdates,
+      phone: usersTable.phone,
+      address: usersTable.address,
     })
     .from(usersTable)
     .where(eq(usersTable.id, userId))
@@ -32,7 +34,7 @@ router.get("/settings", async (req, res) => {
 
   if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
-  res.json(user);
+  res.json({ ...user, phone: user.phone ?? "", address: user.address ?? "" });
 });
 
 router.put("/settings", async (req, res) => {
@@ -40,6 +42,7 @@ router.put("/settings", async (req, res) => {
   if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
 
   const body = req.body as Record<string, unknown>;
+
   const boolFields = [
     "emailNotificationsEnabled",
     "notifBookingConfirmation",
@@ -50,21 +53,24 @@ router.put("/settings", async (req, res) => {
   ] as const;
 
   type AllowedField = typeof boolFields[number];
-  const updates: Partial<Record<AllowedField, boolean>> = {};
+  const updates: Partial<Record<AllowedField, boolean>> & { phone?: string; address?: string } = {};
+
   for (const field of boolFields) {
     if (typeof body[field] === "boolean") {
       updates[field] = body[field] as boolean;
     }
   }
+  if (typeof body.phone === "string") updates.phone = body.phone.trim();
+  if (typeof body.address === "string") updates.address = body.address.trim();
 
   if (Object.keys(updates).length === 0) {
-    res.status(400).json({ error: "No valid boolean fields provided" });
+    res.status(400).json({ error: "No valid fields provided" });
     return;
   }
 
   await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
 
-  res.json({ ok: true, ...updates });
+  res.json({ ok: true });
 });
 
 export default router;

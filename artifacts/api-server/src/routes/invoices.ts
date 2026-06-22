@@ -6,6 +6,13 @@ import { requireAuth } from "../lib/authMiddleware";
 
 const router = Router();
 
+function formatInvoiceNumber(scheduledAt: Date, studentId: number, tutorId: number): string {
+  const yy = String(scheduledAt.getFullYear()).slice(-2);
+  const mm = String(scheduledAt.getMonth() + 1).padStart(2, "0");
+  const dd = String(scheduledAt.getDate()).padStart(2, "0");
+  return `${yy}${mm}${dd}${String(studentId).padStart(3, "0")}${String(tutorId).padStart(3, "0")}`;
+}
+
 // GET /api/invoices?parentId=X  — all invoices for a parent's students
 // GET /api/invoices?tutorId=X   — all invoices for a tutor (tutorId = user.id)
 router.get("/invoices", requireAuth, async (req, res) => {
@@ -46,9 +53,13 @@ router.get("/invoices", requireAuth, async (req, res) => {
       const studentName = student
         ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
         : "";
+      const invoiceNumber = session
+        ? formatInvoiceNumber(session.scheduledAt, session.studentId, session.tutorId)
+        : String(inv.id);
 
       return {
         id: inv.id,
+        invoiceNumber,
         sessionId: inv.sessionId,
         totalAmount: inv.totalAmount,
         platformCommission: inv.platformCommission,
@@ -113,8 +124,13 @@ router.get("/invoices", requireAuth, async (req, res) => {
         ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
         : "";
 
+      const invoiceNumber = session
+        ? formatInvoiceNumber(session.scheduledAt, session.studentId, session.tutorId)
+        : String(inv.id);
+
       return {
         id: inv.id,
+        invoiceNumber,
         sessionId: inv.sessionId,
         totalAmount: inv.totalAmount,
         generatedAt: inv.generatedAt.toISOString(),
@@ -150,16 +166,29 @@ router.get("/invoices/:invoiceId/pdf", async (req, res) => {
 
   const [student] = await db.select().from(studentsTable).where(eq(studentsTable.id, session.studentId)).limit(1);
 
-  let parentFirstName = "", parentLastName = "", parentEmail = "";
+  let parentFirstName = "", parentLastName = "", parentEmail = "", parentPhone = "", parentAddress = "";
   if (student?.parentId) {
     const [parentRow] = await db
-      .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email })
+      .select({
+        firstName: usersTable.firstName,
+        lastName: usersTable.lastName,
+        email: usersTable.email,
+        phone: usersTable.phone,
+        address: usersTable.address,
+      })
       .from(usersTable)
       .where(eq(usersTable.id, student.parentId))
       .limit(1);
-    if (parentRow) { parentFirstName = parentRow.firstName; parentLastName = parentRow.lastName; parentEmail = parentRow.email; }
+    if (parentRow) {
+      parentFirstName = parentRow.firstName;
+      parentLastName = parentRow.lastName;
+      parentEmail = parentRow.email;
+      parentPhone = parentRow.phone ?? "";
+      parentAddress = parentRow.address ?? "";
+    }
   }
 
+  const invoiceNum = formatInvoiceNumber(session.scheduledAt, session.studentId, session.tutorId);
   const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "Tutor";
   const tutorEmail = tutorRow?.email ?? "";
   const studentName = student
@@ -172,32 +201,65 @@ router.get("/invoices/:invoiceId/pdf", async (req, res) => {
 
   const doc = new PDFDocument({ size: "A4", margin: 50 });
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="invoice-${invoice.id}.pdf"`);
+  res.setHeader("Content-Disposition", `attachment; filename="invoice-${invoiceNum}.pdf"`);
   doc.pipe(res);
 
   const NAV = "#1e3a5f", ACCENT = "#1d6f5a", LIGHT_GRAY = "#f5f5f5", MID_GRAY = "#9ca3af", DARK = "#111827";
+
+  // Header
   doc.rect(0, 0, doc.page.width, 80).fill(NAV);
   doc.fontSize(22).fillColor("#ffffff").font("Helvetica-Bold").text("SCHOLIX", 50, 25);
   doc.fontSize(9).fillColor("rgba(255,255,255,0.65)").font("Helvetica").text("Tutoring Platform", 50, 50);
   doc.fontSize(20).fillColor("#ffffff").font("Helvetica-Bold").text("INVOICE", 0, 30, { align: "right" });
-  doc.fontSize(9).fillColor("rgba(255,255,255,0.65)").font("Helvetica").text(`#${String(invoice.id).padStart(5, "0")}`, 0, 53, { align: "right" });
+  doc.fontSize(9).fillColor("rgba(255,255,255,0.65)").font("Helvetica").text(`#${invoiceNum}`, 0, 53, { align: "right" });
 
+  // Date / session metadata row
   let y = 105;
-  doc.fontSize(8).fillColor(MID_GRAY).font("Helvetica").text("DATE ISSUED", 50, y).text("SESSION DATE", 200, y).text("DURATION", 360, y).text("STATUS", 460, y);
+  doc.fontSize(8).fillColor(MID_GRAY).font("Helvetica")
+    .text("DATE ISSUED", 50, y)
+    .text("SESSION DATE", 200, y)
+    .text("DURATION", 360, y)
+    .text("STATUS", 460, y);
   y += 14;
-  doc.fontSize(9).fillColor(DARK).font("Helvetica-Bold").text(invoiceDate, 50, y).text(sessionDate, 200, y).text(`${session.durationMinutes} minutes`, 360, y).text("PAID", 460, y, { width: 60 });
+  doc.fontSize(9).fillColor(DARK).font("Helvetica-Bold")
+    .text(invoiceDate, 50, y)
+    .text(sessionDate, 200, y)
+    .text(`${session.durationMinutes} minutes`, 360, y)
+    .text("PAID", 460, y, { width: 60 });
 
+  // FROM / TO boxes — taller to fit phone + address
   y += 40;
-  const BOX_H = 90;
+  const BOX_H = 120;
   doc.rect(50, y, 230, BOX_H).fill(LIGHT_GRAY);
   doc.rect(310, y, 230, BOX_H).fill(LIGHT_GRAY);
-  doc.fontSize(7).fillColor(MID_GRAY).font("Helvetica-Bold").text("FROM (TUTOR)", 64, y + 12).text("TO (PARENT / GUARDIAN)", 324, y + 12);
-  doc.fontSize(10).fillColor(DARK).font("Helvetica-Bold").text(tutorName, 64, y + 26).text(parentName, 324, y + 26);
-  doc.fontSize(8.5).fillColor("#374151").font("Helvetica").text(tutorEmail, 64, y + 42).text(parentEmail, 324, y + 42);
 
+  doc.fontSize(7).fillColor(MID_GRAY).font("Helvetica-Bold")
+    .text("FROM (TUTOR)", 64, y + 12)
+    .text("TO (PARENT / GUARDIAN)", 324, y + 12);
+
+  doc.fontSize(10).fillColor(DARK).font("Helvetica-Bold")
+    .text(tutorName, 64, y + 28)
+    .text(parentName, 324, y + 28);
+
+  doc.fontSize(8.5).fillColor("#374151").font("Helvetica")
+    .text(tutorEmail, 64, y + 44)
+    .text(parentEmail, 324, y + 44);
+
+  if (parentPhone) {
+    doc.fontSize(8).fillColor("#374151").font("Helvetica").text(parentPhone, 324, y + 60);
+  }
+  if (parentAddress) {
+    doc.fontSize(7.5).fillColor("#374151").font("Helvetica")
+      .text(parentAddress, 324, y + (parentPhone ? 74 : 60), { width: 200 });
+  }
+
+  // Description table
   y += BOX_H + 30;
   doc.rect(50, y, doc.page.width - 100, 24).fill(NAV);
-  doc.fontSize(8).fillColor("#ffffff").font("Helvetica-Bold").text("DESCRIPTION", 64, y + 8).text("STUDENT", 310, y + 8).text("AMOUNT", 0, y + 8, { align: "right" });
+  doc.fontSize(8).fillColor("#ffffff").font("Helvetica-Bold")
+    .text("DESCRIPTION", 64, y + 8)
+    .text("STUDENT", 310, y + 8)
+    .text("AMOUNT", 0, y + 8, { align: "right" });
   y += 24;
   doc.rect(50, y, doc.page.width - 100, 36).fill("#fafafa");
   doc.strokeColor("#e5e7eb").lineWidth(0.5).moveTo(50, y + 36).lineTo(doc.page.width - 50, y + 36).stroke();
@@ -206,27 +268,18 @@ router.get("/invoices/:invoiceId/pdf", async (req, res) => {
   doc.fontSize(9).fillColor(DARK).font("Helvetica").text(studentName, 310, y + 13);
   doc.fontSize(11).fillColor(DARK).font("Helvetica-Bold").text(`$${session.totalAmount.toFixed(2)}`, 0, y + 10, { align: "right" });
 
-  // Commission breakdown for tutor reference
+  // Total paid box
   y += 60;
-  const commissionRate = invoice.commissionRate ?? 0;
-  const tutorEarnings = invoice.tutorEarnings ?? session.totalAmount;
-  const platformCommission = invoice.platformCommission ?? 0;
-  doc.rect(50, y, doc.page.width - 100, 1).fill("#e5e7eb");
-  y += 12;
-  doc.fontSize(8).fillColor(MID_GRAY).font("Helvetica").text(`Platform commission (${(commissionRate * 100).toFixed(0)}%)`, 50, y);
-  doc.fontSize(8).fillColor(DARK).font("Helvetica-Bold").text(`$${platformCommission.toFixed(2)}`, 0, y, { align: "right" });
-  y += 16;
-  doc.fontSize(8).fillColor(ACCENT).font("Helvetica-Bold").text("TUTOR EARNINGS", 50, y);
-  doc.fontSize(8).fillColor(ACCENT).font("Helvetica-Bold").text(`$${tutorEarnings.toFixed(2)}`, 0, y, { align: "right" });
-
-  y += 30;
   doc.rect(doc.page.width - 200, y, 150, 40).fill(NAV);
-  doc.fontSize(8).fillColor("rgba(255,255,255,0.65)").font("Helvetica").text("TOTAL PAID", doc.page.width - 192, y + 8);
+  doc.fontSize(8).fillColor("rgba(255,255,255,0.65)").font("Helvetica").text("TOTAL DUE", doc.page.width - 192, y + 8);
   doc.fontSize(16).fillColor("#ffffff").font("Helvetica-Bold").text(`$${session.totalAmount.toFixed(2)}`, doc.page.width - 192, y + 18);
 
+  // Footer
   const footerY = doc.page.height - 60;
   doc.rect(0, footerY, doc.page.width, 60).fill(LIGHT_GRAY);
-  doc.fontSize(8).fillColor(MID_GRAY).font("Helvetica").text("Thank you for using Scholix. Payment is processed through the platform.", 50, footerY + 20, { align: "center", width: doc.page.width - 100 }).text(`Invoice generated on ${invoiceDate} · scholix.app`, 50, footerY + 35, { align: "center", width: doc.page.width - 100 });
+  doc.fontSize(8).fillColor(MID_GRAY).font("Helvetica")
+    .text("Thank you for using Scholix. Payment is processed through the platform.", 50, footerY + 20, { align: "center", width: doc.page.width - 100 })
+    .text(`Invoice ${invoiceNum} · Generated ${invoiceDate} · scholix.app`, 50, footerY + 35, { align: "center", width: doc.page.width - 100 });
   doc.rect(50, footerY - 20, doc.page.width - 100, 16).fill(ACCENT);
   doc.fontSize(7.5).fillColor("#ffffff").font("Helvetica-Bold").text("PAYMENT RECEIVED — THANK YOU", 0, footerY - 14, { align: "center" });
 
