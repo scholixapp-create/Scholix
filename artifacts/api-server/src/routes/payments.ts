@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, paymentsTable, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, availabilityTable } from "@workspace/db";
+import { db, paymentsTable, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { SimulatePaymentBody, ListPaymentsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
@@ -89,11 +89,6 @@ router.post("/payments/simulate", async (req, res) => {
     if (comm.isCommissionFree) {
       await db.update(sessionsTable).set({ isCommissionFree: true }).where(eq(sessionsTable.id, sessionId));
     }
-  }
-
-  // Mark availability slot as booked if session has one
-  if (session.availabilitySlotId) {
-    await db.update(availabilityTable).set({ isBooked: true }).where(eq(availabilityTable.id, session.availabilitySlotId));
   }
 
   const [student] = await db

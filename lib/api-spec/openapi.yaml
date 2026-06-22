@@ -231,6 +231,41 @@ paths:
                 items:
                   $ref: "#/components/schemas/AvailabilitySlot"
 
+  /tutors/{tutorId}/available-slots:
+    get:
+      operationId: getTutorAvailableSlots
+      tags: [tutors]
+      summary: Get dynamically computed available start times for a tutor on a given date
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "YYYY-MM-DD"
+        - name: duration
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: "Session duration in minutes"
+      responses:
+        "200":
+          description: Available start times
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailableSlotsResponse"
+        "400":
+          description: Missing or invalid parameters
+        "404":
+          description: Tutor not found
+
   /tutors/{tutorId}/students:
     get:
       operationId: getTutorStudents
@@ -632,6 +667,12 @@ components:
           nullable: true
         sessionCount:
           type: integer
+        sessionDurations:
+          type: array
+          nullable: true
+          items:
+            type: integer
+          description: "Allowed session lengths in minutes, e.g. [60, 90]"
         createdAt:
           type: string
       required: [id, userId, firstName, lastName, email, subjects, hourlyRate, isApproved, verificationStatus, sessionCount, createdAt]
@@ -647,43 +688,69 @@ components:
             type: string
         hourlyRate:
           type: number
+        sessionDurations:
+          type: array
+          nullable: true
+          items:
+            type: integer
+          description: "Allowed session lengths in minutes, e.g. [60, 90]"
 
     AvailabilitySlot:
       type: object
+      description: A recurring weekly availability window for a tutor
       properties:
         id:
           type: integer
         tutorId:
           type: integer
-        date:
-          type: string
-          description: "YYYY-MM-DD format"
+        dayOfWeek:
+          type: integer
+          description: "0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun"
         startTime:
           type: string
-          description: "HH:MM format"
+          description: "HH:MM format (24h)"
         endTime:
           type: string
-          description: "HH:MM format"
-        isBooked:
-          type: boolean
-      required: [id, tutorId, date, startTime, endTime, isBooked]
+          description: "HH:MM format (24h)"
+        timezone:
+          type: string
+      required: [id, tutorId, dayOfWeek, startTime, endTime]
 
     SetAvailabilityBody:
       type: object
       properties:
-        slots:
+        windows:
           type: array
           items:
             type: object
             properties:
-              date:
-                type: string
+              dayOfWeek:
+                type: integer
+                description: "0=Mon … 6=Sun"
               startTime:
                 type: string
+                description: "HH:MM format"
               endTime:
                 type: string
-            required: [date, startTime, endTime]
-      required: [slots]
+                description: "HH:MM format"
+            required: [dayOfWeek, startTime, endTime]
+      required: [windows]
+
+    AvailableSlotsResponse:
+      type: object
+      properties:
+        date:
+          type: string
+          description: "YYYY-MM-DD"
+        duration:
+          type: integer
+          description: "Session duration in minutes"
+        slots:
+          type: array
+          items:
+            type: string
+          description: "Available start times in HH:MM (24h) format"
+      required: [date, duration, slots]
 
     Student:
       type: object

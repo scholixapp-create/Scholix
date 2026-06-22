@@ -308,7 +308,7 @@ export default function TutorSessions() {
   const tutorId = tutorProfile?.id;
 
   const sessions = useListSessions(tutorId ? { tutorId } : undefined, {
-    query: { enabled: !!tutorId },
+    query: { enabled: !!tutorId } as any,
   });
   const completeMutation = useCompleteSession();
   const cancelMutation = useCancelSession();

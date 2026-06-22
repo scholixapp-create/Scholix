@@ -11,11 +11,11 @@ export default function TutorStudents() {
   const tutorId = tutorProfile?.id;
 
   const students = useGetTutorStudents(tutorId ?? 0, {
-    query: { enabled: !!tutorId },
+    query: { enabled: !!tutorId } as any,
   });
 
   const sessions = useListSessions(tutorId ? { tutorId } : undefined, {
-    query: { enabled: !!tutorId },
+    query: { enabled: !!tutorId } as any,
   });
 
   return (

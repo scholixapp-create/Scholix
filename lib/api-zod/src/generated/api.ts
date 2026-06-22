@@ -80,6 +80,10 @@ export const ListTutorsResponseItem = zod.object({
   verificationStatus: zod.string(),
   educationDetails: zod.string().nullish(),
   sessionCount: zod.number(),
+  sessionDurations: zod
+    .array(zod.number())
+    .nullish()
+    .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
   createdAt: zod.string(),
 });
 export const ListTutorsResponse = zod.array(ListTutorsResponseItem);
@@ -104,6 +108,10 @@ export const GetTutorResponse = zod.object({
   verificationStatus: zod.string(),
   educationDetails: zod.string().nullish(),
   sessionCount: zod.number(),
+  sessionDurations: zod
+    .array(zod.number())
+    .nullish()
+    .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
   createdAt: zod.string(),
 });
 
@@ -118,6 +126,10 @@ export const UpdateTutorProfileBody = zod.object({
   bio: zod.string().optional(),
   subjects: zod.array(zod.string()).optional(),
   hourlyRate: zod.number().optional(),
+  sessionDurations: zod
+    .array(zod.number())
+    .nullish()
+    .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
 });
 
 export const UpdateTutorProfileResponse = zod.object({
@@ -133,6 +145,10 @@ export const UpdateTutorProfileResponse = zod.object({
   verificationStatus: zod.string(),
   educationDetails: zod.string().nullish(),
   sessionCount: zod.number(),
+  sessionDurations: zod
+    .array(zod.number())
+    .nullish()
+    .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
   createdAt: zod.string(),
 });
 
@@ -143,14 +159,18 @@ export const GetTutorAvailabilityParams = zod.object({
   tutorId: zod.coerce.number(),
 });
 
-export const GetTutorAvailabilityResponseItem = zod.object({
-  id: zod.number(),
-  tutorId: zod.number(),
-  date: zod.string().describe("YYYY-MM-DD format"),
-  startTime: zod.string().describe("HH:MM format"),
-  endTime: zod.string().describe("HH:MM format"),
-  isBooked: zod.boolean(),
-});
+export const GetTutorAvailabilityResponseItem = zod
+  .object({
+    id: zod.number(),
+    tutorId: zod.number(),
+    dayOfWeek: zod
+      .number()
+      .describe("0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun"),
+    startTime: zod.string().describe("HH:MM format (24h)"),
+    endTime: zod.string().describe("HH:MM format (24h)"),
+    timezone: zod.string().optional(),
+  })
+  .describe("A recurring weekly availability window for a tutor");
 export const GetTutorAvailabilityResponse = zod.array(
   GetTutorAvailabilityResponseItem,
 );
@@ -163,26 +183,50 @@ export const SetTutorAvailabilityParams = zod.object({
 });
 
 export const SetTutorAvailabilityBody = zod.object({
-  slots: zod.array(
+  windows: zod.array(
     zod.object({
-      date: zod.string(),
-      startTime: zod.string(),
-      endTime: zod.string(),
+      dayOfWeek: zod.number().describe("0=Mon … 6=Sun"),
+      startTime: zod.string().describe("HH:MM format"),
+      endTime: zod.string().describe("HH:MM format"),
     }),
   ),
 });
 
-export const SetTutorAvailabilityResponseItem = zod.object({
-  id: zod.number(),
-  tutorId: zod.number(),
-  date: zod.string().describe("YYYY-MM-DD format"),
-  startTime: zod.string().describe("HH:MM format"),
-  endTime: zod.string().describe("HH:MM format"),
-  isBooked: zod.boolean(),
-});
+export const SetTutorAvailabilityResponseItem = zod
+  .object({
+    id: zod.number(),
+    tutorId: zod.number(),
+    dayOfWeek: zod
+      .number()
+      .describe("0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun"),
+    startTime: zod.string().describe("HH:MM format (24h)"),
+    endTime: zod.string().describe("HH:MM format (24h)"),
+    timezone: zod.string().optional(),
+  })
+  .describe("A recurring weekly availability window for a tutor");
 export const SetTutorAvailabilityResponse = zod.array(
   SetTutorAvailabilityResponseItem,
 );
+
+/**
+ * @summary Get dynamically computed available start times for a tutor on a given date
+ */
+export const GetTutorAvailableSlotsParams = zod.object({
+  tutorId: zod.coerce.number(),
+});
+
+export const GetTutorAvailableSlotsQueryParams = zod.object({
+  date: zod.coerce.string().describe("YYYY-MM-DD"),
+  duration: zod.coerce.number().describe("Session duration in minutes"),
+});
+
+export const GetTutorAvailableSlotsResponse = zod.object({
+  date: zod.string().describe("YYYY-MM-DD"),
+  duration: zod.number().describe("Session duration in minutes"),
+  slots: zod
+    .array(zod.string())
+    .describe("Available start times in HH:MM (24h) format"),
+});
 
 /**
  * @summary Get students associated with a tutor
@@ -433,6 +477,10 @@ export const ApproveTutorResponse = zod.object({
   verificationStatus: zod.string(),
   educationDetails: zod.string().nullish(),
   sessionCount: zod.number(),
+  sessionDurations: zod
+    .array(zod.number())
+    .nullish()
+    .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
   createdAt: zod.string(),
 });
 

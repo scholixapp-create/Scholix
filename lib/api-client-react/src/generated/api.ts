@@ -21,10 +21,12 @@ import type {
   ApproveTutorBody,
   AuthResponse,
   AvailabilitySlot,
+  AvailableSlotsResponse,
   CreateSessionBody,
   CreateStudentBody,
   ErrorResponse,
   GetSessionSummaryParams,
+  GetTutorAvailableSlotsParams,
   HealthStatus,
   ListPaymentsParams,
   ListSessionsParams,
@@ -865,6 +867,127 @@ export const useSetTutorAvailability = <
 > => {
   return useMutation(getSetTutorAvailabilityMutationOptions(options));
 };
+
+/**
+ * @summary Get dynamically computed available start times for a tutor on a given date
+ */
+export const getGetTutorAvailableSlotsUrl = (
+  tutorId: number,
+  params: GetTutorAvailableSlotsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/tutors/${tutorId}/available-slots?${stringifiedParams}`
+    : `/api/tutors/${tutorId}/available-slots`;
+};
+
+export const getTutorAvailableSlots = async (
+  tutorId: number,
+  params: GetTutorAvailableSlotsParams,
+  options?: RequestInit,
+): Promise<AvailableSlotsResponse> => {
+  return customFetch<AvailableSlotsResponse>(
+    getGetTutorAvailableSlotsUrl(tutorId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetTutorAvailableSlotsQueryKey = (
+  tutorId: number,
+  params?: GetTutorAvailableSlotsParams,
+) => {
+  return [
+    `/api/tutors/${tutorId}/available-slots`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetTutorAvailableSlotsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTutorAvailableSlots>>,
+  TError = ErrorType<void>,
+>(
+  tutorId: number,
+  params: GetTutorAvailableSlotsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTutorAvailableSlots>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetTutorAvailableSlotsQueryKey(tutorId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getTutorAvailableSlots>>
+  > = ({ signal }) =>
+    getTutorAvailableSlots(tutorId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!tutorId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTutorAvailableSlots>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTutorAvailableSlotsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTutorAvailableSlots>>
+>;
+export type GetTutorAvailableSlotsQueryError = ErrorType<void>;
+
+/**
+ * @summary Get dynamically computed available start times for a tutor on a given date
+ */
+
+export function useGetTutorAvailableSlots<
+  TData = Awaited<ReturnType<typeof getTutorAvailableSlots>>,
+  TError = ErrorType<void>,
+>(
+  tutorId: number,
+  params: GetTutorAvailableSlotsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTutorAvailableSlots>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTutorAvailableSlotsQueryOptions(
+    tutorId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get students associated with a tutor

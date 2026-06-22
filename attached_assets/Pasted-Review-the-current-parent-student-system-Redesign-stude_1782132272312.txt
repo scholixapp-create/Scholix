@@ -1,0 +1,193 @@
+Review the current parent/student system.
+
+Redesign student management so parents own student profiles.
+
+Current issue:
+The workflow is unclear whether adding a student creates a login account or links an existing user.
+
+Implement the following model:
+
+Core principle:
+
+Parents are account holders.
+Students are child profiles by default.
+
+A student profile does NOT require a login.
+
+---
+
+DATABASE:
+
+Update students table:
+
+Keep:
+
+id
+parentId
+firstName
+lastName
+yearLevel
+school
+subjects
+goals
+dateOfBirth
+
+Add:
+
+userId nullable
+
+Meaning:
+
+If userId exists:
+student has login access
+
+If userId is null:
+student is parent-managed only
+
+
+---
+
+PARENT FLOW:
+
+Parent dashboard:
+
+"Add Student"
+
+Form:
+
+Required:
+- First name
+- Year level
+- Subjects
+
+Optional:
+- School
+- Learning goals
+- Date of birth
+
+
+On submit:
+
+Create student profile linked to parent.
+
+Do NOT create:
+- email
+- password
+- user account
+
+
+Show:
+
+"Student profile created"
+
+---
+
+BOOKING:
+
+When parent books:
+
+Student selector should show:
+
+Only students belonging to that parent.
+
+Example:
+
+Select student:
+
+James Smith
+Year 10
+Maths
+
+
+---
+
+TUTOR VIEW:
+
+Tutors should see:
+
+Student profile:
+
+Name
+Year level
+Subjects
+Goals
+
+Do not show:
+- parent private information
+- DOB unless necessary
+
+
+---
+
+STUDENT ACCOUNT FUTURE SUPPORT:
+
+Add backend support for:
+
+POST /students/:id/invite
+
+Future behaviour:
+
+Parent enters student email.
+
+System creates invitation.
+
+Student accepts.
+
+Creates user account.
+
+Links userId.
+
+
+Do not expose this in UI yet.
+
+---
+
+SECURITY:
+
+Parents can only:
+
+Create their own students.
+View their own students.
+Edit their own students.
+
+Tutors can only:
+
+View students they have sessions with.
+
+Students with accounts can only:
+
+View themselves.
+
+
+---
+
+Update all UI text:
+
+Replace:
+"Create student account"
+
+with:
+
+"Add student profile"
+
+
+Replace:
+"Student login"
+
+with:
+
+"Invite student later"
+
+
+---
+
+Add helpful explanation:
+
+"Students don't need their own account. You manage bookings and payments on their behalf."
+
+Implement this without breaking:
+- booking system
+- invoices
+- progress tracking
+- tutor views
+- notifications.

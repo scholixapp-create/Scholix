@@ -3,7 +3,7 @@ import { Link, useRoute } from "wouter";
 import { useGetTutor, useGetTutorAvailability } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { GraduationCap, ShieldCheck, Star, BookOpen, Clock, ArrowLeft, MapPin, Award } from "lucide-react";
-import { format, parseISO, isBefore, startOfToday } from "date-fns";
+import { format, parseISO } from "date-fns";
 import TestModeBanner from "@/components/TestModeBanner";
 
 interface Review {
@@ -41,12 +41,6 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
   );
 }
 
-function slotDuration(startTime: string, endTime: string): number {
-  const [sh, sm] = startTime.split(":").map(Number);
-  const [eh, em] = endTime.split(":").map(Number);
-  return (eh * 60 + em) - (sh * 60 + sm);
-}
-
 export default function TutorProfile() {
   const [, params] = useRoute("/tutor/:id");
   const tutorId = Number(params?.id);
@@ -65,19 +59,9 @@ export default function TutorProfile() {
       .catch(() => setReviews([]));
   }, [tutorId]);
 
-  const today = startOfToday();
-  const availableSlots = useMemo(() => {
+  const availabilityWindows = useMemo(() => {
     if (!availability.data) return [];
-    return availability.data
-      .filter((s) => {
-        if (s.isBooked) return false;
-        try { return !isBefore(parseISO(s.date), today); } catch { return false; }
-      })
-      .sort((a, b) => {
-        const dc = a.date.localeCompare(b.date);
-        return dc !== 0 ? dc : a.startTime.localeCompare(b.startTime);
-      })
-      .slice(0, 6);
+    return [...availability.data].sort((a, b) => (a.dayOfWeek ?? 0) - (b.dayOfWeek ?? 0));
   }, [availability.data]);
 
   const avgRating = reviews.length > 0
@@ -228,21 +212,18 @@ export default function TutorProfile() {
               <div className="space-y-2">
                 {[1, 2].map((i) => <div key={i} className="h-12 rounded-xl bg-gray-100 animate-pulse" />)}
               </div>
-            ) : availableSlots.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4">No upcoming slots available right now.</p>
+            ) : availabilityWindows.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No availability set yet.</p>
             ) : (
               <div className="space-y-2">
-                {availableSlots.map((slot) => {
-                  const dur = slotDuration(slot.startTime, slot.endTime);
-                  let dateLabel = slot.date;
-                  try { dateLabel = format(parseISO(slot.date), "EEE, d MMM yyyy"); } catch { /* noop */ }
+                {availabilityWindows.map((w) => {
+                  const dayLabel = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][w.dayOfWeek ?? 0];
                   return (
-                    <div key={slot.id} className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                    <div key={w.id} className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-100">
                       <div>
-                        <p className="text-sm font-semibold text-gray-800">{dateLabel}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{slot.startTime} – {slot.endTime} · {dur} min</p>
+                        <p className="text-sm font-semibold text-gray-800">{dayLabel}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{w.startTime} – {w.endTime}</p>
                       </div>
-                      <span className="text-sm font-bold text-gray-800">${((t.hourlyRate * dur) / 60).toFixed(0)}</span>
                     </div>
                   );
                 })}

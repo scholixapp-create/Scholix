@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, availabilityTable } from "@workspace/db";
+import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable } from "@workspace/db";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
@@ -298,21 +298,24 @@ router.post("/sessions", async (req, res) => {
 
   const totalAmount = (tutor.hourlyRate * parsed.data.durationMinutes) / 60;
 
-  // If an availability slot is requested, verify it exists and is not already booked
-  const slotId = parsed.data.availabilitySlotId ?? null;
-  if (slotId) {
-    const [slot] = await db
-      .select()
-      .from(availabilityTable)
-      .where(and(eq(availabilityTable.id, slotId), eq(availabilityTable.tutorId, parsed.data.tutorId)))
-      .limit(1);
+  // Overlap detection: prevent double-booking the tutor at the same time
+  const newStart = new Date(parsed.data.scheduledAt);
+  const newEnd = new Date(newStart.getTime() + parsed.data.durationMinutes * 60000);
 
-    if (!slot) {
-      res.status(404).json({ error: "Availability slot not found" });
-      return;
-    }
-    if (slot.isBooked) {
-      res.status(409).json({ error: "This time slot has already been booked" });
+  const activeSessions = await db
+    .select({ scheduledAt: sessionsTable.scheduledAt, durationMinutes: sessionsTable.durationMinutes })
+    .from(sessionsTable)
+    .where(
+      and(
+        eq(sessionsTable.tutorId, parsed.data.tutorId),
+        inArray(sessionsTable.status, ["pending_payment", "scheduled"])
+      )
+    );
+
+  for (const s of activeSessions) {
+    const sEnd = new Date(s.scheduledAt.getTime() + s.durationMinutes * 60000);
+    if (s.scheduledAt < newEnd && sEnd > newStart) {
+      res.status(409).json({ error: "That time is no longer available — another session overlaps this slot." });
       return;
     }
   }
@@ -324,12 +327,11 @@ router.post("/sessions", async (req, res) => {
       tutorId: parsed.data.tutorId,
       studentId: parsed.data.studentId,
       subject: parsed.data.subject,
-      scheduledAt: new Date(parsed.data.scheduledAt),
+      scheduledAt: newStart,
       durationMinutes: parsed.data.durationMinutes,
       status: "pending_payment",
       isPaid: false,
       totalAmount,
-      availabilitySlotId: slotId,
     })
     .returning();
 

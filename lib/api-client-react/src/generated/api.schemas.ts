@@ -76,6 +76,8 @@ export interface TutorProfile {
   verificationStatus: string;
   educationDetails?: string | null;
   sessionCount: number;
+  /** Allowed session lengths in minutes, e.g. [60, 90] */
+  sessionDurations?: number[] | null;
   createdAt: string;
 }
 
@@ -83,28 +85,45 @@ export interface UpdateTutorProfileBody {
   bio?: string;
   subjects?: string[];
   hourlyRate?: number;
+  /** Allowed session lengths in minutes, e.g. [60, 90] */
+  sessionDurations?: number[] | null;
 }
 
+/**
+ * A recurring weekly availability window for a tutor
+ */
 export interface AvailabilitySlot {
   id: number;
   tutorId: number;
-  /** YYYY-MM-DD format */
-  date: string;
-  /** HH:MM format */
+  /** 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun */
+  dayOfWeek: number;
+  /** HH:MM format (24h) */
   startTime: string;
-  /** HH:MM format */
+  /** HH:MM format (24h) */
   endTime: string;
-  isBooked: boolean;
+  timezone?: string;
 }
 
-export type SetAvailabilityBodySlotsItem = {
-  date: string;
+export type SetAvailabilityBodyWindowsItem = {
+  /** 0=Mon … 6=Sun */
+  dayOfWeek: number;
+  /** HH:MM format */
   startTime: string;
+  /** HH:MM format */
   endTime: string;
 };
 
 export interface SetAvailabilityBody {
-  slots: SetAvailabilityBodySlotsItem[];
+  windows: SetAvailabilityBodyWindowsItem[];
+}
+
+export interface AvailableSlotsResponse {
+  /** YYYY-MM-DD */
+  date: string;
+  /** Session duration in minutes */
+  duration: number;
+  /** Available start times in HH:MM (24h) format */
+  slots: string[];
 }
 
 export interface Student {
@@ -219,6 +238,17 @@ export interface SessionSummary {
   cancelled: number;
   total: number;
 }
+
+export type GetTutorAvailableSlotsParams = {
+  /**
+   * YYYY-MM-DD
+   */
+  date: string;
+  /**
+   * Session duration in minutes
+   */
+  duration: number;
+};
 
 export type ListSessionsParams = {
   tutorId?: number;

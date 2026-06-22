@@ -1,10 +1,23 @@
 import { Router } from "express";
 import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable, tutorComplianceTable } from "@workspace/db";
-import { eq, inArray, and } from "drizzle-orm";
+import { eq, inArray, and, isNotNull } from "drizzle-orm";
 import { UpdateTutorProfileBody, SetTutorAvailabilityBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function parseDurations(raw: string | null | undefined): number[] | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.filter((x) => typeof x === "number");
+  } catch {
+    /* noop */
+  }
+  return null;
+}
 
 function tutorToJson(
   tutor: typeof tutorsTable.$inferSelect,
@@ -24,6 +37,7 @@ function tutorToJson(
     verificationStatus: tutor.verificationStatus ?? "pending",
     educationDetails: (tutor as Record<string, unknown>).educationDetails as string | null ?? null,
     sessionCount,
+    sessionDurations: parseDurations(tutor.sessionDurations),
     createdAt: tutor.createdAt.toISOString(),
   };
 }
@@ -35,6 +49,28 @@ async function getSessionCount(tutorId: number): Promise<number> {
     .where(and(eq(sessionsTable.tutorId, tutorId), eq(sessionsTable.status, "completed")));
   return rows.length;
 }
+
+function windowToJson(s: typeof availabilityTable.$inferSelect) {
+  return {
+    id: s.id,
+    tutorId: s.tutorId,
+    dayOfWeek: s.dayOfWeek as number,
+    startTime: s.startTime,
+    endTime: s.endTime,
+    timezone: s.timezone ?? "Australia/Melbourne",
+  };
+}
+
+function timeToMins(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function minsToTime(mins: number): string {
+  return `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+}
+
+// ── Tutor CRUD ────────────────────────────────────────────────────────────────
 
 router.get("/tutors", async (_req, res) => {
   const tutors = await db
@@ -87,6 +123,9 @@ router.put("/tutors/:tutorId/profile", async (req, res) => {
     }
     updates.hourlyRate = parsed.data.hourlyRate;
   }
+  if (parsed.data.sessionDurations !== undefined) {
+    updates.sessionDurations = JSON.stringify(parsed.data.sessionDurations);
+  }
 
   await db.update(tutorsTable).set(updates).where(eq(tutorsTable.id, tutorId));
 
@@ -105,27 +144,20 @@ router.put("/tutors/:tutorId/profile", async (req, res) => {
   res.json(tutorToJson(row.tutors, row.users, count));
 });
 
-function slotToJson(s: typeof availabilityTable.$inferSelect) {
-  return {
-    id: s.id,
-    tutorId: s.tutorId,
-    date: s.date,
-    startTime: s.startTime,
-    endTime: s.endTime,
-    isBooked: s.isBooked,
-  };
-}
+// ── Availability windows ──────────────────────────────────────────────────────
 
+// GET /tutors/:tutorId/availability — returns weekly recurring windows
 router.get("/tutors/:tutorId/availability", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
-  const slots = await db
+  const windows = await db
     .select()
     .from(availabilityTable)
-    .where(eq(availabilityTable.tutorId, tutorId));
+    .where(and(eq(availabilityTable.tutorId, tutorId), isNotNull(availabilityTable.dayOfWeek)));
 
-  res.json(slots.map(slotToJson));
+  res.json(windows.map(windowToJson));
 });
 
+// PUT /tutors/:tutorId/availability — replace all windows
 router.put("/tutors/:tutorId/availability", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
   const parsed = SetTutorAvailabilityBody.safeParse(req.body);
@@ -134,55 +166,120 @@ router.put("/tutors/:tutorId/availability", async (req, res) => {
     return;
   }
 
+  // Delete all existing windows for this tutor
   await db.delete(availabilityTable).where(eq(availabilityTable.tutorId, tutorId));
 
-  if (parsed.data.slots.length > 0) {
+  if (parsed.data.windows.length > 0) {
     await db.insert(availabilityTable).values(
-      parsed.data.slots.map((s) => ({
+      parsed.data.windows.map((w) => ({
         tutorId,
-        date: s.date,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        isBooked: false,
+        dayOfWeek: w.dayOfWeek,
+        startTime: w.startTime,
+        endTime: w.endTime,
+        timezone: "Australia/Melbourne",
       }))
     );
   }
 
-  const slots = await db.select().from(availabilityTable).where(eq(availabilityTable.tutorId, tutorId));
-  res.json(slots.map(slotToJson));
+  const windows = await db
+    .select()
+    .from(availabilityTable)
+    .where(and(eq(availabilityTable.tutorId, tutorId), isNotNull(availabilityTable.dayOfWeek)));
+
+  res.json(windows.map(windowToJson));
 });
 
-router.post("/tutors/:tutorId/availability", async (req, res) => {
+// ── Available slots (dynamic) ─────────────────────────────────────────────────
+//
+// GET /tutors/:tutorId/available-slots?date=YYYY-MM-DD&duration=60
+//
+// Melbourne is AEST (UTC+10) or AEDT (UTC+11 during summer).
+// We use a fixed UTC+10 offset for MVP simplicity.
+//
+// The frontend creates scheduledAt via: new Date(`${date}T${time}:00`) which
+// produces a local-timezone Date in the user's browser (AEST for AU users).
+// All UTC arithmetic here must match that convention so conflict checks align.
+//
+const AEST_OFFSET_MS = 10 * 60 * 60 * 1000; // UTC+10
+
+router.get("/tutors/:tutorId/available-slots", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
-  const { date, startTime, endTime } = req.body as { date?: string; startTime?: string; endTime?: string };
-  if (!date || !startTime || !endTime) {
-    res.status(400).json({ error: "date, startTime, endTime required" });
+  const date = req.query.date as string;
+  const duration = parseInt(req.query.duration as string, 10);
+
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(duration) || duration < 15) {
+    res.status(400).json({ error: "date (YYYY-MM-DD) and duration (minutes, ≥15) are required" });
     return;
   }
 
-  const [slot] = await db
-    .insert(availabilityTable)
-    .values({ tutorId, date, startTime, endTime, isBooked: false })
-    .returning();
+  const [year, month, day] = date.split("-").map(Number);
 
-  res.status(201).json(slotToJson(slot));
-});
+  // Day of week in AEST: 0=Mon … 6=Sun
+  // The date string represents an AEST date. Midnight AEST = prior UTC day 14:00.
+  const aestMidnightUtc = new Date(Date.UTC(year, month - 1, day) - AEST_OFFSET_MS);
+  // JS getDay() on the AEST midnight (in UTC): Sun=0, Mon=1, …, Sat=6
+  const jsDay = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1; // Mon=0 … Sun=6
 
-router.delete("/tutors/:tutorId/availability/:slotId", async (req, res) => {
-  const slotId = parseInt(req.params.slotId, 10);
-  const tutorId = parseInt(req.params.tutorId, 10);
+  // Get tutor's availability windows for this day of week
+  const windows = await db
+    .select()
+    .from(availabilityTable)
+    .where(and(eq(availabilityTable.tutorId, tutorId), eq(availabilityTable.dayOfWeek, dayOfWeek)));
 
-  const [deleted] = await db
-    .delete(availabilityTable)
-    .where(and(eq(availabilityTable.id, slotId), eq(availabilityTable.tutorId, tutorId)))
-    .returning();
-
-  if (!deleted) {
-    res.status(404).json({ error: "Slot not found" });
+  if (windows.length === 0) {
+    res.json({ date, duration, slots: [] });
     return;
   }
-  res.json({ ok: true });
+
+  // Query sessions for this tutor on this AEST date
+  // AEST day in UTC: [aestMidnightUtc, aestMidnightUtc + 24h)
+  const aestEndOfDayUtc = new Date(aestMidnightUtc.getTime() + 24 * 60 * 60 * 1000);
+
+  const sessionsOnDate = await db
+    .select({ scheduledAt: sessionsTable.scheduledAt, durationMinutes: sessionsTable.durationMinutes })
+    .from(sessionsTable)
+    .where(
+      and(
+        eq(sessionsTable.tutorId, tutorId),
+        inArray(sessionsTable.status, ["pending_payment", "scheduled"])
+      )
+    );
+
+  // Convert sessions to AEST-day-relative minute ranges
+  const bookedRanges = sessionsOnDate
+    .filter((s) => s.scheduledAt >= aestMidnightUtc && s.scheduledAt < aestEndOfDayUtc)
+    .map((s) => {
+      const msFromAestMidnight = s.scheduledAt.getTime() - aestMidnightUtc.getTime();
+      const startMins = Math.round(msFromAestMidnight / 60000);
+      return { startMins, endMins: startMins + s.durationMinutes };
+    });
+
+  // Generate slots (30-min step) within each availability window
+  const STEP = 30;
+  const resultSlots = new Set<string>();
+
+  for (const w of windows) {
+    const windowStart = timeToMins(w.startTime);
+    const windowEnd = timeToMins(w.endTime);
+    let slotStart = windowStart;
+    while (slotStart + duration <= windowEnd) {
+      const slotEnd = slotStart + duration;
+      const hasConflict = bookedRanges.some(
+        (b) => b.startMins < slotEnd && b.endMins > slotStart
+      );
+      if (!hasConflict) {
+        resultSlots.add(minsToTime(slotStart));
+      }
+      slotStart += STEP;
+    }
+  }
+
+  const slots = [...resultSlots].sort();
+  res.json({ date, duration, slots });
 });
+
+// ── Tutor students ────────────────────────────────────────────────────────────
 
 router.get("/tutors/:tutorId/students", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
@@ -218,7 +315,8 @@ router.get("/tutors/:tutorId/students", async (req, res) => {
   );
 });
 
-// GET /tutors/me/compliance
+// ── Compliance ────────────────────────────────────────────────────────────────
+
 router.get("/tutors/me/compliance", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
   const [tutor] = await db
@@ -245,7 +343,6 @@ router.get("/tutors/me/compliance", requireAuth, async (req, res) => {
   });
 });
 
-// POST /tutors/me/compliance
 router.post("/tutors/me/compliance", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
   const { wwccDeclared, codeOfConductAccepted } = req.body ?? {};

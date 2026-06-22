@@ -315,7 +315,7 @@ export default function TutorDashboard() {
   const availability = useGetTutorAvailability(tutorId ?? 0, {
     query: { enabled: !!tutorId } as any,
   });
-  const hasAvailability = (availability.data?.filter((s: { isBooked?: boolean }) => !s.isBooked).length ?? 0) > 0;
+  const hasAvailability = (availability.data?.length ?? 0) > 0;
   const profileComplete = !!(tutorProfile?.bio?.trim() && (tutorProfile?.subjects?.length ?? 0) > 0);
 
   useEffect(() => {
@@ -331,10 +331,10 @@ export default function TutorDashboard() {
   }, []);
 
   const sessions = useListSessions(tutorId ? { tutorId } : undefined, {
-    query: { enabled: !!tutorId },
+    query: { enabled: !!tutorId } as any,
   });
   const summary = useGetSessionSummary(tutorId ? { tutorId } : undefined, {
-    query: { enabled: !!tutorId },
+    query: { enabled: !!tutorId } as any,
   });
 
   const upcoming = sessions.data

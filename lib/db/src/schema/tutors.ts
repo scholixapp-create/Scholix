@@ -16,6 +16,8 @@ export const tutorsTable = pgTable("tutors", {
   educationDetails: text("education_details"),
   firstStudentId: integer("first_student_id"),
   abn: text("abn"),
+  // Allowed session durations offered by the tutor, stored as JSON array e.g. "[60,90]"
+  sessionDurations: text("session_durations"),
   // Verification audit trail
   wwccVerifiedBy: integer("wwcc_verified_by"),
   wwccVerifiedAt: timestamp("wwcc_verified_at"),
