@@ -58,13 +58,13 @@ lib/
 
 ## Business Rules — Commission
 
-### Tier progression (by tutor's total completed sessions)
+### Tier progression (by tutor's total **commission-paying** completed sessions)
 | Tier | Sessions | Platform fee | Tutor keeps |
 |------|----------|-------------|-------------|
 | Starter | 0–9 | 30% | 70% |
-| Growth | 10–24 | 25% | 75% |
-| Established | 25–49 | 20% | 80% |
-| Expert | 50+ | 15% | 85% |
+| Growth | 10–24 | 24% | 76% |
+| Established | 25–49 | 15% | 85% |
+| Expert | 50+ | 5% | 95% |
 
 ### Special free-session rules (evaluated in priority order)
 1. **First student — lifetime free**: Tutor's very first student (stored as `tutors.firstStudentId`) = 0% commission on ALL their sessions, forever.
@@ -72,9 +72,10 @@ lib/
 3. Otherwise: apply the tier rate above.
 - `commissionTier` on invoices: `first_student_free` | `first_session_free` | `standard` | `growth` | `established` | `expert`
 - `isCommissionFree` boolean on sessions table marks 0%-commission sessions
+- **Tier advancement only counts commission-paying sessions** — free sessions (`isCommissionFree = true`) are excluded from the count in `getTierCommission()`
 
 ### Other rules
-- Minimum tutor hourly rate: **$65/hr**
+- Minimum tutor hourly rate: **$50/hr**
 - Sessions must be paid via `POST /api/payments/simulate` before a tutor can mark them complete
 - Completing a session auto-generates an invoice with the correct commission applied
 

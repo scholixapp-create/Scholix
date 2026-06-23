@@ -687,9 +687,9 @@ function TeachEarnGrow() {
       color: "bg-accent/10 text-accent",
       desc: "Start at 70% of every session — and keep more as you grow. Our tier system rewards commitment with lower commissions.",
       points: [
-        "30% → 15% platform fee as you level up",
+        "30% → 5% platform fee as you level up",
         "First student & first session are commission-free",
-        "Minimum $65/hr rate protects your value",
+        "Minimum $50/hr rate protects your value",
       ],
     },
     {
@@ -770,9 +770,9 @@ function TeachEarnGrow() {
             <div className="grid sm:grid-cols-4 gap-3">
               {[
                 { tier: "Starter", sessions: "0–9", fee: "30%", keep: "70%", color: "bg-white/5" },
-                { tier: "Growth", sessions: "10–24", fee: "25%", keep: "75%", color: "bg-white/8" },
-                { tier: "Established", sessions: "25–49", fee: "20%", keep: "80%", color: "bg-white/10" },
-                { tier: "Expert", sessions: "50+", fee: "15%", keep: "85%", color: "bg-accent/15 border-accent/30" },
+                { tier: "Growth", sessions: "10–24", fee: "24%", keep: "76%", color: "bg-white/8" },
+                { tier: "Established", sessions: "25–49", fee: "15%", keep: "85%", color: "bg-white/10" },
+                { tier: "Expert", sessions: "50+", fee: "5%", keep: "95%", color: "bg-accent/15 border-accent/30" },
               ].map((t) => (
                 <div key={t.tier} className={`rounded-2xl border border-white/10 p-4 ${t.color}`}>
                   <p className="text-xs font-semibold text-white/50 mb-1">{t.sessions} sessions</p>

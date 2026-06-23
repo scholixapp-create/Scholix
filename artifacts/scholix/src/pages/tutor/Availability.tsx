@@ -33,7 +33,7 @@ export default function TutorAvailability() {
   const updateProfileMutation = useUpdateTutorProfile();
 
   const [schedule, setSchedule] = useState<Schedule>({});
-  const [hourlyRate, setHourlyRate] = useState(65);
+  const [hourlyRate, setHourlyRate] = useState(50);
   const [selectedDurations, setSelectedDurations] = useState<number[]>([60, 90]);
   const [schedSaved, setSchedSaved] = useState(false);
   const [rateSaved, setRateSaved] = useState(false);
@@ -114,7 +114,7 @@ export default function TutorAvailability() {
 
   const handleSaveRate = async () => {
     if (!tutorId) return;
-    if (hourlyRate < 65) return;
+    if (hourlyRate < 50) return;
     await updateProfileMutation.mutateAsync({ tutorId, data: { hourlyRate } });
     await qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });
     setRateSaved(true);
@@ -306,14 +306,14 @@ export default function TutorAvailability() {
             <DollarSign size={15} className="text-accent" />
             <p className="text-sm font-semibold text-foreground">Hourly Rate</p>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">Minimum rate is $65/hr</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Minimum rate is $50/hr</p>
         </div>
         <div className="px-5 py-4 flex items-center gap-3">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">$</span>
             <input
               type="number"
-              min={65}
+              min={50}
               step={5}
               value={hourlyRate}
               onChange={(e) => setHourlyRate(Number(e.target.value))}
@@ -329,17 +329,17 @@ export default function TutorAvailability() {
             )}
             <button
               onClick={handleSaveRate}
-              disabled={updateProfileMutation.isPending || hourlyRate < 65}
+              disabled={updateProfileMutation.isPending || hourlyRate < 50}
               className="px-4 py-2.5 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-60 transition-all"
             >
               Save
             </button>
           </div>
         </div>
-        {hourlyRate < 65 && (
+        {hourlyRate < 50 && (
           <div className="px-5 pb-4">
             <p className="text-xs text-destructive flex items-center gap-1">
-              <AlertCircle size={11} /> Minimum rate is $65/hr
+              <AlertCircle size={11} /> Minimum rate is $50/hr
             </p>
           </div>
         )}

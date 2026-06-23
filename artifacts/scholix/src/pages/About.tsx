@@ -38,7 +38,7 @@ const features = [
 const stats = [
   { value: "200+", label: "Active tutors" },
   { value: "1,500+", label: "Sessions completed" },
-  { value: "$65/hr", label: "Starting rate" },
+  { value: "$50/hr", label: "Starting rate" },
   { value: "4.9★", label: "Average rating" },
 ];
 

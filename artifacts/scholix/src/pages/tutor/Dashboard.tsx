@@ -73,9 +73,9 @@ function PlaceholderCard({ icon: Icon, title, desc }: { icon: any; title: string
 
 const COMMISSION_TIERS = [
   { name: "Standard",    min: 0,  max: 9,  rate: 30, color: "bg-slate-400" },
-  { name: "Growth",      min: 10, max: 24, rate: 25, color: "bg-blue-500" },
-  { name: "Established", min: 25, max: 49, rate: 20, color: "bg-violet-500" },
-  { name: "Expert",      min: 50, max: Infinity, rate: 15, color: "bg-green-500" },
+  { name: "Growth",      min: 10, max: 24, rate: 24, color: "bg-blue-500" },
+  { name: "Established", min: 25, max: 49, rate: 15, color: "bg-violet-500" },
+  { name: "Expert",      min: 50, max: Infinity, rate: 5, color: "bg-green-500" },
 ];
 
 function GrowEarningsSection({
@@ -203,7 +203,7 @@ function GrowEarningsSection({
               to reach {nextTier.name} tier ({nextTier.rate}% fee) — save ${((currentTier.rate - nextTier.rate) / 100 * hourlyRate).toFixed(0)}/session
             </p>
           ) : (
-            <p className="text-[11px] text-accent font-semibold">🎉 You've reached Expert tier — lowest fee on Scholix!</p>
+            <p className="text-[11px] text-accent font-semibold">🎉 You've reached Expert tier — only 5% fee on Scholix!</p>
           )}
 
           {/* Tier ladder */}
@@ -310,7 +310,7 @@ export default function TutorDashboard() {
   const tutors = useListTutors();
   const tutorProfile = tutors.data?.find((t) => t.userId === user?.id);
   const tutorId = tutorProfile?.id;
-  const hourlyRate = tutorProfile?.hourlyRate ?? 65;
+  const hourlyRate = tutorProfile?.hourlyRate ?? 50;
 
   const availability = useGetTutorAvailability(tutorId ?? 0, {
     query: { enabled: !!tutorId } as any,

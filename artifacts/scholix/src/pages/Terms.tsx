@@ -67,7 +67,7 @@ export default function TermsOfService() {
                 <li>Hold a current, valid Working With Children Check (WWCC) issued in their state or territory as required by law</li>
                 <li>Have an Australian Business Number (ABN) or operate as an individual contractor</li>
                 <li>Provide accurate, up-to-date information about their qualifications, experience, and subject expertise</li>
-                <li>Charge a minimum hourly rate of $65/hr as required by platform rules</li>
+                <li>Charge a minimum hourly rate of $50/hr as required by platform rules</li>
                 <li>Meet all applicable safeguarding and child safety obligations under Australian law</li>
                 <li>Maintain appropriate levels of professional conduct in all interactions with students and families</li>
                 <li>Keep all tutor profile information current and accurate</li>
@@ -77,14 +77,14 @@ export default function TermsOfService() {
             </Section>
 
             <Section n="5" title="Commission and Payment System">
-              <p>Scholix operates a tiered commission model based on each tutor's total completed sessions:</p>
+              <p>Scholix operates a tiered commission model based on each tutor's total commission-paying completed sessions:</p>
               <ul>
                 <li><strong>Starter</strong> (0–9 sessions): 30% platform fee</li>
-                <li><strong>Growth</strong> (10–24 sessions): 25% platform fee</li>
-                <li><strong>Established</strong> (25–49 sessions): 20% platform fee</li>
-                <li><strong>Expert</strong> (50+ sessions): 15% platform fee</li>
+                <li><strong>Growth</strong> (10–24 sessions): 24% platform fee</li>
+                <li><strong>Established</strong> (25–49 sessions): 15% platform fee</li>
+                <li><strong>Expert</strong> (50+ sessions): 5% platform fee</li>
               </ul>
-              <p>Special 0% commission rules apply to a tutor's very first student (lifetime) and to any tutor's first completed session with a new student-tutor pairing.</p>
+              <p>Special 0% commission rules apply to a tutor's very first student (lifetime) and to any tutor's first completed session with a new student-tutor pairing. Commission-free sessions do not count towards tier progression.</p>
               <p><strong>Payment infrastructure (post-beta):</strong> Parents pay Scholix directly for sessions through our secure payment infrastructure. Scholix deducts the applicable platform commission and issues payouts to tutors according to the published payout schedule. Scholix may hold funds in trust pending session completion.</p>
               <p><strong>Beta period:</strong> During beta, payments are simulated. No real money is processed. Tutors and parents must arrange payment directly and outside the platform during this phase.</p>
               <p>Refunds, payment disputes and chargebacks may be handled by Scholix at our reasonable discretion. Tutors agree that commission deductions are final once a session is marked complete.</p>

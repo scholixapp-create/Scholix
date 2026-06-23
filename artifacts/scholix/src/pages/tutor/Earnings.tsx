@@ -21,9 +21,9 @@ function statusLabel(status: string, isPaid: boolean) {
 
 const COMMISSION_TIERS = [
   { label: "Starter", threshold: 0, rate: 30, color: "bg-muted", textColor: "text-muted-foreground" },
-  { label: "Growth", threshold: 10, rate: 25, color: "bg-primary/15", textColor: "text-primary" },
-  { label: "Established", threshold: 25, rate: 20, color: "bg-accent/15", textColor: "text-accent" },
-  { label: "Expert", threshold: 50, rate: 15, color: "bg-amber-100", textColor: "text-amber-700" },
+  { label: "Growth", threshold: 10, rate: 24, color: "bg-primary/15", textColor: "text-primary" },
+  { label: "Established", threshold: 25, rate: 15, color: "bg-accent/15", textColor: "text-accent" },
+  { label: "Expert", threshold: 50, rate: 5, color: "bg-amber-100", textColor: "text-amber-700" },
 ];
 
 function SummaryCard({
@@ -147,7 +147,7 @@ function CommissionTierCard({ completedCount }: { completedCount: number }) {
       {!nextTier && (
         <div className="mt-3 flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
           <Star size={12} className="text-amber-600 shrink-0" />
-          <p className="text-[11px] text-amber-700 font-medium">Expert tier unlocked — lowest possible fee of 15%!</p>
+          <p className="text-[11px] text-amber-700 font-medium">Expert tier unlocked — lowest possible fee of 5%!</p>
         </div>
       )}
     </div>

@@ -24,7 +24,7 @@ async function getTierCommission(tutorId: number, studentId: number, totalAmount
   }
 
   const completed = await db
-    .select({ id: sessionsTable.id, studentId: sessionsTable.studentId })
+    .select({ id: sessionsTable.id, studentId: sessionsTable.studentId, isCommissionFree: sessionsTable.isCommissionFree })
     .from(sessionsTable)
     .where(and(eq(sessionsTable.tutorId, tutorId), eq(sessionsTable.status, "completed")));
 
@@ -33,12 +33,13 @@ async function getTierCommission(tutorId: number, studentId: number, totalAmount
     return { commissionRate: 0, platformCommission: 0, tutorEarnings: totalAmount, tier: "first_session_free", isCommissionFree: true };
   }
 
-  const count = completed.length;
+  // Only count sessions where commission was actually paid — free sessions don't advance the tier
+  const count = completed.filter((s) => !s.isCommissionFree).length;
   let rate = 0.30;
   let tier = "standard";
-  if (count >= 50) { rate = 0.15; tier = "expert"; }
-  else if (count >= 25) { rate = 0.20; tier = "established"; }
-  else if (count >= 10) { rate = 0.25; tier = "growth"; }
+  if (count >= 50) { rate = 0.05; tier = "expert"; }
+  else if (count >= 25) { rate = 0.15; tier = "established"; }
+  else if (count >= 10) { rate = 0.24; tier = "growth"; }
 
   return { commissionRate: rate, platformCommission: totalAmount * rate, tutorEarnings: totalAmount * (1 - rate), tier, isCommissionFree: false };
 }

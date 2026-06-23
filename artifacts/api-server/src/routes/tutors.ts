@@ -117,8 +117,8 @@ router.put("/tutors/:tutorId/profile", async (req, res) => {
   if (parsed.data.bio !== undefined) updates.bio = parsed.data.bio;
   if (parsed.data.subjects !== undefined) updates.subjects = parsed.data.subjects;
   if (parsed.data.hourlyRate !== undefined) {
-    if (parsed.data.hourlyRate < 65) {
-      res.status(400).json({ error: "Minimum hourly rate is $65" });
+    if (parsed.data.hourlyRate < 50) {
+      res.status(400).json({ error: "Minimum hourly rate is $50" });
       return;
     }
     updates.hourlyRate = parsed.data.hourlyRate;

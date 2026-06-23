@@ -52,7 +52,7 @@ export default function TutorAgreement() {
                 <li>You are responsible for all income tax obligations arising from your tutoring income, including lodging your own tax returns with the ATO</li>
                 <li>You are responsible for superannuation contributions where applicable under Australian law</li>
                 <li>You are responsible for obtaining your own professional indemnity and public liability insurance if you require it</li>
-                <li>You set your own rates (subject to the platform minimum of $65/hr), availability, and teaching approach</li>
+                <li>You set your own rates (subject to the platform minimum of $50/hr), availability, and teaching approach</li>
                 <li>Scholix does not direct or control the content or delivery of your tutoring sessions</li>
               </ul>
               <p>If you hold or are required to hold an ABN, you are responsible for maintaining it and meeting your GST obligations if your tutoring income exceeds $75,000 per year.</p>
@@ -100,7 +100,7 @@ export default function TutorAgreement() {
             <Section n="5" title="Payment and Commission">
               <p><strong>Post-beta payment model:</strong> Parents pay Scholix for sessions through our payment infrastructure. Scholix deducts the applicable platform commission (see Tier structure in the Terms of Service) and issues payouts to tutors. Tutors acknowledge that commission is deducted before payout and that completed session invoices are final.</p>
               <p><strong>Beta period:</strong> During the current beta phase, payments are simulated. Parents and tutors may arrange direct payment during this time.</p>
-              <p><strong>Tier progression:</strong> Your commission rate decreases as you complete more sessions on the platform, rewarding consistency and quality.</p>
+              <p><strong>Tier progression:</strong> Your commission rate decreases as you accumulate commission-paying completed sessions (30% → 24% → 15% → 5%). Commission-free sessions (first student, first session with any new student) do not count towards tier advancement.</p>
               <p><strong>Special commission-free rules:</strong> Your first student relationship is permanently commission-free (0%). The first completed session with any new student-tutor pairing is also commission-free.</p>
             </Section>
 
