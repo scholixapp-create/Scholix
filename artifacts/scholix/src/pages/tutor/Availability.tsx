@@ -19,7 +19,6 @@ const BUFFER_OPTIONS = [
   { value: 15, label: "15 min" },
   { value: 30, label: "30 min" },
   { value: 45, label: "45 min" },
-  { value: 60, label: "60 min" },
 ];
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;

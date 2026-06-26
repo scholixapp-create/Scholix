@@ -73,8 +73,9 @@ export default function BookSession() {
   const slotsQuery = useQuery({
     queryKey: ["available-slots", tutorId, selectedDate, selectedDuration],
     queryFn: async (): Promise<{ date: string; duration: number; slots: string[] }> => {
+      const parentParam = user?.id ? `&parentId=${user.id}` : "";
       const r = await fetch(
-        `/api/tutors/${tutorId}/available-slots?date=${selectedDate}&duration=${selectedDuration}`
+        `/api/tutors/${tutorId}/available-slots?date=${selectedDate}&duration=${selectedDuration}${parentParam}`
       );
       if (!r.ok) return { date: selectedDate, duration: selectedDuration, slots: [] };
       return r.json();

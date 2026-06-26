@@ -286,15 +286,16 @@ router.get("/tutors/:tutorId/available-slots", async (req, res) => {
     );
 
   // Convert sessions to AEST-day-relative minute ranges.
-  // Extend each booked range by the travel buffer (on both sides) so back-to-back
-  // in-person sessions leave travel time between them.
+  // Travel buffer is added only to the END of each booked session: the tutor
+  // needs travel time after finishing before they can start the next session.
+  // We do NOT shrink the start — that would block valid slots before a booking.
   const bookedRanges = sessionsOnDate
     .filter((s) => s.scheduledAt >= aestMidnightUtc && s.scheduledAt < aestEndOfDayUtc)
     .map((s) => {
       const msFromAestMidnight = s.scheduledAt.getTime() - aestMidnightUtc.getTime();
       const startMins = Math.round(msFromAestMidnight / 60000);
       return {
-        startMins: startMins - effectiveBuffer,
+        startMins,
         endMins: startMins + s.durationMinutes + effectiveBuffer,
       };
     });
