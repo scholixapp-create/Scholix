@@ -91,7 +91,7 @@ router.put("/tutors/me/details", async (req, res) => {
   const userId = getUserId(req);
   if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
 
-  const { wwccNumber, wwccExpiry, educationDetails, abn } = req.body as Record<string, string>;
+  const { wwccNumber, wwccExpiry, educationDetails, abn, teachingMode, travelBufferMinutes } = req.body as Record<string, unknown>;
 
   const [tutor] = await db
     .select({ id: tutorsTable.id })
@@ -101,8 +101,18 @@ router.put("/tutors/me/details", async (req, res) => {
 
   if (!tutor) { res.status(404).json({ error: "Tutor not found" }); return; }
 
-  const updates: Record<string, string | undefined> = { wwccNumber, wwccExpiry, educationDetails };
-  if (abn !== undefined) updates.abn = abn;
+  const updates: Record<string, string | number | undefined> = {
+    wwccNumber: wwccNumber as string | undefined,
+    wwccExpiry: wwccExpiry as string | undefined,
+    educationDetails: educationDetails as string | undefined,
+  };
+  if (abn !== undefined) updates.abn = abn as string;
+  if (typeof teachingMode === "string" && ["online", "in_person", "both"].includes(teachingMode)) {
+    updates.teachingMode = teachingMode;
+  }
+  if (typeof travelBufferMinutes === "number" && travelBufferMinutes >= 0) {
+    updates.travelBufferMinutes = travelBufferMinutes;
+  }
 
   await db.update(tutorsTable).set(updates).where(eq(tutorsTable.id, tutor.id));
 
