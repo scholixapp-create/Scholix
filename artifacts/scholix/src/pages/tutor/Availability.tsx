@@ -14,7 +14,7 @@ const DAY_INDEX: Record<DayKey, number> = {
   Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6,
 };
 
-const DURATION_OPTIONS = [45, 60, 90, 120];
+const DURATION_OPTIONS = [30, 45, 60, 90];
 
 interface DaySchedule { start: string; end: string; }
 type Schedule = Partial<Record<DayKey, DaySchedule>>;

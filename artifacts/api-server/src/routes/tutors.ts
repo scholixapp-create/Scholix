@@ -255,8 +255,10 @@ router.get("/tutors/:tutorId/available-slots", async (req, res) => {
       return { startMins, endMins: startMins + s.durationMinutes };
     });
 
-  // Generate slots (30-min step) within each availability window
-  const STEP = 30;
+  // Generate slots within each availability window.
+  // For short sessions (<60 min) use a 15-min step so :15/:30/:45 starts are offered.
+  // For 60/90 min sessions keep the existing 30-min step.
+  const STEP = duration < 60 ? 15 : 30;
   const resultSlots = new Set<string>();
 
   for (const w of windows) {
