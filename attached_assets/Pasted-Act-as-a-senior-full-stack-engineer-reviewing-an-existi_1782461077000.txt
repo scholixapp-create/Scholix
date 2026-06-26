@@ -1,0 +1,498 @@
+Act as a senior full-stack engineer reviewing an existing production-style tutoring marketplace application.
+
+You are modifying an existing Scholix codebase.
+
+IMPORTANT:
+Do not rebuild existing features.
+Preserve:
+- authentication
+- role permissions
+- WWCC verification
+- invoices
+- payments/test payments
+- tutor approval workflow
+- booking flow
+- commission system
+- progress tracking
+- notifications
+
+Implement the following logic improvements.
+
+==================================================
+1. STUDENT ACCOUNT RULES
+==================================================
+
+Students should not be able to independently create accounts.
+
+Business logic:
+
+Parents are the responsible account holders.
+
+A parent creates student profiles.
+
+Student profiles do not require login credentials.
+
+Update:
+
+- signup flow
+- role permissions
+- student creation logic
+
+Remove student self-registration.
+
+If a student role exists in the database:
+keep support for future use, but prevent public signup.
+
+Parent flow:
+
+Parent:
+Add Student
+
+Creates:
+
+Student profile:
+- name
+- year level
+- subjects
+- goals
+- optional school
+- optional DOB
+
+Do not create a separate user account.
+
+Future-proof:
+
+Allow student profile to optionally link to a user account later.
+
+==================================================
+2. TUTOR ADDRESS + INVOICE DATA
+==================================================
+
+Tutor address is required for tutor account records but NOT displayed on parent invoices.
+
+Ensure tutor onboarding collects:
+
+- full legal name
+- phone number
+- address
+- ABN
+- qualifications
+
+Invoice should contain:
+
+Parent:
+- name
+- phone
+- address
+
+Tutor:
+- name
+- ABN
+
+Do NOT include tutor address on invoices.
+
+==================================================
+3. TUTOR WWCC DOCUMENT REVIEW
+==================================================
+
+Admin tutor verification must allow reviewing uploaded WWCC documents.
+
+Admin verification view should show:
+
+- tutor profile
+- WWCC status
+- expiry date
+- uploaded document preview/download
+- verification history
+
+Public tutor views must never expose:
+
+- WWCC number
+- WWCC documents
+- expiry date
+
+Only show:
+
+WWCC Verified badge.
+
+==================================================
+4. PROFILE LINKING SYSTEM
+==================================================
+
+Any displayed user reference should link to a profile.
+
+Implement consistent profile navigation.
+
+Examples:
+
+Tutor name:
+click → tutor public profile
+
+Student name:
+click → authorised student profile
+
+Parent name:
+click → authorised parent profile
+
+Admin:
+can view all profiles.
+
+Respect permissions.
+
+Tutors can only view students they have sessions with.
+
+Parents can only view their own students.
+
+==================================================
+5. SESSION HISTORY LOGIC
+==================================================
+
+Fix upcoming sessions.
+
+Upcoming sessions should only show:
+
+start_time > current_time
+
+and
+
+not cancelled.
+
+Past sessions should move to history.
+
+Every session should be clickable.
+
+Session detail page should show:
+
+- tutor
+- student
+- parent
+- subject
+- duration
+- payment state
+- progress notes
+- reviews
+
+==================================================
+6. TUTOR-STUDENT SESSION VIEW
+==================================================
+
+Tutor session views should allow clicking the student.
+
+Student profile should show tutor-relevant information:
+
+- year level
+- subjects
+- learning goals
+- previous sessions
+- progress notes
+
+Do not expose private parent information unnecessarily.
+
+==================================================
+7. ADMIN SESSION INSPECTION
+==================================================
+
+Admin session list should allow opening individual sessions.
+
+Session detail should show:
+
+- participants
+- payment/invoice
+- reviews
+- progress notes
+- cancellation history
+
+This is required for dispute resolution.
+
+==================================================
+8. NOTIFICATION BUTTONS
+==================================================
+
+Fix notification actions.
+
+Current behaviour:
+Buttons only close dropdown.
+
+Implement:
+
+Mark read:
+
+notification.readAt = current timestamp
+
+Delete:
+
+remove notification
+
+Mark all read:
+
+updates all unread notifications.
+
+Ensure frontend updates without refresh.
+
+==================================================
+9. SESSION REQUEST FLOW
+==================================================
+
+Review the student "request session" feature.
+
+Students should not directly book.
+
+A student request should notify the parent.
+
+Example:
+
+"James requested another Maths session"
+
+Parent receives:
+
+notification
+
+Parent can then book.
+
+Do not use confusing wording like:
+"My name is..."
+
+==================================================
+10. SESSION DURATIONS
+==================================================
+
+Add support for:
+
+30 minutes
+45 minutes
+60 minutes
+90 minutes
+
+Tutor controls which durations they offer.
+
+Parent booking only displays enabled durations.
+
+Update:
+
+availability
+booking
+pricing
+invoice calculations
+
+==================================================
+11. TRAVEL BUFFER SYSTEM
+==================================================
+
+Do not treat availability as only time blocks.
+
+Tutors may teach:
+
+online
+in-person
+both
+
+Tutor settings:
+
+Teaching mode:
+- Online
+- In person
+- Both
+
+Tutor default travel buffer:
+
+15 mins
+30 mins
+45 mins
+
+
+However travel requirements depend on the tutor-parent relationship.
+
+Create a relationship-level setting:
+
+Tutor + Parent/Student pairing:
+
+- lesson mode
+- location/suburb
+- travel buffer
+
+Example:
+
+Tutor availability:
+
+4pm-8pm
+
+Lesson:
+4pm-5pm
+
+Travel buffer:
+30 mins
+
+Next available:
+
+5:30pm
+
+
+Prevent bookings that conflict with travel time.
+
+==================================================
+12. BOOKING AVAILABILITY
+==================================================
+
+Availability windows should represent availability, not fixed lessons.
+
+Example:
+
+Tutor availability:
+
+Monday:
+10am-2pm
+
+Parents should be able to book:
+
+10-11
+10:30-11:30
+11-12
+etc
+
+depending on selected duration.
+
+Prevent overlapping bookings.
+
+==================================================
+13. COMMISSION-FREE SYSTEM
+==================================================
+
+Replace "first student free" terminology.
+
+It is NOT a free lesson.
+
+It is commission-free.
+
+Implement two separate benefits.
+
+Benefit 1:
+
+Every tutor has:
+
+1 active commission-free student.
+
+Tutor chooses the student.
+
+All future sessions with that student:
+
+0% commission.
+
+Tutor can transfer the benefit when the student relationship ends.
+
+Benefit 2:
+
+The first completed session between any new tutor-student pair:
+
+0% commission.
+
+After that:
+
+normal commission applies.
+
+Logic:
+
+if first tutor-student session:
+commission = 0
+
+else if student is tutor's active commission-free student:
+commission = 0
+
+else:
+use tutor commission tier
+
+Update all wording:
+
+Do not say:
+"free session"
+
+Use:
+
+"commission-free"
+
+==================================================
+14. TUTOR EARNINGS GRAPH
+==================================================
+
+Remove fake placeholder earnings data.
+
+Only display earnings from:
+
+completed sessions.
+
+If no sessions exist:
+
+show:
+
+"No earnings yet. Complete sessions to see your growth."
+
+==================================================
+15. TUTOR PHONE NUMBER FORMATTING
+==================================================
+
+Update phone inputs.
+
+Australian format:
+
++61 4XX XXX XXX
+
+Ensure:
+
++61
+
+and
+
+number
+
+are visually separated.
+
+Validate phone numbers.
+
+==================================================
+16. ACADEMY
+==================================================
+
+Do not turn Academy into a full course system yet.
+
+Keep as:
+
+Tutor resource library.
+
+Allow:
+
+articles
+videos
+guides
+
+Admin editable.
+
+Future-proof for:
+
+modules
+completion tracking
+certificates
+
+==================================================
+17. DATA INTEGRITY
+==================================================
+
+After implementation test:
+
+Parent:
+- creates student
+- books session
+- receives invoice
+
+Tutor:
+- sees student
+- sees profile
+- sees history
+- sees commission rules
+
+Admin:
+- verifies WWCC
+- reviews documents
+- opens sessions
+
+Ensure existing permissions remain secure.
+
+Do not introduce any role access leaks.
