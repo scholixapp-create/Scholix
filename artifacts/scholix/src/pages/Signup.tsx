@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { useSignup } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
-import { BookOpen, AlertCircle, Phone } from "lucide-react";
+import { BookOpen, AlertCircle, Phone, Users } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 type Role = "tutor" | "parent";
@@ -41,9 +41,18 @@ function isValidAuPhone(raw: string): boolean {
 
 export default function Signup() {
   const [, navigate] = useLocation();
+  const search = useSearch();
   const { login } = useAuth();
   const signupMutation = useSignup();
   const [role, setRole] = useState<Role>("tutor");
+
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (params.get("role") === "student") {
+      navigate("/login?student=1");
+    }
+  }, [search]);
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");

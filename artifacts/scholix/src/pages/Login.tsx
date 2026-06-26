@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { BookOpen, AlertCircle, ShieldCheck, RefreshCw, ArrowLeft, FlaskConical } from "lucide-react";
+import { BookOpen, AlertCircle, ShieldCheck, RefreshCw, ArrowLeft, FlaskConical, Users } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 function getDashboard(role: string) {
@@ -16,6 +16,8 @@ function getDashboard(role: string) {
 
 export default function Login() {
   const [, navigate] = useLocation();
+  const search = useSearch();
+  const showStudentNote = new URLSearchParams(search).get("student") === "1";
   const { login } = useAuth();
 
   // Login step state
@@ -170,6 +172,17 @@ export default function Login() {
       <TestModeBanner />
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
+          {showStudentNote && (
+            <div className="flex items-start gap-3 p-4 mb-4 rounded-xl bg-primary/5 border border-primary/20">
+              <Users size={16} className="text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Student accounts are managed by parents</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  Parents create and manage student profiles from their dashboard — students don't need their own login. Ask your parent to add you from their <strong>Parent Dashboard → Students</strong>.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
               <BookOpen size={24} className="text-white" />
