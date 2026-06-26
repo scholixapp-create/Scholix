@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable, tutorComplianceTable, tutorRelationshipsTable } from "@workspace/db";
 import { eq, inArray, and, isNotNull } from "drizzle-orm";
 import { UpdateTutorProfileBody, SetTutorAvailabilityBody } from "@workspace/api-zod";
-import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
+import { requireAuth, parseUserId, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
@@ -243,17 +243,19 @@ router.get("/tutors/:tutorId/available-slots", async (req, res) => {
   const tutorMode = tutorRow?.teachingMode ?? "online";
   let bufferMins = tutorRow?.travelBufferMinutes ?? 0;
 
-  // Per-parent relationship override (if parentId provided)
-  if (parentId && !isNaN(parentId)) {
+  // Per-parent relationship override.
+  // Prefer the authenticated user from the Bearer token; fall back to the
+  // parentId query param only when the request is unauthenticated.
+  const tokenUserId = parseUserId(req.headers.authorization as string | undefined);
+  const resolvedParentId = tokenUserId ?? parentId;
+  if (resolvedParentId && !isNaN(resolvedParentId)) {
     const [rel] = await db
-      .select({ lessonMode: tutorRelationshipsTable.lessonMode, travelBufferMinutes: tutorRelationshipsTable.travelBufferMinutes })
+      .select({ travelBufferMinutes: tutorRelationshipsTable.travelBufferMinutes })
       .from(tutorRelationshipsTable)
-      .where(and(eq(tutorRelationshipsTable.tutorId, tutorId), eq(tutorRelationshipsTable.parentId, parentId)))
+      .where(and(eq(tutorRelationshipsTable.tutorId, tutorId), eq(tutorRelationshipsTable.parentId, resolvedParentId)))
       .limit(1);
-    if (rel) {
-      if (rel.travelBufferMinutes !== null && rel.travelBufferMinutes !== undefined) {
-        bufferMins = rel.travelBufferMinutes;
-      }
+    if (rel?.travelBufferMinutes !== null && rel?.travelBufferMinutes !== undefined) {
+      bufferMins = rel.travelBufferMinutes;
     }
   }
 

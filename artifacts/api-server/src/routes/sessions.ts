@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable } from "@workspace/db";
+import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, tutorRelationshipsTable } from "@workspace/db";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
 import { sessionBookedEmailHtml, sessionCompletedEmailHtml } from "../lib/email";
 import { format } from "date-fns";
-import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
+import { requireAuth, parseUserId, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
@@ -298,7 +298,32 @@ router.post("/sessions", async (req, res) => {
 
   const totalAmount = (tutor.hourlyRate * parsed.data.durationMinutes) / 60;
 
-  // Overlap detection: prevent double-booking the tutor at the same time
+  // Resolve travel buffer for this tutor + requesting parent combination.
+  // Use the authenticated user from the Bearer token as the parent identity.
+  const tutorMode = tutor.teachingMode ?? "online";
+  let bufferMins = tutor.travelBufferMinutes ?? 0;
+
+  const requestingUserId = parseUserId(req.headers.authorization as string | undefined);
+  if (requestingUserId && tutorMode !== "online") {
+    const [rel] = await db
+      .select({ travelBufferMinutes: tutorRelationshipsTable.travelBufferMinutes })
+      .from(tutorRelationshipsTable)
+      .where(and(
+        eq(tutorRelationshipsTable.tutorId, tutor.id),
+        eq(tutorRelationshipsTable.parentId, requestingUserId)
+      ))
+      .limit(1);
+    if (rel?.travelBufferMinutes !== null && rel?.travelBufferMinutes !== undefined) {
+      bufferMins = rel.travelBufferMinutes;
+    }
+  }
+
+  // Buffer applies only for in-person/both modes; zero for online
+  const effectiveBuffer = tutorMode === "online" ? 0 : bufferMins;
+
+  // Overlap detection: prevent double-booking the tutor.
+  // Existing sessions are extended by effectiveBuffer to enforce travel time
+  // after each in-person session before the next one can start.
   const newStart = new Date(parsed.data.scheduledAt);
   const newEnd = new Date(newStart.getTime() + parsed.data.durationMinutes * 60000);
 
@@ -313,7 +338,7 @@ router.post("/sessions", async (req, res) => {
     );
 
   for (const s of activeSessions) {
-    const sEnd = new Date(s.scheduledAt.getTime() + s.durationMinutes * 60000);
+    const sEnd = new Date(s.scheduledAt.getTime() + (s.durationMinutes + effectiveBuffer) * 60000);
     if (s.scheduledAt < newEnd && sEnd > newStart) {
       res.status(409).json({ error: "That time is no longer available — another session overlaps this slot." });
       return;
