@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable, tutorComplianceTable } from "@workspace/db";
+import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable, tutorComplianceTable, tutorRelationshipsTable } from "@workspace/db";
 import { eq, inArray, and, isNotNull } from "drizzle-orm";
 import { UpdateTutorProfileBody, SetTutorAvailabilityBody } from "@workspace/api-zod";
 import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
@@ -38,6 +38,8 @@ function tutorToJson(
     educationDetails: (tutor as Record<string, unknown>).educationDetails as string | null ?? null,
     sessionCount,
     sessionDurations: parseDurations(tutor.sessionDurations),
+    teachingMode: tutor.teachingMode ?? "online",
+    travelBufferMinutes: tutor.travelBufferMinutes ?? 0,
     createdAt: tutor.createdAt.toISOString(),
   };
 }
@@ -127,6 +129,15 @@ router.put("/tutors/:tutorId/profile", async (req, res) => {
     updates.sessionDurations = JSON.stringify(parsed.data.sessionDurations);
   }
 
+  // Extra fields not yet in the OpenAPI schema — read directly from req.body
+  const { teachingMode, travelBufferMinutes } = req.body ?? {};
+  if (typeof teachingMode === "string" && ["online", "in_person", "both"].includes(teachingMode)) {
+    updates.teachingMode = teachingMode;
+  }
+  if (typeof travelBufferMinutes === "number" && travelBufferMinutes >= 0) {
+    updates.travelBufferMinutes = travelBufferMinutes;
+  }
+
   await db.update(tutorsTable).set(updates).where(eq(tutorsTable.id, tutorId));
 
   const [row] = await db
@@ -206,6 +217,7 @@ router.get("/tutors/:tutorId/available-slots", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
   const date = req.query.date as string;
   const duration = parseInt(req.query.duration as string, 10);
+  const parentId = req.query.parentId ? parseInt(req.query.parentId as string, 10) : null;
 
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(duration) || duration < 15) {
     res.status(400).json({ error: "date (YYYY-MM-DD) and duration (minutes, ≥15) are required" });
@@ -220,6 +232,33 @@ router.get("/tutors/:tutorId/available-slots", async (req, res) => {
   // JS getDay() on the AEST midnight (in UTC): Sun=0, Mon=1, …, Sat=6
   const jsDay = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
   const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1; // Mon=0 … Sun=6
+
+  // Load tutor profile to get teaching mode + default travel buffer
+  const [tutorRow] = await db
+    .select({ teachingMode: tutorsTable.teachingMode, travelBufferMinutes: tutorsTable.travelBufferMinutes })
+    .from(tutorsTable)
+    .where(eq(tutorsTable.id, tutorId))
+    .limit(1);
+
+  const tutorMode = tutorRow?.teachingMode ?? "online";
+  let bufferMins = tutorRow?.travelBufferMinutes ?? 0;
+
+  // Per-parent relationship override (if parentId provided)
+  if (parentId && !isNaN(parentId)) {
+    const [rel] = await db
+      .select({ lessonMode: tutorRelationshipsTable.lessonMode, travelBufferMinutes: tutorRelationshipsTable.travelBufferMinutes })
+      .from(tutorRelationshipsTable)
+      .where(and(eq(tutorRelationshipsTable.tutorId, tutorId), eq(tutorRelationshipsTable.parentId, parentId)))
+      .limit(1);
+    if (rel) {
+      if (rel.travelBufferMinutes !== null && rel.travelBufferMinutes !== undefined) {
+        bufferMins = rel.travelBufferMinutes;
+      }
+    }
+  }
+
+  // Travel buffer only applies for in-person/both modes
+  const effectiveBuffer = tutorMode === "online" ? 0 : bufferMins;
 
   // Get tutor's availability windows for this day of week
   const windows = await db
@@ -246,13 +285,18 @@ router.get("/tutors/:tutorId/available-slots", async (req, res) => {
       )
     );
 
-  // Convert sessions to AEST-day-relative minute ranges
+  // Convert sessions to AEST-day-relative minute ranges.
+  // Extend each booked range by the travel buffer (on both sides) so back-to-back
+  // in-person sessions leave travel time between them.
   const bookedRanges = sessionsOnDate
     .filter((s) => s.scheduledAt >= aestMidnightUtc && s.scheduledAt < aestEndOfDayUtc)
     .map((s) => {
       const msFromAestMidnight = s.scheduledAt.getTime() - aestMidnightUtc.getTime();
       const startMins = Math.round(msFromAestMidnight / 60000);
-      return { startMins, endMins: startMins + s.durationMinutes };
+      return {
+        startMins: startMins - effectiveBuffer,
+        endMins: startMins + s.durationMinutes + effectiveBuffer,
+      };
     });
 
   // Generate slots within each availability window.

@@ -18,6 +18,10 @@ export const tutorsTable = pgTable("tutors", {
   abn: text("abn"),
   // Allowed session durations offered by the tutor, stored as JSON array e.g. "[60,90]"
   sessionDurations: text("session_durations"),
+  // Teaching mode: "online" | "in_person" | "both"
+  teachingMode: text("teaching_mode").notNull().default("online"),
+  // Default travel buffer in minutes (0 = none). Only applied when mode is in_person/both.
+  travelBufferMinutes: integer("travel_buffer_minutes").notNull().default(0),
   // Verification audit trail
   wwccVerifiedBy: integer("wwcc_verified_by"),
   wwccVerifiedAt: timestamp("wwcc_verified_at"),

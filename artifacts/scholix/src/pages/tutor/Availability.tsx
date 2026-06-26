@@ -3,8 +3,24 @@ import { useAuth } from "@/context/AuthContext";
 import { useListTutors, useGetTutorAvailability, useSetTutorAvailability, useUpdateTutorProfile } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetTutorAvailabilityQueryKey, getListTutorsQueryKey } from "@workspace/api-client-react";
-import { CheckCircle, DollarSign, BookOpen, AlertCircle, Clock } from "lucide-react";
+import { CheckCircle, DollarSign, BookOpen, AlertCircle, Clock, MapPin, Wifi } from "lucide-react";
 import { VICTORIAN_SUBJECTS } from "@/lib/subjects";
+
+type TeachingMode = "online" | "in_person" | "both";
+
+const TEACHING_MODE_OPTIONS: { value: TeachingMode; label: string; description: string }[] = [
+  { value: "online", label: "Online only", description: "Video / screen share sessions" },
+  { value: "in_person", label: "In-person only", description: "Travel to student's location" },
+  { value: "both", label: "Both", description: "You offer online and in-person" },
+];
+
+const BUFFER_OPTIONS = [
+  { value: 0, label: "No buffer" },
+  { value: 15, label: "15 min" },
+  { value: 30, label: "30 min" },
+  { value: 45, label: "45 min" },
+  { value: 60, label: "60 min" },
+];
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 type DayKey = typeof DAYS[number];
@@ -39,9 +55,12 @@ export default function TutorAvailability() {
   const [rateSaved, setRateSaved] = useState(false);
   const [subjectsSaved, setSubjectsSaved] = useState(false);
   const [durationsSaved, setDurationsSaved] = useState(false);
+  const [teachingModeSaved, setTeachingModeSaved] = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
   const [schedError, setSchedError] = useState("");
+  const [teachingMode, setTeachingMode] = useState<TeachingMode>("online");
+  const [travelBuffer, setTravelBuffer] = useState(0);
 
   // Populate schedule from windows on load
   useEffect(() => {
@@ -64,8 +83,15 @@ export default function TutorAvailability() {
       if (tutorProfile.sessionDurations && tutorProfile.sessionDurations.length > 0) {
         setSelectedDurations(tutorProfile.sessionDurations);
       }
+      const raw = (tutorProfile as unknown as Record<string, unknown>);
+      if (typeof raw.teachingMode === "string" && ["online", "in_person", "both"].includes(raw.teachingMode as string)) {
+        setTeachingMode(raw.teachingMode as TeachingMode);
+      }
+      if (typeof raw.travelBufferMinutes === "number") {
+        setTravelBuffer(raw.travelBufferMinutes as number);
+      }
     }
-  }, [tutorProfile?.hourlyRate, tutorProfile?.subjects, tutorProfile?.sessionDurations]);
+  }, [tutorProfile?.hourlyRate, tutorProfile?.subjects, tutorProfile?.sessionDurations, (tutorProfile as unknown as Record<string, unknown> | undefined)?.teachingMode, (tutorProfile as unknown as Record<string, unknown> | undefined)?.travelBufferMinutes]);
 
   const toggleDay = (day: DayKey) => {
     setSchedule((prev) => {
@@ -110,6 +136,14 @@ export default function TutorAvailability() {
     } catch {
       setSchedError("Failed to save schedule. Please try again.");
     }
+  };
+
+  const handleSaveTeachingMode = async () => {
+    if (!tutorId) return;
+    await updateProfileMutation.mutateAsync({ tutorId, data: { teachingMode, travelBufferMinutes: travelBuffer } as any });
+    await qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });
+    setTeachingModeSaved(true);
+    setTimeout(() => setTeachingModeSaved(false), 2500);
   };
 
   const handleSaveRate = async () => {
@@ -241,6 +275,91 @@ export default function TutorAvailability() {
               className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-60 transition-all"
             >
               {setAvailMutation.isPending ? "Saving…" : "Save schedule"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Teaching mode ────────────────────────────────────────────────── */}
+      <div className="bg-card border border-card-border rounded-2xl overflow-hidden mb-4">
+        <div className="px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <MapPin size={15} className="text-primary" />
+            <p className="text-sm font-semibold text-foreground">Teaching Mode</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Tell parents how you deliver sessions
+          </p>
+        </div>
+        <div className="px-5 py-4 space-y-3">
+          {TEACHING_MODE_OPTIONS.map((opt) => {
+            const selected = teachingMode === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setTeachingMode(opt.value)}
+                className={`w-full flex items-start gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                  selected
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/40"
+                }`}
+              >
+                <span className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                  selected ? "border-primary" : "border-muted-foreground"
+                }`}>
+                  {selected && <span className="w-2 h-2 rounded-full bg-primary" />}
+                </span>
+                <span>
+                  <span className={`block text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
+                    {opt.label}
+                  </span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">{opt.description}</span>
+                </span>
+              </button>
+            );
+          })}
+
+          {teachingMode !== "online" && (
+            <div className="pt-1">
+              <label className="block text-xs font-semibold text-foreground mb-1.5">
+                Default travel buffer
+              </label>
+              <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                Gap reserved around each in-person session for travel time. Blocked off in your calendar so you won't be double-booked.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {BUFFER_OPTIONS.map((opt) => {
+                  const selected = travelBuffer === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => setTravelBuffer(opt.value)}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                        selected
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-primary/40"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            {teachingModeSaved && (
+              <span className="flex items-center gap-1 text-xs text-accent font-medium">
+                <CheckCircle size={12} /> Saved
+              </span>
+            )}
+            <button
+              onClick={handleSaveTeachingMode}
+              disabled={updateProfileMutation.isPending}
+              className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:opacity-90 disabled:opacity-60 transition-all"
+            >
+              Save
             </button>
           </div>
         </div>

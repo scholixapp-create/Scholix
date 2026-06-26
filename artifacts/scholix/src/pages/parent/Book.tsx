@@ -183,6 +183,10 @@ export default function BookSession() {
 
   // ── Tutor header card (shared) ────────────────────────────────────────────
 
+  const tutorMode = (tutor.data as unknown as Record<string, unknown> | undefined)?.teachingMode as string | undefined;
+  const modeLabel = tutorMode === "in_person" ? "In-person" : tutorMode === "both" ? "Online & in-person" : "Online";
+  const modeIcon = tutorMode === "online" || !tutorMode ? "🖥️" : tutorMode === "both" ? "🌐" : "📍";
+
   const TutorCard = () => (
     <div className="bg-card border border-card-border rounded-xl p-4 mb-5">
       <div className="flex items-center gap-3">
@@ -198,7 +202,12 @@ export default function BookSession() {
               <ShieldCheck size={13} className="text-accent shrink-0" />
             )}
           </div>
-          <p className="text-xs text-muted-foreground">${tutor.data!.hourlyRate}/hr</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-xs text-muted-foreground">${tutor.data!.hourlyRate}/hr</p>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">
+              {modeIcon} {modeLabel}
+            </span>
+          </div>
         </div>
       </div>
     </div>
