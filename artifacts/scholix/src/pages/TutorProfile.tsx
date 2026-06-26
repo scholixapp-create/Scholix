@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link, useRoute } from "wouter";
 import { useGetTutor, useGetTutorAvailability } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
-import { GraduationCap, ShieldCheck, Star, BookOpen, Clock, ArrowLeft, MapPin, Award } from "lucide-react";
+import { GraduationCap, ShieldCheck, Star, BookOpen, Clock, ArrowLeft, MapPin, Award, Monitor, Layers } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import TestModeBanner from "@/components/TestModeBanner";
 
@@ -13,6 +13,24 @@ interface Review {
   comment: string | null;
   createdAt: string;
 }
+
+const MODE_LABELS: Record<string, string> = {
+  online: "Online",
+  in_person: "In-person",
+  both: "Both",
+};
+
+const MODE_ICONS: Record<string, React.ReactNode> = {
+  online: <Monitor size={12} />,
+  in_person: <MapPin size={12} />,
+  both: <Layers size={12} />,
+};
+
+const MODE_COLORS: Record<string, string> = {
+  online: "bg-blue-50/20 text-blue-200 border-blue-400/30",
+  in_person: "bg-emerald-50/20 text-emerald-200 border-emerald-400/30",
+  both: "bg-violet-50/20 text-violet-200 border-violet-400/30",
+};
 
 function InitialsAvatar({ first, last, size = "lg" }: { first: string; last: string; size?: "sm" | "md" | "lg" }) {
   const sizeClasses = {
@@ -71,6 +89,8 @@ export default function TutorProfile() {
   const sessionCount = (tutor.data as { sessionCount?: number })?.sessionCount ?? 0;
   const verificationStatus = (tutor.data as { verificationStatus?: string })?.verificationStatus;
   const educationDetails = (tutor.data as { educationDetails?: string | null })?.educationDetails;
+  const teachingMode = (tutor.data as { teachingMode?: string })?.teachingMode ?? "online";
+  const travelBufferMinutes = (tutor.data as { travelBufferMinutes?: number })?.travelBufferMinutes ?? 0;
   const isVerified = verificationStatus === "approved";
 
   if (tutor.isLoading) {
@@ -138,10 +158,21 @@ export default function TutorProfile() {
                   )}
                 </div>
 
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="text-2xl font-bold text-white">${t.hourlyRate}</span>
-                  <span className="text-white/60 text-sm">/hr</span>
+                <div className="mt-3 flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold text-white">${t.hourlyRate}</span>
+                    <span className="text-white/60 text-sm">/hr</span>
+                  </div>
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${MODE_COLORS[teachingMode] ?? MODE_COLORS.online}`}>
+                    {MODE_ICONS[teachingMode]}
+                    {MODE_LABELS[teachingMode] ?? teachingMode}
+                  </span>
                 </div>
+                {(teachingMode === "in_person" || teachingMode === "both") && travelBufferMinutes > 0 && (
+                  <p className="mt-1.5 text-white/50 text-xs flex items-center gap-1">
+                    <Clock size={11} /> {travelBufferMinutes} min travel buffer included
+                  </p>
+                )}
               </div>
             </div>
           </div>
