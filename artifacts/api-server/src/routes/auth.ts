@@ -121,23 +121,21 @@ router.post("/auth/login", async (req, res) => {
   const otpHash = hashToken(otp);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+  // OTP always written to DB before any email attempt
   await db.insert(authOtpTokensTable).values({ userId: user.id, otpHash, expiresAt });
 
-  const emailConfigured = !!config.resendApiKey;
-
-  if (!emailConfigured) {
-    logger.warn({ userId: user.id }, "EMAIL SERVICE NOT CONFIGURED - USING DEV MODE OTP DELIVERY");
-    logger.info({ userId: user.id, otp }, "DEV OTP code");
-  }
-
-  await sendEmail({
+  const emailResult = await sendEmail({
     to: user.email,
     subject: "Your Scholix sign-in code",
     html: otpEmailHtml({ firstName: user.firstName, otp }),
   });
 
-  const devOtp = !emailConfigured && !config.isProduction ? otp : undefined;
-  res.json({ requiresOtp: true, pendingUserId: user.id, email: user.email, devOtp });
+  // devMode = no real email sent (dev env or no API key) → expose OTP in response for UI auto-fill
+  const devOtp = emailResult.devMode ? otp : undefined;
+  // production delivery failure → warn the client so it can surface a message
+  const emailFailed = !emailResult.devMode && !emailResult.delivered ? true : undefined;
+
+  res.json({ requiresOtp: true, pendingUserId: user.id, email: user.email, devOtp, emailFailed });
 });
 
 // Step 2: Verify OTP → return session token
@@ -254,23 +252,18 @@ router.post("/auth/resend-otp", async (req, res) => {
   const otpHash = hashToken(otp);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+  // OTP always written to DB before any email attempt
   await db.insert(authOtpTokensTable).values({ userId, otpHash, expiresAt });
 
-  const emailConfigured = !!config.resendApiKey;
-
-  if (!emailConfigured) {
-    logger.warn({ userId }, "EMAIL SERVICE NOT CONFIGURED - USING DEV MODE OTP DELIVERY");
-    logger.info({ userId, otp }, "DEV OTP code (resend)");
-  }
-
-  await sendEmail({
+  const emailResult = await sendEmail({
     to: user.email,
     subject: "Your Scholix sign-in code",
     html: otpEmailHtml({ firstName: user.firstName, otp }),
   });
 
-  const devOtp = !emailConfigured && !config.isProduction ? otp : undefined;
-  res.json({ ok: true, devOtp });
+  const devOtp = emailResult.devMode ? otp : undefined;
+  const emailFailed = !emailResult.devMode && !emailResult.delivered ? true : undefined;
+  res.json({ ok: true, devOtp, emailFailed });
 });
 
 router.post("/auth/signup", async (req, res) => {

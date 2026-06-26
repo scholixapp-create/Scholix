@@ -1,6 +1,6 @@
 import { useGetAdminStats } from "@workspace/api-client-react";
 import { useState, useEffect } from "react";
-import { Users, GraduationCap, Calendar, DollarSign, CheckCircle, Gift, TrendingUp, Star, Award, Zap } from "lucide-react";
+import { Users, GraduationCap, Calendar, DollarSign, CheckCircle, Gift, TrendingUp, Star, Award, Zap, MailX } from "lucide-react";
 
 function getToken() {
   return localStorage.getItem("scholix_token") ?? "";
@@ -42,6 +42,7 @@ export default function AdminDashboard() {
 
   const [commStats, setCommStats] = useState<CommissionStats | null>(null);
   const [commLoading, setCommLoading] = useState(true);
+  const [emailStatus, setEmailStatus] = useState<{ resendConfigured: boolean; devMode: boolean; lastEmailError: { message: string; statusCode?: number; time: string } | null } | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/commission-stats", {
@@ -50,6 +51,13 @@ export default function AdminDashboard() {
       .then((r) => r.json())
       .then((data) => { setCommStats(data); setCommLoading(false); })
       .catch(() => setCommLoading(false));
+
+    fetch("/api/admin/email-status", {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+      .then((r) => r.json())
+      .then((data) => setEmailStatus(data))
+      .catch(() => {});
   }, []);
 
   const tierTotal = commStats
@@ -62,6 +70,22 @@ export default function AdminDashboard() {
         <h1 className="text-xl font-bold text-foreground">Platform Overview</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Scholix admin dashboard</p>
       </div>
+
+      {emailStatus && (emailStatus.devMode || emailStatus.lastEmailError) && (
+        <div className="flex items-start gap-3 p-4 mb-5 rounded-xl bg-amber-50 border border-amber-200">
+          <MailX size={16} className="text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-800">
+              {emailStatus.devMode ? "Email delivery not active" : "Email delivery error"}
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              {emailStatus.devMode
+                ? "Running in dev mode — OTP codes are returned in the API response instead of being emailed. Verify the sender domain at resend.com/domains and set NODE_ENV=production to enable real email delivery."
+                : `Last error: ${emailStatus.lastEmailError?.message}${emailStatus.lastEmailError?.statusCode ? ` (${emailStatus.lastEmailError.statusCode})` : ""} · OTP emails may not be reaching users.`}
+            </p>
+          </div>
+        </div>
+      )}
 
       {stats.isLoading ? (
         <div className="grid grid-cols-2 gap-3">

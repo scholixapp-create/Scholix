@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { BookOpen, AlertCircle, ShieldCheck, RefreshCw, ArrowLeft, FlaskConical, Users } from "lucide-react";
+import { BookOpen, AlertCircle, ShieldCheck, RefreshCw, ArrowLeft, FlaskConical, Users, MailX } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 function getDashboard(role: string) {
@@ -25,6 +25,7 @@ export default function Login() {
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
   const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [emailFailed, setEmailFailed] = useState(false);
 
   // Form state
   const [email, setEmail] = useState("");
@@ -67,6 +68,7 @@ export default function Login() {
           setDevOtp(data.devOtp);
           setOtp(String(data.devOtp).split(""));
         }
+        setEmailFailed(!!data.emailFailed);
         setStep("otp");
         setResendCooldown(30);
       }
@@ -119,13 +121,15 @@ export default function Login() {
         body: JSON.stringify({ pendingUserId }),
       });
       if (res.ok) {
-        const resendData = await res.json().catch(() => ({})) as { devOtp?: string };
+        const resendData = await res.json().catch(() => ({})) as { devOtp?: string; emailFailed?: boolean };
         if (resendData.devOtp) {
           setDevOtp(resendData.devOtp);
           setOtp(String(resendData.devOtp).split(""));
+          setEmailFailed(false);
         } else {
           setDevOtp(null);
           setOtp(["", "", "", "", "", ""]);
+          setEmailFailed(!!resendData.emailFailed);
           otpRefs.current[0]?.focus();
         }
         setResendCooldown(30);
@@ -265,6 +269,20 @@ export default function Login() {
                       <p className="font-semibold">Email delivery in test mode</p>
                       <p className="mt-0.5 text-violet-600">
                         No email provider configured. Your code <strong className="font-mono tracking-widest">{devOtp}</strong> has been pre-filled.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Email delivery failure banner (production only) */}
+                {emailFailed && !devOtp && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                    <MailX size={14} className="shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">Email delivery failed</p>
+                      <p className="mt-0.5 text-amber-700">
+                        We couldn't send your sign-in code. Please try again or contact support at{" "}
+                        <a href="mailto:support@scholix.app" className="underline">support@scholix.app</a>.
                       </p>
                     </div>
                   </div>

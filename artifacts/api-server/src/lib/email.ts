@@ -1,6 +1,11 @@
 import { logger } from "./logger";
 import { config } from "./config";
 
+// IMPORTANT: Resend requires a verified sender domain.
+// Without domain verification Resend returns HTTP 403 "domain is not verified"
+// as a RESOLVED promise — it does NOT throw. Always inspect result.error.
+// Verify the sender domain at https://resend.com/domains before going to production.
+
 let resendClient: any = null;
 
 async function getResend() {
@@ -22,25 +27,102 @@ export interface EmailPayload {
   html: string;
 }
 
-export async function sendEmail(payload: EmailPayload): Promise<void> {
-  const resend = await getResend();
-  if (!resend) {
+export interface SendEmailResult {
+  delivered: boolean;
+  devMode: boolean;
+}
+
+export interface EmailServiceStatus {
+  resendConfigured: boolean;
+  devMode: boolean;
+  fromAddress: string;
+  lastEmailError: { message: string; statusCode?: number; name?: string; time: string } | null;
+  environment: string;
+}
+
+let lastEmailError: { message: string; statusCode?: number; name?: string; time: string } | null = null;
+
+export function getEmailServiceStatus(): EmailServiceStatus {
+  const resendConfigured = !!config.resendApiKey;
+  const devMode = !config.isProduction || !resendConfigured;
+  return {
+    resendConfigured,
+    devMode,
+    fromAddress: "notifications@scholix.app",
+    lastEmailError,
+    environment: config.nodeEnv,
+  };
+}
+
+export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult> {
+  const devMode = !config.isProduction || !config.resendApiKey;
+
+  if (devMode) {
     logger.info(
       { to: payload.to, subject: payload.subject },
-      `[EMAIL MOCK] To: ${payload.to} | Subject: ${payload.subject}`
+      "EMAIL_DEV_MODE — Resend not called; OTP will be returned in API response"
     );
-    return;
+    return { delivered: false, devMode: true };
   }
+
+  const resend = await getResend();
+  if (!resend) {
+    const errInfo = { message: "Resend client failed to initialise", time: new Date().toISOString() };
+    lastEmailError = errInfo;
+    logger.error({ to: payload.to }, "EMAIL_SEND_FAILED — Resend client could not be initialised");
+    return { delivered: false, devMode: false };
+  }
+
   try {
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: "Scholix <notifications@scholix.app>",
       to: payload.to,
       subject: payload.subject,
       html: payload.html,
     });
-    logger.info({ to: payload.to, subject: payload.subject }, "Email sent");
+
+    if (result.error) {
+      const errInfo = {
+        message: result.error.message ?? "Unknown Resend error",
+        statusCode: result.error.statusCode,
+        name: result.error.name,
+        time: new Date().toISOString(),
+      };
+      lastEmailError = errInfo;
+      logger.error(
+        {
+          to: payload.to,
+          statusCode: result.error.statusCode,
+          errorName: result.error.name,
+          message: result.error.message,
+        },
+        "EMAIL_SEND_FAILED"
+      );
+      if (
+        result.error.statusCode === 403 &&
+        typeof result.error.message === "string" &&
+        result.error.message.toLowerCase().includes("domain")
+      ) {
+        logger.error(
+          { fromAddress: "notifications@scholix.app" },
+          "EMAIL_CONFIG_ERROR — Resend sender domain is not verified. " +
+            "Go to https://resend.com/domains to add and verify scholix.app before production use."
+        );
+      }
+      return { delivered: false, devMode: false };
+    }
+
+    lastEmailError = null;
+    logger.info(
+      { to: payload.to, subject: payload.subject, resendId: result.data?.id },
+      "EMAIL_SEND_SUCCESS"
+    );
+    return { delivered: true, devMode: false };
   } catch (err) {
-    logger.error({ err, to: payload.to }, "Failed to send email");
+    const message = err instanceof Error ? err.message : "Unknown error";
+    lastEmailError = { message, time: new Date().toISOString() };
+    logger.error({ err, to: payload.to }, "EMAIL_SEND_FAILED — unexpected exception");
+    return { delivered: false, devMode: false };
   }
 }
 

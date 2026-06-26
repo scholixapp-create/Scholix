@@ -1,0 +1,104 @@
+You are a senior backend engineer. Fix the entire email + OTP delivery pipeline so it is reliable in both development and production, and so failures are visible and cannot silently pass.
+
+CURRENT PROBLEM
+- Resend API is returning 403 "domain not verified"
+- Current email.ts incorrectly logs "Email sent" even when delivery fails
+- OTP system depends on email delivery but has no safe fallback
+- Users believe emails are being sent when they are not
+- No clear dev vs production behaviour for email delivery
+
+GOALS
+1. Fix email sending so it correctly detects success vs failure
+2. Add proper Resend error handling (DO NOT assume success)
+3. Ensure OTP system always works in dev mode even without Resend
+4. Ensure production explicitly fails or warns if domain is not verified
+5. Make behaviour transparent (never silent failure again)
+
+TASKS
+
+A. FIX EMAIL SENDING LOGIC (CRITICAL)
+
+In email service (email.ts or resend wrapper):
+
+- Update sendEmail() to properly inspect Resend response:
+  - const result = await resend.emails.send(...)
+  - If result.error exists → log error and throw or return failure
+  - Only log "Email sent" if result.data exists AND no error
+
+- Replace current broken try/catch logic:
+  - Do NOT assume success after await
+  - DO NOT log success unconditionally
+
+- Add structured logging:
+  - "EMAIL_SEND_SUCCESS"
+  - "EMAIL_SEND_FAILED"
+  - include error.message, error.statusCode
+
+B. ADD EMAIL DELIVERY SAFETY MODES
+
+Use config.nodeEnv:
+
+1. DEVELOPMENT MODE OR NO RESEND_API_KEY:
+- DO NOT call Resend API
+- Instead:
+  - log full email content to console
+  - return a mocked success response
+  - ensure OTP is returned as devOtp in response for frontend auto-fill
+
+2. PRODUCTION MODE:
+- Require valid Resend response
+- If Resend returns domain verification error:
+  - log FATAL EMAIL CONFIG ERROR
+  - include clear message: "Verify domain at resend.com/domains"
+  - DO NOT pretend email was sent
+
+C. FIX OTP FLOW RELIABILITY
+
+- Ensure /login always stores OTP in DB regardless of email success
+- OTP verification must work even if email fails
+- Keep devOtp behaviour ONLY in non-production mode
+
+D. ADD EMAIL HEALTH CHECK ENDPOINT
+
+Create:
+GET /api/admin/email-status
+
+Returns:
+- resendConfigured: boolean
+- domainVerified: unknown (manual flag optional)
+- lastEmailError (if any)
+- environment mode
+
+E. IMPROVE ERROR VISIBILITY
+
+- Any email failure must:
+  - appear in server logs
+  - appear in admin dashboard warning banner:
+    "Email delivery is not configured — OTP may not arrive"
+
+F. UPDATE RESEND DOMAIN HANDLING COMMENTARY
+
+- Add clear comment in config or email service:
+  "Resend requires verified domain. Without it, emails are rejected with 403."
+
+- Do NOT hide this behaviour
+
+G. FRONTEND SAFETY (OPTIONAL BUT PREFERRED)
+
+- If login response includes emailFailed: true
+  show banner:
+  "Email delivery is not configured. Use the displayed code below."
+
+EXPECTED RESULT
+
+- OTP login ALWAYS works in dev via devOtp
+- OTP login in production depends on valid email config
+- No false "Email sent" logs
+- No silent failures
+- Admin can see email system health
+- System clearly communicates when email is broken
+
+IMPORTANT
+
+Never fake success logs. Never assume external API success without checking response data.
+Email delivery must be explicitly verified from provider response.

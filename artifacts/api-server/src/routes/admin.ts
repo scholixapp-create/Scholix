@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, usersTable, tutorsTable, sessionsTable, invoicesTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { requireAdmin } from "../lib/authMiddleware";
+import { getEmailServiceStatus } from "../lib/email";
 
 const router = Router();
 
@@ -90,6 +91,10 @@ router.get("/admin/commission-stats", async (_req, res) => {
     totalPlatformEarned,
     totalWaived,
   });
+});
+
+router.get("/admin/email-status", (_req, res) => {
+  res.json(getEmailServiceStatus());
 });
 
 export default router;
