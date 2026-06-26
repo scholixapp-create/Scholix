@@ -63,6 +63,18 @@ export interface AuthResponse {
   token: string;
 }
 
+/**
+ * Tutor's default teaching mode
+ */
+export type TutorProfileTeachingMode =
+  (typeof TutorProfileTeachingMode)[keyof typeof TutorProfileTeachingMode];
+
+export const TutorProfileTeachingMode = {
+  online: "online",
+  in_person: "in_person",
+  both: "both",
+} as const;
+
 export interface TutorProfile {
   id: number;
   userId: number;
@@ -78,8 +90,24 @@ export interface TutorProfile {
   sessionCount: number;
   /** Allowed session lengths in minutes, e.g. [60, 90] */
   sessionDurations?: number[] | null;
+  /** Tutor's default teaching mode */
+  teachingMode: TutorProfileTeachingMode;
+  /** Buffer time in minutes the tutor requires between travel sessions */
+  travelBufferMinutes: number;
   createdAt: string;
 }
+
+/**
+ * Tutor's default teaching mode
+ */
+export type UpdateTutorProfileBodyTeachingMode =
+  (typeof UpdateTutorProfileBodyTeachingMode)[keyof typeof UpdateTutorProfileBodyTeachingMode];
+
+export const UpdateTutorProfileBodyTeachingMode = {
+  online: "online",
+  in_person: "in_person",
+  both: "both",
+} as const;
 
 export interface UpdateTutorProfileBody {
   bio?: string;
@@ -87,6 +115,10 @@ export interface UpdateTutorProfileBody {
   hourlyRate?: number;
   /** Allowed session lengths in minutes, e.g. [60, 90] */
   sessionDurations?: number[] | null;
+  /** Tutor's default teaching mode */
+  teachingMode?: UpdateTutorProfileBodyTeachingMode;
+  /** Buffer time in minutes the tutor requires between travel sessions */
+  travelBufferMinutes?: number;
 }
 
 /**

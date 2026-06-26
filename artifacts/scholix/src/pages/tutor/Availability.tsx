@@ -82,15 +82,12 @@ export default function TutorAvailability() {
       if (tutorProfile.sessionDurations && tutorProfile.sessionDurations.length > 0) {
         setSelectedDurations(tutorProfile.sessionDurations);
       }
-      const raw = (tutorProfile as unknown as Record<string, unknown>);
-      if (typeof raw.teachingMode === "string" && ["online", "in_person", "both"].includes(raw.teachingMode as string)) {
-        setTeachingMode(raw.teachingMode as TeachingMode);
+      if (tutorProfile.teachingMode && ["online", "in_person", "both"].includes(tutorProfile.teachingMode)) {
+        setTeachingMode(tutorProfile.teachingMode as TeachingMode);
       }
-      if (typeof raw.travelBufferMinutes === "number") {
-        setTravelBuffer(raw.travelBufferMinutes as number);
-      }
+      setTravelBuffer(tutorProfile.travelBufferMinutes ?? 0);
     }
-  }, [tutorProfile?.hourlyRate, tutorProfile?.subjects, tutorProfile?.sessionDurations, (tutorProfile as unknown as Record<string, unknown> | undefined)?.teachingMode, (tutorProfile as unknown as Record<string, unknown> | undefined)?.travelBufferMinutes]);
+  }, [tutorProfile?.hourlyRate, tutorProfile?.subjects, tutorProfile?.sessionDurations, tutorProfile?.teachingMode, tutorProfile?.travelBufferMinutes]);
 
   const toggleDay = (day: DayKey) => {
     setSchedule((prev) => {
@@ -139,7 +136,7 @@ export default function TutorAvailability() {
 
   const handleSaveTeachingMode = async () => {
     if (!tutorId) return;
-    await updateProfileMutation.mutateAsync({ tutorId, data: { teachingMode, travelBufferMinutes: travelBuffer } as any });
+    await updateProfileMutation.mutateAsync({ tutorId, data: { teachingMode, travelBufferMinutes: travelBuffer } });
     await qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });
     setTeachingModeSaved(true);
     setTimeout(() => setTeachingModeSaved(false), 2500);

@@ -30,7 +30,7 @@ export default function ParentTutors() {
 
   const filtered = (tutors.data ?? []).filter((t) => {
     if (modeFilter !== "all") {
-      const mode = (t as { teachingMode?: string }).teachingMode ?? "online";
+      const mode = t.teachingMode ?? "online";
       if (mode !== modeFilter) return false;
     }
     if (!query.trim()) return true;
@@ -160,7 +160,7 @@ export default function ParentTutors() {
 
                     {/* Teaching mode badge */}
                     {(() => {
-                      const mode = (tutor as { teachingMode?: string }).teachingMode ?? "online";
+                      const mode = tutor.teachingMode ?? "online";
                       return (
                         <div className="mt-2">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium ${MODE_COLORS[mode] ?? MODE_COLORS.online}`}>

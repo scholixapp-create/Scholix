@@ -84,6 +84,14 @@ export const ListTutorsResponseItem = zod.object({
     .array(zod.number())
     .nullish()
     .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
+  teachingMode: zod
+    .enum(["online", "in_person", "both"])
+    .describe("Tutor's default teaching mode"),
+  travelBufferMinutes: zod
+    .number()
+    .describe(
+      "Buffer time in minutes the tutor requires between travel sessions",
+    ),
   createdAt: zod.string(),
 });
 export const ListTutorsResponse = zod.array(ListTutorsResponseItem);
@@ -112,6 +120,14 @@ export const GetTutorResponse = zod.object({
     .array(zod.number())
     .nullish()
     .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
+  teachingMode: zod
+    .enum(["online", "in_person", "both"])
+    .describe("Tutor's default teaching mode"),
+  travelBufferMinutes: zod
+    .number()
+    .describe(
+      "Buffer time in minutes the tutor requires between travel sessions",
+    ),
   createdAt: zod.string(),
 });
 
@@ -130,6 +146,16 @@ export const UpdateTutorProfileBody = zod.object({
     .array(zod.number())
     .nullish()
     .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
+  teachingMode: zod
+    .enum(["online", "in_person", "both"])
+    .optional()
+    .describe("Tutor's default teaching mode"),
+  travelBufferMinutes: zod
+    .number()
+    .optional()
+    .describe(
+      "Buffer time in minutes the tutor requires between travel sessions",
+    ),
 });
 
 export const UpdateTutorProfileResponse = zod.object({
@@ -149,6 +175,14 @@ export const UpdateTutorProfileResponse = zod.object({
     .array(zod.number())
     .nullish()
     .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
+  teachingMode: zod
+    .enum(["online", "in_person", "both"])
+    .describe("Tutor's default teaching mode"),
+  travelBufferMinutes: zod
+    .number()
+    .describe(
+      "Buffer time in minutes the tutor requires between travel sessions",
+    ),
   createdAt: zod.string(),
 });
 
@@ -572,6 +606,14 @@ export const ApproveTutorResponse = zod.object({
     .array(zod.number())
     .nullish()
     .describe("Allowed session lengths in minutes, e.g. [60, 90]"),
+  teachingMode: zod
+    .enum(["online", "in_person", "both"])
+    .describe("Tutor's default teaching mode"),
+  travelBufferMinutes: zod
+    .number()
+    .describe(
+      "Buffer time in minutes the tutor requires between travel sessions",
+    ),
   createdAt: zod.string(),
 });
 

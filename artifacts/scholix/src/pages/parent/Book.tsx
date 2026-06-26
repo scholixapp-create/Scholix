@@ -184,7 +184,7 @@ export default function BookSession() {
 
   // ── Tutor header card (shared) ────────────────────────────────────────────
 
-  const tutorMode = (tutor.data as unknown as Record<string, unknown> | undefined)?.teachingMode as string | undefined;
+  const tutorMode = tutor.data.teachingMode;
   const modeLabel = tutorMode === "in_person" ? "In-person" : tutorMode === "both" ? "Online & in-person" : "Online";
   const modeIcon = tutorMode === "online" || !tutorMode ? "🖥️" : tutorMode === "both" ? "🌐" : "📍";
 

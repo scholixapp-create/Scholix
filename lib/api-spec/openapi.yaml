@@ -753,9 +753,16 @@ components:
           items:
             type: integer
           description: "Allowed session lengths in minutes, e.g. [60, 90]"
+        teachingMode:
+          type: string
+          enum: [online, in_person, both]
+          description: "Tutor's default teaching mode"
+        travelBufferMinutes:
+          type: integer
+          description: "Buffer time in minutes the tutor requires between travel sessions"
         createdAt:
           type: string
-      required: [id, userId, firstName, lastName, email, subjects, hourlyRate, isApproved, verificationStatus, sessionCount, createdAt]
+      required: [id, userId, firstName, lastName, email, subjects, hourlyRate, isApproved, verificationStatus, sessionCount, teachingMode, travelBufferMinutes, createdAt]
 
     UpdateTutorProfileBody:
       type: object
@@ -774,6 +781,13 @@ components:
           items:
             type: integer
           description: "Allowed session lengths in minutes, e.g. [60, 90]"
+        teachingMode:
+          type: string
+          enum: [online, in_person, both]
+          description: "Tutor's default teaching mode"
+        travelBufferMinutes:
+          type: integer
+          description: "Buffer time in minutes the tutor requires between travel sessions"
 
     AvailabilitySlot:
       type: object
