@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { Shield, Upload, CheckCircle, Clock, FileText, AlertCircle, Sparkles, Trophy, Building2, ExternalLink, ClipboardCheck } from "lucide-react";
+import { Shield, Upload, CheckCircle, Clock, FileText, AlertCircle, Sparkles, Trophy, Building2, ExternalLink, ClipboardCheck, Phone, MapPin } from "lucide-react";
 
 interface TutorMe {
   verificationStatus: string;
@@ -93,6 +93,8 @@ export default function TutorOnboarding() {
   const [wwccExpiry, setWwccExpiry] = useState("");
   const [educationDetails, setEducationDetails] = useState("");
   const [abn, setAbn] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [wwccFile, setWwccFile] = useState<File | null>(null);
   const [educationFile, setEducationFile] = useState<File | null>(null);
   const [wwccUploaded, setWwccUploaded] = useState(false);
@@ -112,6 +114,11 @@ export default function TutorOnboarding() {
       if (data.abn) setAbn(data.abn);
       if (data.documents?.some((d) => d.docType === "wwcc")) setWwccUploaded(true);
       if (data.documents?.some((d) => d.docType === "education")) setEducationUploaded(true);
+    }).catch(() => {});
+
+    apiGet("/api/settings").then((data: { phone?: string; address?: string }) => {
+      if (data.phone) setPhone(data.phone);
+      if (data.address) setAddress(data.address);
     }).catch(() => {});
 
     // Load existing compliance state
@@ -138,6 +145,10 @@ export default function TutorOnboarding() {
 
     try {
       await apiPut("/api/tutors/me/details", { wwccNumber, wwccExpiry, educationDetails, abn: abn.replace(/\s/g, "") });
+
+      if (phone || address) {
+        await apiPut("/api/settings", { phone: phone.trim(), address: address.trim() });
+      }
 
       if (wwccFile && !wwccUploaded) {
         await uploadDoc("wwcc", wwccFile);
@@ -214,7 +225,7 @@ export default function TutorOnboarding() {
                 <Sparkles size={13} className="text-primary" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-foreground">Every New Student — First Session Free</p>
+                <p className="text-xs font-semibold text-foreground">Every New Student — First Session Commission-Free</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   The first session with any new student is <strong className="text-primary">0% commission</strong> — helping you build your client base.
                 </p>
@@ -227,7 +238,7 @@ export default function TutorOnboarding() {
               <div>
                 <p className="text-xs font-semibold text-foreground">Commission Drops as You Grow</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Standard fee is 30%. Hit 10 sessions → <strong>25%</strong>. Hit 25 → <strong>20%</strong>. Hit 50 → <strong>15%</strong>.
+                  Standard fee is 30%. Hit 10 sessions → <strong>24%</strong>. Hit 25 → <strong>15%</strong>. Hit 50 → <strong>5%</strong>.
                 </p>
               </div>
             </div>
@@ -284,6 +295,53 @@ export default function TutorOnboarding() {
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     <strong className="text-foreground">GST note:</strong> If your annual tutoring income exceeds $75,000 you must register for GST. Below this threshold, registration is optional — but you may register voluntarily and claim GST credits.
                   </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* Contact details */}
+            <div>
+              <h2 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+                <Phone size={14} className="text-primary" />
+                Contact Details
+                <span className="ml-auto text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">Optional</span>
+              </h2>
+              <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+                Your phone and address will appear on invoices and are used for WhatsApp contact with parents.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Australian mobile number</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                      <Phone size={13} className="text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground font-medium">+61</span>
+                    </div>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="0412 345 678"
+                      inputMode="numeric"
+                      maxLength={12}
+                      className="w-full pl-14 pr-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1.5 flex items-center gap-1.5">
+                    <MapPin size={13} className="text-muted-foreground" />
+                    Home address
+                  </label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="e.g. 123 Main St, Richmond VIC 3121"
+                    className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors"
+                  />
                 </div>
               </div>
             </div>

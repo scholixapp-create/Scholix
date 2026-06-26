@@ -287,6 +287,11 @@ router.post("/auth/signup", async (req, res) => {
     return;
   }
 
+  if (role === "student") {
+    res.status(400).json({ error: "Student accounts are managed by parents. Please ask your parent to add you from their dashboard." });
+    return;
+  }
+
   if (!body.termsAccepted) {
     res.status(400).json({ error: "You must accept the Terms of Service and Privacy Policy to create an account" });
     return;

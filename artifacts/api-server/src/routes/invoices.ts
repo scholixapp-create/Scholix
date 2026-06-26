@@ -158,7 +158,7 @@ router.get("/invoices/:invoiceId/pdf", async (req, res) => {
   if (!session) { res.status(404).json({ error: "Session not found" }); return; }
 
   const [tutorRow] = await db
-    .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email })
+    .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, email: usersTable.email, abn: tutorsTable.abn })
     .from(tutorsTable)
     .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
     .where(eq(tutorsTable.id, session.tutorId))
@@ -191,6 +191,7 @@ router.get("/invoices/:invoiceId/pdf", async (req, res) => {
   const invoiceNum = formatInvoiceNumber(session.scheduledAt, session.studentId, session.tutorId);
   const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "Tutor";
   const tutorEmail = tutorRow?.email ?? "";
+  const tutorAbn = tutorRow?.abn ? tutorRow.abn.replace(/(\d{2})(\d{3})(\d{3})(\d{3})/, "$1 $2 $3 $4") : "";
   const studentName = student
     ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
     : "Student";
@@ -244,6 +245,10 @@ router.get("/invoices/:invoiceId/pdf", async (req, res) => {
   doc.fontSize(8.5).fillColor("#374151").font("Helvetica")
     .text(tutorEmail, 64, y + 44)
     .text(parentEmail, 324, y + 44);
+
+  if (tutorAbn) {
+    doc.fontSize(8).fillColor("#374151").font("Helvetica").text(`ABN: ${tutorAbn}`, 64, y + 60);
+  }
 
   if (parentPhone) {
     doc.fontSize(8).fillColor("#374151").font("Helvetica").text(parentPhone, 324, y + 60);

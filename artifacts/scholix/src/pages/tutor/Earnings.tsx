@@ -162,14 +162,14 @@ function FirstStudentFreeCard({ freeSessions }: { freeSessions: number }) {
           <Sparkles size={16} className="text-accent" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-bold text-foreground">First Student Free</p>
+          <p className="text-sm font-bold text-foreground">Commission-Free First Student</p>
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
             Your very first student on Scholix pays <span className="font-semibold text-accent">0% commission — forever</span>.
-            All other new students get their first session free too.
+            All other new students get their first session commission-free too.
           </p>
           {freeSessions > 0 && (
             <p className="text-xs font-semibold text-accent mt-2">
-              {freeSessions} free session{freeSessions !== 1 ? "s" : ""} used so far
+              {freeSessions} commission-free session{freeSessions !== 1 ? "s" : ""} so far
             </p>
           )}
         </div>

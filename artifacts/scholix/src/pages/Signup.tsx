@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { BookOpen, AlertCircle, Phone } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
-type Role = "tutor" | "parent" | "student";
+type Role = "tutor" | "parent";
 
 function getPasswordStrength(pwd: string): { score: number; label: string; color: string } {
   if (!pwd) return { score: 0, label: "", color: "" };
@@ -24,7 +24,6 @@ function getPasswordStrength(pwd: string): { score: number; label: string; color
 const roles: { value: Role; label: string; desc: string }[] = [
   { value: "tutor", label: "Tutor", desc: "Manage sessions and grow your practice" },
   { value: "parent", label: "Parent", desc: "Book sessions for your children" },
-  { value: "student", label: "Student", desc: "Access your scheduled sessions" },
 ];
 
 function formatAuPhone(raw: string): string {
@@ -58,7 +57,6 @@ export default function Signup() {
     switch (role) {
       case "tutor": return "/tutor/dashboard";
       case "parent": return "/parent/dashboard";
-      case "student": return "/student/dashboard";
       default: return "/";
     }
   };

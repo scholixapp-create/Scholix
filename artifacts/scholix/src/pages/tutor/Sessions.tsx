@@ -138,7 +138,7 @@ function InvoiceModal({ invoice, onClose, onLogProgress }: {
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">
               Platform fee
-              {isFree ? " (0% — free session)" : ` (${commPct}%)`}
+              {isFree ? " (0% — commission-free)" : ` (${commPct}%)`}
             </span>
             <span className={`font-semibold ${isFree ? "text-accent" : "text-destructive"}`}>
               {isFree ? "FREE" : `−$${invoice.platformCommission.toFixed(2)}`}

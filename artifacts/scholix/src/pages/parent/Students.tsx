@@ -465,7 +465,7 @@ function AddStudentModal({
                   className="mt-0.5 accent-primary"
                 />
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  I declare that the information provided is accurate and this student is a unique individual. I understand that abuse of free session offers may result in account suspension.
+                  I declare that the information provided is accurate and this student is a unique individual. I understand that misuse of commission-free session benefits may result in account suspension.
                 </p>
               </label>
             )}
