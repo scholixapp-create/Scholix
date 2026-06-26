@@ -42,7 +42,9 @@ import type {
   Student,
   SuccessResponse,
   TutorProfile,
+  TutorRelationship,
   UpdateTutorProfileBody,
+  UpsertRelationshipBody,
   User,
 } from "./api.schemas";
 
@@ -1077,6 +1079,205 @@ export function useGetTutorStudents<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get all per-parent lesson preferences for a tutor
+ */
+export const getGetTutorRelationshipsUrl = (tutorId: number) => {
+  return `/api/tutors/${tutorId}/relationships`;
+};
+
+export const getTutorRelationships = async (
+  tutorId: number,
+  options?: RequestInit,
+): Promise<TutorRelationship[]> => {
+  return customFetch<TutorRelationship[]>(
+    getGetTutorRelationshipsUrl(tutorId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetTutorRelationshipsQueryKey = (tutorId: number) => {
+  return [`/api/tutors/${tutorId}/relationships`] as const;
+};
+
+export const getGetTutorRelationshipsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTutorRelationships>>,
+  TError = ErrorType<void>,
+>(
+  tutorId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTutorRelationships>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetTutorRelationshipsQueryKey(tutorId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getTutorRelationships>>
+  > = ({ signal }) =>
+    getTutorRelationships(tutorId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!tutorId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTutorRelationships>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTutorRelationshipsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTutorRelationships>>
+>;
+export type GetTutorRelationshipsQueryError = ErrorType<void>;
+
+/**
+ * @summary Get all per-parent lesson preferences for a tutor
+ */
+
+export function useGetTutorRelationships<
+  TData = Awaited<ReturnType<typeof getTutorRelationships>>,
+  TError = ErrorType<void>,
+>(
+  tutorId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTutorRelationships>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTutorRelationshipsQueryOptions(tutorId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Set lesson-mode and travel-buffer overrides for a specific parent
+ */
+export const getUpsertTutorRelationshipUrl = (
+  tutorId: number,
+  parentId: number,
+) => {
+  return `/api/tutors/${tutorId}/relationships/${parentId}`;
+};
+
+export const upsertTutorRelationship = async (
+  tutorId: number,
+  parentId: number,
+  upsertRelationshipBody: UpsertRelationshipBody,
+  options?: RequestInit,
+): Promise<TutorRelationship> => {
+  return customFetch<TutorRelationship>(
+    getUpsertTutorRelationshipUrl(tutorId, parentId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(upsertRelationshipBody),
+    },
+  );
+};
+
+export const getUpsertTutorRelationshipMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertTutorRelationship>>,
+    TError,
+    {
+      tutorId: number;
+      parentId: number;
+      data: BodyType<UpsertRelationshipBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertTutorRelationship>>,
+  TError,
+  { tutorId: number; parentId: number; data: BodyType<UpsertRelationshipBody> },
+  TContext
+> => {
+  const mutationKey = ["upsertTutorRelationship"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertTutorRelationship>>,
+    {
+      tutorId: number;
+      parentId: number;
+      data: BodyType<UpsertRelationshipBody>;
+    }
+  > = (props) => {
+    const { tutorId, parentId, data } = props ?? {};
+
+    return upsertTutorRelationship(tutorId, parentId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertTutorRelationshipMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertTutorRelationship>>
+>;
+export type UpsertTutorRelationshipMutationBody =
+  BodyType<UpsertRelationshipBody>;
+export type UpsertTutorRelationshipMutationError = ErrorType<void>;
+
+/**
+ * @summary Set lesson-mode and travel-buffer overrides for a specific parent
+ */
+export const useUpsertTutorRelationship = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertTutorRelationship>>,
+    TError,
+    {
+      tutorId: number;
+      parentId: number;
+      data: BodyType<UpsertRelationshipBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertTutorRelationship>>,
+  TError,
+  { tutorId: number; parentId: number; data: BodyType<UpsertRelationshipBody> },
+  TContext
+> => {
+  return useMutation(getUpsertTutorRelationshipMutationOptions(options));
+};
 
 /**
  * @summary List all students

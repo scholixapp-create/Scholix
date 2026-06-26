@@ -245,6 +245,29 @@ export interface AdminStats {
   platformCommission: number;
 }
 
+/**
+ * Per-parent lesson-mode and travel-buffer override for a tutor
+ */
+export interface TutorRelationship {
+  id: number;
+  tutorId: number;
+  parentId: number;
+  /** Override the tutor's default teaching mode for this family */
+  lessonMode?: string | null;
+  /** Override travel buffer in minutes (null = use tutor default) */
+  travelBufferMinutes?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Fields to set on a tutor-parent relationship record
+ */
+export interface UpsertRelationshipBody {
+  lessonMode?: string | null;
+  travelBufferMinutes?: number | null;
+}
+
 export interface SessionSummary {
   scheduled: number;
   completed: number;

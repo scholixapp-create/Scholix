@@ -364,6 +364,105 @@ router.get("/tutors/:tutorId/students", async (req, res) => {
   );
 });
 
+// ── Per-parent relationship preferences ──────────────────────────────────────
+
+router.get("/tutors/:tutorId/relationships", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const tutorId = parseInt(req.params.tutorId as string, 10);
+
+  // Only the tutor who owns this profile may list their relationships
+  const [tutor] = await db
+    .select({ id: tutorsTable.id })
+    .from(tutorsTable)
+    .where(and(eq(tutorsTable.id, tutorId), eq(tutorsTable.userId, user.id)))
+    .limit(1);
+
+  if (!tutor) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const rows = await db
+    .select()
+    .from(tutorRelationshipsTable)
+    .where(eq(tutorRelationshipsTable.tutorId, tutorId));
+
+  res.json(
+    rows.map((r) => ({
+      id: r.id,
+      tutorId: r.tutorId,
+      parentId: r.parentId,
+      lessonMode: r.lessonMode ?? null,
+      travelBufferMinutes: r.travelBufferMinutes ?? null,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    }))
+  );
+});
+
+router.put("/tutors/:tutorId/relationships/:parentId", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const tutorId = parseInt(req.params.tutorId as string, 10);
+  const parentId = parseInt(req.params.parentId as string, 10);
+
+  // Only the tutor who owns this profile may set preferences
+  const [tutor] = await db
+    .select({ id: tutorsTable.id })
+    .from(tutorsTable)
+    .where(and(eq(tutorsTable.id, tutorId), eq(tutorsTable.userId, user.id)))
+    .limit(1);
+
+  if (!tutor) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const { lessonMode, travelBufferMinutes } = req.body ?? {};
+
+  const validModes = ["online", "in_person", null, undefined];
+  if (!validModes.includes(lessonMode)) {
+    res.status(400).json({ error: "lessonMode must be 'online', 'in_person', or null" });
+    return;
+  }
+
+  if (travelBufferMinutes !== null && travelBufferMinutes !== undefined && typeof travelBufferMinutes !== "number") {
+    res.status(400).json({ error: "travelBufferMinutes must be a number or null" });
+    return;
+  }
+
+  const now = new Date();
+
+  const [row] = await db
+    .insert(tutorRelationshipsTable)
+    .values({
+      tutorId,
+      parentId,
+      lessonMode: lessonMode ?? null,
+      travelBufferMinutes: travelBufferMinutes ?? null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [tutorRelationshipsTable.tutorId, tutorRelationshipsTable.parentId],
+      set: {
+        lessonMode: lessonMode ?? null,
+        travelBufferMinutes: travelBufferMinutes ?? null,
+        updatedAt: now,
+      },
+    })
+    .returning();
+
+  res.json({
+    id: row.id,
+    tutorId: row.tutorId,
+    parentId: row.parentId,
+    lessonMode: row.lessonMode ?? null,
+    travelBufferMinutes: row.travelBufferMinutes ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  });
+});
+
 // ── Compliance ────────────────────────────────────────────────────────────────
 
 router.get("/tutors/me/compliance", requireAuth, async (req, res) => {

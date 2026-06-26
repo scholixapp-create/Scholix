@@ -287,6 +287,61 @@ paths:
                 items:
                   $ref: "#/components/schemas/Student"
 
+  /tutors/{tutorId}/relationships:
+    get:
+      operationId: getTutorRelationships
+      tags: [tutors]
+      summary: Get all per-parent lesson preferences for a tutor
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of relationship preference records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TutorRelationship"
+        "403":
+          description: Forbidden
+
+  /tutors/{tutorId}/relationships/{parentId}:
+    put:
+      operationId: upsertTutorRelationship
+      tags: [tutors]
+      summary: Set lesson-mode and travel-buffer overrides for a specific parent
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: parentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertRelationshipBody"
+      responses:
+        "200":
+          description: Updated relationship record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorRelationship"
+        "403":
+          description: Forbidden
+
   /students:
     get:
       operationId: listStudents
@@ -985,6 +1040,41 @@ components:
         platformCommission:
           type: number
       required: [totalUsers, totalTutors, approvedTutors, totalStudents, totalSessions, completedSessions, scheduledSessions, totalRevenue, platformCommission]
+
+    TutorRelationship:
+      type: object
+      description: Per-parent lesson-mode and travel-buffer override for a tutor
+      properties:
+        id:
+          type: integer
+        tutorId:
+          type: integer
+        parentId:
+          type: integer
+        lessonMode:
+          type: string
+          nullable: true
+          description: "Override the tutor's default teaching mode for this family"
+        travelBufferMinutes:
+          type: integer
+          nullable: true
+          description: "Override travel buffer in minutes (null = use tutor default)"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, tutorId, parentId, createdAt, updatedAt]
+
+    UpsertRelationshipBody:
+      type: object
+      description: Fields to set on a tutor-parent relationship record
+      properties:
+        lessonMode:
+          type: string
+          nullable: true
+        travelBufferMinutes:
+          type: integer
+          nullable: true
 
     SessionSummary:
       type: object

@@ -253,6 +253,67 @@ export const GetTutorStudentsResponseItem = zod.object({
 export const GetTutorStudentsResponse = zod.array(GetTutorStudentsResponseItem);
 
 /**
+ * @summary Get all per-parent lesson preferences for a tutor
+ */
+export const GetTutorRelationshipsParams = zod.object({
+  tutorId: zod.coerce.number(),
+});
+
+export const GetTutorRelationshipsResponseItem = zod
+  .object({
+    id: zod.number(),
+    tutorId: zod.number(),
+    parentId: zod.number(),
+    lessonMode: zod
+      .string()
+      .nullish()
+      .describe("Override the tutor's default teaching mode for this family"),
+    travelBufferMinutes: zod
+      .number()
+      .nullish()
+      .describe("Override travel buffer in minutes (null = use tutor default)"),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+  })
+  .describe("Per-parent lesson-mode and travel-buffer override for a tutor");
+export const GetTutorRelationshipsResponse = zod.array(
+  GetTutorRelationshipsResponseItem,
+);
+
+/**
+ * @summary Set lesson-mode and travel-buffer overrides for a specific parent
+ */
+export const UpsertTutorRelationshipParams = zod.object({
+  tutorId: zod.coerce.number(),
+  parentId: zod.coerce.number(),
+});
+
+export const UpsertTutorRelationshipBody = zod
+  .object({
+    lessonMode: zod.string().nullish(),
+    travelBufferMinutes: zod.number().nullish(),
+  })
+  .describe("Fields to set on a tutor-parent relationship record");
+
+export const UpsertTutorRelationshipResponse = zod
+  .object({
+    id: zod.number(),
+    tutorId: zod.number(),
+    parentId: zod.number(),
+    lessonMode: zod
+      .string()
+      .nullish()
+      .describe("Override the tutor's default teaching mode for this family"),
+    travelBufferMinutes: zod
+      .number()
+      .nullish()
+      .describe("Override travel buffer in minutes (null = use tutor default)"),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+  })
+  .describe("Per-parent lesson-mode and travel-buffer override for a tutor");
+
+/**
  * @summary List all students
  */
 export const ListStudentsResponseItem = zod.object({
