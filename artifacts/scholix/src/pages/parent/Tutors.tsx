@@ -27,12 +27,20 @@ export default function ParentTutors() {
   const tutors = useListTutors();
   const [query, setQuery] = useState("");
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
+  const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
 
-  const filtered = (tutors.data ?? []).filter((t) => {
+  const allTutors = tutors.data ?? [];
+
+  const uniqueSubjects = Array.from(
+    new Set(allTutors.flatMap((t) => t.subjects))
+  ).sort();
+
+  const filtered = allTutors.filter((t) => {
     if (modeFilter !== "all") {
       const mode = t.teachingMode ?? "online";
       if (mode !== modeFilter) return false;
     }
+    if (subjectFilter && !t.subjects.includes(subjectFilter)) return false;
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return (
@@ -62,7 +70,7 @@ export default function ParentTutors() {
       </div>
 
       {/* Mode filter chips */}
-      <div className="flex gap-2 mb-5 flex-wrap">
+      <div className="flex gap-2 mb-3 flex-wrap">
         {(["all", "online", "in_person", "both"] as ModeFilter[]).map((m) => (
           <button
             key={m}
@@ -79,6 +87,35 @@ export default function ParentTutors() {
         ))}
       </div>
 
+      {/* Subject filter chips */}
+      {uniqueSubjects.length > 0 && (
+        <div className="flex gap-2 mb-5 flex-wrap">
+          <button
+            onClick={() => setSubjectFilter(null)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+              subjectFilter === null
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-primary"
+            }`}
+          >
+            All subjects
+          </button>
+          {uniqueSubjects.map((subject) => (
+            <button
+              key={subject}
+              onClick={() => setSubjectFilter(subjectFilter === subject ? null : subject)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                subjectFilter === subject
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-primary"
+              }`}
+            >
+              {subject}
+            </button>
+          ))}
+        </div>
+      )}
+
       {tutors.isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <div key={i} className="h-48 rounded-xl bg-muted animate-pulse" />)}
@@ -88,7 +125,7 @@ export default function ParentTutors() {
           <GraduationCap size={32} className="text-muted-foreground mx-auto mb-3" />
           <p className="text-sm font-medium text-foreground">No tutors found</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {query ? "Try a different search" : "Check back soon as more tutors are approved"}
+            {query || subjectFilter ? "Try a different search or filter" : "Check back soon as more tutors are approved"}
           </p>
         </div>
       ) : (

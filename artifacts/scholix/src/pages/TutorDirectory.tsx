@@ -38,6 +38,7 @@ export default function TutorDirectory() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
+  const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/tutors")
@@ -47,11 +48,16 @@ export default function TutorDirectory() {
       .finally(() => setLoading(false));
   }, []);
 
+  const uniqueSubjects = Array.from(
+    new Set(tutors.flatMap((t) => t.subjects))
+  ).sort();
+
   const filtered = tutors.filter((t) => {
     if (modeFilter !== "all") {
       const mode = t.teachingMode ?? "online";
       if (mode !== modeFilter) return false;
     }
+    if (subjectFilter && !t.subjects.includes(subjectFilter)) return false;
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return (
@@ -93,7 +99,7 @@ export default function TutorDirectory() {
         </div>
 
         {/* Mode filter chips */}
-        <div className="flex justify-center gap-2 flex-wrap">
+        <div className="flex justify-center gap-2 flex-wrap mb-3">
           {(["all", "online", "in_person", "both"] as ModeFilter[]).map((m) => (
             <button
               key={m}
@@ -109,6 +115,35 @@ export default function TutorDirectory() {
             </button>
           ))}
         </div>
+
+        {/* Subject filter chips */}
+        {uniqueSubjects.length > 0 && (
+          <div className="flex justify-center gap-2 flex-wrap">
+            <button
+              onClick={() => setSubjectFilter(null)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                subjectFilter === null
+                  ? "bg-white text-[#0f2240] border-white"
+                  : "bg-white/10 text-white/70 border-white/20 hover:bg-white/20 hover:text-white"
+              }`}
+            >
+              All subjects
+            </button>
+            {uniqueSubjects.map((subject) => (
+              <button
+                key={subject}
+                onClick={() => setSubjectFilter(subjectFilter === subject ? null : subject)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  subjectFilter === subject
+                    ? "bg-white text-[#0f2240] border-white"
+                    : "bg-white/10 text-white/70 border-white/20 hover:bg-white/20 hover:text-white"
+                }`}
+              >
+                {subject}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Tutor grid */}
@@ -123,11 +158,14 @@ export default function TutorDirectory() {
           <div className="text-center py-20">
             <GraduationCap size={40} className="text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 font-medium">
-              {query ? `No tutors matching "${query}"` : "No tutors available yet"}
+              {query ? `No tutors matching "${query}"` : subjectFilter ? `No tutors teaching ${subjectFilter}` : "No tutors available yet"}
             </p>
-            {query && (
-              <button onClick={() => setQuery("")} className="mt-2 text-sm text-primary hover:underline">
-                Clear search
+            {(query || subjectFilter) && (
+              <button
+                onClick={() => { setQuery(""); setSubjectFilter(null); }}
+                className="mt-2 text-sm text-primary hover:underline"
+              >
+                Clear filters
               </button>
             )}
           </div>
