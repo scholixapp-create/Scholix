@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { GraduationCap, Star, Search, BookOpen, ArrowRight } from "lucide-react";
+import { GraduationCap, Star, Search, BookOpen, ArrowRight, Monitor, MapPin, Layers } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
+
+type ModeFilter = "all" | "online" | "in_person" | "both";
 
 interface PublicTutor {
   id: number;
@@ -10,12 +12,32 @@ interface PublicTutor {
   bio: string | null;
   subjects: string[];
   hourlyRate: number;
+  teachingMode?: string;
 }
+
+const MODE_LABELS: Record<string, string> = {
+  online: "Online",
+  in_person: "In-person",
+  both: "Both",
+};
+
+const MODE_ICONS: Record<string, React.ReactNode> = {
+  online: <Monitor size={10} />,
+  in_person: <MapPin size={10} />,
+  both: <Layers size={10} />,
+};
+
+const MODE_COLORS: Record<string, string> = {
+  online: "bg-blue-50 text-blue-600 border-blue-200",
+  in_person: "bg-emerald-50 text-emerald-600 border-emerald-200",
+  both: "bg-violet-50 text-violet-600 border-violet-200",
+};
 
 export default function TutorDirectory() {
   const [tutors, setTutors] = useState<PublicTutor[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
 
   useEffect(() => {
     fetch("/api/tutors")
@@ -26,6 +48,10 @@ export default function TutorDirectory() {
   }, []);
 
   const filtered = tutors.filter((t) => {
+    if (modeFilter !== "all") {
+      const mode = t.teachingMode ?? "online";
+      if (mode !== modeFilter) return false;
+    }
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return (
@@ -55,7 +81,7 @@ export default function TutorDirectory() {
         </p>
 
         {/* Search */}
-        <div className="relative max-w-sm mx-auto">
+        <div className="relative max-w-sm mx-auto mb-4">
           <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="text"
@@ -64,6 +90,24 @@ export default function TutorDirectory() {
             onChange={(e) => setQuery(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-white/20"
           />
+        </div>
+
+        {/* Mode filter chips */}
+        <div className="flex justify-center gap-2 flex-wrap">
+          {(["all", "online", "in_person", "both"] as ModeFilter[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => setModeFilter(m)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                modeFilter === m
+                  ? "bg-white text-[#0f2240] border-white"
+                  : "bg-white/10 text-white/70 border-white/20 hover:bg-white/20 hover:text-white"
+              }`}
+            >
+              {m !== "all" && MODE_ICONS[m]}
+              {m === "all" ? "All modes" : MODE_LABELS[m]}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -141,6 +185,19 @@ export default function TutorDirectory() {
                       )}
                     </div>
                   )}
+
+                  {/* Teaching mode badge */}
+                  {(() => {
+                    const mode = tutor.teachingMode ?? "online";
+                    return (
+                      <div className="mb-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium ${MODE_COLORS[mode] ?? MODE_COLORS.online}`}>
+                          {MODE_ICONS[mode]}
+                          {MODE_LABELS[mode] ?? mode}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   {/* Bio */}
                   {tutor.bio && (

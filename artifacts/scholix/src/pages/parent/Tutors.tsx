@@ -1,13 +1,38 @@
 import { useState } from "react";
 import { useListTutors } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { GraduationCap, Star, Search, ShieldCheck, Award } from "lucide-react";
+import { GraduationCap, Star, Search, ShieldCheck, Award, Monitor, MapPin, Layers } from "lucide-react";
+
+type ModeFilter = "all" | "online" | "in_person" | "both";
+
+const MODE_LABELS: Record<string, string> = {
+  online: "Online",
+  in_person: "In-person",
+  both: "Both",
+};
+
+const MODE_ICONS: Record<string, React.ReactNode> = {
+  online: <Monitor size={10} />,
+  in_person: <MapPin size={10} />,
+  both: <Layers size={10} />,
+};
+
+const MODE_COLORS: Record<string, string> = {
+  online: "bg-blue-50 text-blue-600 border-blue-200",
+  in_person: "bg-emerald-50 text-emerald-600 border-emerald-200",
+  both: "bg-violet-50 text-violet-600 border-violet-200",
+};
 
 export default function ParentTutors() {
   const tutors = useListTutors();
   const [query, setQuery] = useState("");
+  const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
 
   const filtered = (tutors.data ?? []).filter((t) => {
+    if (modeFilter !== "all") {
+      const mode = (t as { teachingMode?: string }).teachingMode ?? "online";
+      if (mode !== modeFilter) return false;
+    }
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return (
@@ -25,7 +50,7 @@ export default function ParentTutors() {
       </div>
 
       {/* Search */}
-      <div className="relative mb-5">
+      <div className="relative mb-3">
         <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
@@ -34,6 +59,24 @@ export default function ParentTutors() {
           onChange={(e) => setQuery(e.target.value)}
           className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
+      </div>
+
+      {/* Mode filter chips */}
+      <div className="flex gap-2 mb-5 flex-wrap">
+        {(["all", "online", "in_person", "both"] as ModeFilter[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => setModeFilter(m)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+              modeFilter === m
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-primary"
+            }`}
+          >
+            {m !== "all" && MODE_ICONS[m]}
+            {m === "all" ? "All modes" : MODE_LABELS[m]}
+          </button>
+        ))}
       </div>
 
       {tutors.isLoading ? (
@@ -114,6 +157,19 @@ export default function ParentTutors() {
                         )}
                       </div>
                     )}
+
+                    {/* Teaching mode badge */}
+                    {(() => {
+                      const mode = (tutor as { teachingMode?: string }).teachingMode ?? "online";
+                      return (
+                        <div className="mt-2">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium ${MODE_COLORS[mode] ?? MODE_COLORS.online}`}>
+                            {MODE_ICONS[mode]}
+                            {MODE_LABELS[mode] ?? mode}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
