@@ -1173,6 +1173,115 @@ export function useGetTutorRelationships<
 }
 
 /**
+ * @summary Get lesson-mode and travel-buffer overrides for a specific parent
+ */
+export const getGetTutorRelationshipForParentUrl = (
+  tutorId: number,
+  parentId: number,
+) => {
+  return `/api/tutors/${tutorId}/relationships/${parentId}`;
+};
+
+export const getTutorRelationshipForParent = async (
+  tutorId: number,
+  parentId: number,
+  options?: RequestInit,
+): Promise<TutorRelationship> => {
+  return customFetch<TutorRelationship>(
+    getGetTutorRelationshipForParentUrl(tutorId, parentId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetTutorRelationshipForParentQueryKey = (
+  tutorId: number,
+  parentId: number,
+) => {
+  return [`/api/tutors/${tutorId}/relationships/${parentId}`] as const;
+};
+
+export const getGetTutorRelationshipForParentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTutorRelationshipForParent>>,
+  TError = ErrorType<void>,
+>(
+  tutorId: number,
+  parentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTutorRelationshipForParent>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetTutorRelationshipForParentQueryKey(tutorId, parentId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getTutorRelationshipForParent>>
+  > = ({ signal }) =>
+    getTutorRelationshipForParent(tutorId, parentId, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(tutorId && parentId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTutorRelationshipForParent>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTutorRelationshipForParentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTutorRelationshipForParent>>
+>;
+export type GetTutorRelationshipForParentQueryError = ErrorType<void>;
+
+/**
+ * @summary Get lesson-mode and travel-buffer overrides for a specific parent
+ */
+
+export function useGetTutorRelationshipForParent<
+  TData = Awaited<ReturnType<typeof getTutorRelationshipForParent>>,
+  TError = ErrorType<void>,
+>(
+  tutorId: number,
+  parentId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getTutorRelationshipForParent>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTutorRelationshipForParentQueryOptions(
+    tutorId,
+    parentId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Set lesson-mode and travel-buffer overrides for a specific parent
  */
 export const getUpsertTutorRelationshipUrl = (

@@ -315,6 +315,32 @@ export const GetTutorRelationshipsResponse = zod.array(
 );
 
 /**
+ * @summary Get lesson-mode and travel-buffer overrides for a specific parent
+ */
+export const GetTutorRelationshipForParentParams = zod.object({
+  tutorId: zod.coerce.number(),
+  parentId: zod.coerce.number(),
+});
+
+export const GetTutorRelationshipForParentResponse = zod
+  .object({
+    id: zod.number(),
+    tutorId: zod.number(),
+    parentId: zod.number(),
+    lessonMode: zod
+      .string()
+      .nullish()
+      .describe("Override the tutor's default teaching mode for this family"),
+    travelBufferMinutes: zod
+      .number()
+      .nullish()
+      .describe("Override travel buffer in minutes (null = use tutor default)"),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+  })
+  .describe("Per-parent lesson-mode and travel-buffer override for a tutor");
+
+/**
  * @summary Set lesson-mode and travel-buffer overrides for a specific parent
  */
 export const UpsertTutorRelationshipParams = zod.object({

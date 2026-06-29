@@ -311,6 +311,32 @@ paths:
           description: Forbidden
 
   /tutors/{tutorId}/relationships/{parentId}:
+    get:
+      operationId: getTutorRelationshipForParent
+      tags: [tutors]
+      summary: Get lesson-mode and travel-buffer overrides for a specific parent
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: parentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Relationship record (null fields if no override set)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorRelationship"
+        "403":
+          description: Forbidden
+        "404":
+          description: No relationship record found
     put:
       operationId: upsertTutorRelationship
       tags: [tutors]

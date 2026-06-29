@@ -400,6 +400,53 @@ router.get("/tutors/:tutorId/relationships", requireAuth, async (req, res) => {
   );
 });
 
+router.get("/tutors/:tutorId/relationships/:parentId", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const tutorId = parseInt(req.params.tutorId as string, 10);
+  const parentId = parseInt(req.params.parentId as string, 10);
+
+  // Accessible by: the tutor who owns the profile, or the parent themselves
+  const isTutor = await db
+    .select({ id: tutorsTable.id })
+    .from(tutorsTable)
+    .where(and(eq(tutorsTable.id, tutorId), eq(tutorsTable.userId, user.id)))
+    .limit(1)
+    .then((rows) => rows.length > 0);
+
+  const isParent = user.id === parentId;
+
+  if (!isTutor && !isParent) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const [row] = await db
+    .select()
+    .from(tutorRelationshipsTable)
+    .where(
+      and(
+        eq(tutorRelationshipsTable.tutorId, tutorId),
+        eq(tutorRelationshipsTable.parentId, parentId)
+      )
+    )
+    .limit(1);
+
+  if (!row) {
+    res.status(404).json({ error: "No relationship record found" });
+    return;
+  }
+
+  res.json({
+    id: row.id,
+    tutorId: row.tutorId,
+    parentId: row.parentId,
+    lessonMode: row.lessonMode ?? null,
+    travelBufferMinutes: row.travelBufferMinutes ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  });
+});
+
 router.put("/tutors/:tutorId/relationships/:parentId", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
   const tutorId = parseInt(req.params.tutorId as string, 10);

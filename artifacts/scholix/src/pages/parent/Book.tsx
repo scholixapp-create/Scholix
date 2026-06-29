@@ -1,12 +1,12 @@
 import { useState, useMemo } from "react";
 import { useRoute, useLocation, Link } from "wouter";
-import { useGetTutor, useGetTutorAvailability, useListStudents, useCreateSession, useSimulatePayment } from "@workspace/api-client-react";
+import { useGetTutor, useGetTutorAvailability, useListStudents, useCreateSession, useSimulatePayment, useGetTutorRelationshipForParent } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getListSessionsQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   ArrowLeft, CheckCircle, CreditCard, Baby, Plus, Calendar, Clock,
-  Bell, ChevronRight, ShieldCheck, ChevronLeft,
+  Bell, ChevronRight, ShieldCheck, ChevronLeft, Info,
 } from "lucide-react";
 import {
   format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -42,6 +42,12 @@ export default function BookSession() {
   const allStudents = useListStudents();
   const createSession = useCreateSession();
   const simulatePayment = useSimulatePayment();
+
+  const relationshipQuery = useGetTutorRelationshipForParent(
+    tutorId,
+    user?.id ?? 0,
+    { query: { enabled: !!tutorId && !!user?.id, retry: false } as any }
+  );
 
   const myStudents = allStudents.data?.filter((s) => s.parentId === user?.id) ?? [];
 
@@ -184,9 +190,12 @@ export default function BookSession() {
 
   // ── Tutor header card (shared) ────────────────────────────────────────────
 
-  const tutorMode = tutor.data.teachingMode;
-  const modeLabel = tutorMode === "in_person" ? "In-person" : tutorMode === "both" ? "Online & in-person" : "Online";
-  const modeIcon = tutorMode === "online" || !tutorMode ? "🖥️" : tutorMode === "both" ? "🌐" : "📍";
+  const relationshipLessonMode = relationshipQuery.data?.lessonMode ?? null;
+  const effectiveMode = relationshipLessonMode ?? tutor.data.teachingMode;
+  const isFamilyOverride = !!relationshipLessonMode;
+
+  const modeLabel = effectiveMode === "in_person" ? "In-person" : effectiveMode === "both" ? "Online & in-person" : "Online";
+  const modeIcon = effectiveMode === "online" || !effectiveMode ? "🖥️" : effectiveMode === "both" ? "🌐" : "📍";
 
   const TutorCard = () => (
     <div className="bg-card border border-card-border rounded-xl p-4 mb-5">
@@ -208,6 +217,11 @@ export default function BookSession() {
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">
               {modeIcon} {modeLabel}
             </span>
+            {isFamilyOverride && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
+                For your family
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -612,6 +626,21 @@ export default function BookSession() {
       </div>
 
       <TutorCard />
+
+      {/* Lesson mode preference notice */}
+      {isFamilyOverride && (
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-primary/5 border border-primary/20 mb-4">
+          <Info size={14} className="text-primary shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-semibold text-foreground">
+              {modeIcon} {tutor.data!.firstName} has set this family's sessions to {modeLabel.toLowerCase()}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              This preference was chosen by your tutor and can't be changed here.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Student selector */}
       {allStudents.isLoading ? (
