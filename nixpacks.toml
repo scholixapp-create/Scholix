@@ -1,0 +1,8 @@
+[phases.install]
+cmds = ["corepack enable", "pnpm install --frozen-lockfile=false"]
+
+[phases.build]
+cmds = ["pnpm run build"]
+
+[start]
+cmd = "pnpm --filter api-server start"
