@@ -1,8 +1,14 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm-9_x"]
+
 [phases.install]
-cmds = ["corepack enable", "pnpm install --frozen-lockfile=false"]
+cmds = [
+  "npm install -g pnpm@9.12.0",
+  "pnpm install --frozen-lockfile=false"
+]
 
 [phases.build]
-cmds = ["pnpm run build"]
+cmds = ["pnpm build"]
 
 [start]
 cmd = "pnpm --filter api-server start"
