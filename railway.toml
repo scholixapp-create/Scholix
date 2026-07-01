@@ -2,4 +2,4 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "pnpm --filter api-server start"
+startCommand = "pnpm --filter @workspace/db push && pnpm --filter api-server start"
