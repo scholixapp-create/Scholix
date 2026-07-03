@@ -6,6 +6,8 @@ import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 setBaseUrl(import.meta.env.VITE_API_URL ?? "");
 
+console.log("VITE_API_URL =", import.meta.env.VITE_API_URL);
+
 setAuthTokenGetter(() => localStorage.getItem("scholix_token"));
 
 createRoot(document.getElementById("root")!).render(<App />);
