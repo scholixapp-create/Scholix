@@ -75,7 +75,7 @@ export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult>
 
   try {
     const result = await resend.emails.send({
-      from: "Scholix <notifications@scholix.app>",
+      from: "Scholix <notifications@send.scholix.com.au>",
       to: payload.to,
       subject: payload.subject,
       html: payload.html,
@@ -104,7 +104,7 @@ export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult>
         result.error.message.toLowerCase().includes("domain")
       ) {
         logger.error(
-          { fromAddress: "notifications@scholix.app" },
+          { fromAddress: "notifications@send.scholix.com.au" },
           "EMAIL_CONFIG_ERROR — Resend sender domain is not verified. " +
             "Go to https://resend.com/domains to add and verify send.scholix.com.au before production use."
         );
