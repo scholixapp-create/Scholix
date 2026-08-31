@@ -48,7 +48,7 @@ export function getEmailServiceStatus(): EmailServiceStatus {
   return {
     resendConfigured,
     devMode,
-    fromAddress: "notifications@scholix.app",
+    fromAddress: "notifications@send.scholix.com.au",
     lastEmailError,
     environment: config.nodeEnv,
   };
@@ -106,7 +106,7 @@ export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult>
         logger.error(
           { fromAddress: "notifications@scholix.app" },
           "EMAIL_CONFIG_ERROR — Resend sender domain is not verified. " +
-            "Go to https://resend.com/domains to add and verify scholix.app before production use."
+            "Go to https://resend.com/domains to add and verify send.scholix.com.au before production use."
         );
       }
       return { delivered: false, devMode: false };
