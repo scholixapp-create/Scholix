@@ -1,0 +1,168 @@
+We now have Scholix deployed and have completed an initial real-user test.
+
+I want you to perform a product/bug audit for the issues below.
+
+IMPORTANT:
+
+* Do not redesign the application yet.
+* Do not make unrelated changes.
+* First identify the root cause, affected files, database/API implications, and proposed fix for each item.
+* Separate simple bugs from changes that require new product behaviour or database schema changes.
+* Do not implement anything until you have shown me the proposed plan.
+
+PRIORITY 0 — LAUNCH BLOCKERS
+
+1. Tutor document approval
+   In the admin tutor verification screen, clicking "View Document" returns:
+   404 — Document not found.
+
+Find where tutor documents are uploaded/stored, how the document URL/path is generated, and why the admin cannot retrieve it in production.
+
+2. Tutor approval state
+   After an admin approves a tutor, the tutor account/dashboard still says verification is pending.
+
+Trace the entire approval flow:
+admin action → API → database → tutor status → frontend query → frontend display.
+
+Determine whether this is a persistence issue, stale frontend state/cache, incorrect field mapping, or another issue.
+
+3. Remove fake dashboard data
+   There are still fake numbers and graphs throughout the application.
+
+Find all seeded, mocked, placeholder, fallback, or hardcoded statistics shown in production.
+
+Production dashboards must show:
+
+* actual database data, or
+* proper zero/empty states.
+
+Do not show fictional sessions, earnings, students, ratings, or graph data.
+
+PRIORITY 1 — CORE PRODUCT
+
+4. Booking workflow
+
+Currently parents can effectively book tutors directly.
+
+I want to investigate changing the workflow to:
+
+Parent requests session
+→ pending_tutor_response
+
+Tutor can:
+A. Accept
+→ awaiting_payment
+→ payment
+→ scheduled
+
+B. Suggest alternative date/time
+→ alternative_proposed
+→ parent accepts or declines
+→ if accepted, awaiting_payment
+
+C. Decline
+→ declined
+
+Analyse:
+
+* required database/status changes
+* API changes
+* tutor UI
+* parent UI
+* notifications
+* payment timing
+* interaction with existing availability system
+
+Do not implement until the architecture is proposed.
+
+5. Availability exceptions
+
+Tutors currently set recurring days/times but need to block specific dates or weeks.
+
+Required model:
+
+* recurring weekly availability
+* date-specific unavailable periods
+* ability to block a whole date or date range
+* existing sessions automatically make that slot unavailable
+
+Propose the simplest implementation compatible with the existing availability system.
+
+6. Student progress
+
+Tutors currently cannot see student progress notes.
+
+Trace the existing student_progress data model and API.
+
+Tutors should be able to see progress/history for students they tutor.
+
+Identify whether the problem is:
+
+* missing API endpoint
+* permissions
+* frontend query
+* missing UI
+* database relationship.
+
+7. Notification dropdown
+
+Clicking notification items currently causes the dropdown to disappear but does not navigate or perform the associated action.
+
+Audit how notification actions/links are stored and rendered.
+
+Notifications should be actionable where appropriate, e.g.:
+
+* booking request → booking/session
+* verification update → onboarding/status
+* invoice → invoice
+* student/session notification → relevant record
+
+8. Verification information-request emails
+
+When an admin asks an unverified tutor for more information, the tutor is not receiving the notification by email.
+
+Trace the admin action through notification creation and sendEmail.
+
+PRIORITY 2 — TUTORING QUALITY WORKFLOW
+
+9. Session completion / homework workflow
+
+Investigate adding a structured completion workflow where tutors record:
+
+* what was covered
+* student progress
+* areas needing work
+* homework assigned
+* next-session focus
+
+There should eventually be an option to generate/send a short follow-up update to the student/parent.
+
+For now, identify what existing student_progress/session infrastructure can support this and propose the minimum viable implementation.
+
+PRIORITY 3 — SMALLER BUGS
+
+10. Clicking Scholix/logo should return to home page.
+11. Add show/hide password toggle.
+12. Australian mobile formatting currently displays an unwanted leading 0 / incorrect formatting. Diagnose.
+13. WWCC input only accepts first 8 digits / wrong format. Diagnose current validation and storage.
+14. Notification dropdown can extend off-screen. Fix responsive positioning.
+15. Expand available subject options. Identify where subject list is defined.
+
+DO NOT address branding/design yet.
+
+OUTPUT
+
+For every issue give me:
+
+* Root cause
+* Exact files involved
+* Whether database migration is required
+* Whether API changes are required
+* Whether frontend changes are required
+* Recommended fix
+* Risk of breaking existing functionality
+* Estimated complexity: small / medium / large
+
+Then recommend the safest implementation order.
+
+Do not modify code until I approve the plan.
