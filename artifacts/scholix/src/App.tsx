@@ -85,12 +85,33 @@ function RequireTutorApproved({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/tutors/me", {
-      headers: { Authorization: `Bearer ${localStorage.getItem("scholix_token") ?? ""}` },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { setStatus(data); setLoading(false); })
-      .catch(() => setLoading(false));
+    let active = true;
+    const fetchStatus = () => {
+      fetch("/api/tutors/me", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("scholix_token") ?? ""}` },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (active) {
+            setStatus(data);
+            setLoading(false);
+          }
+        })
+        .catch(() => { if (active) setLoading(false); });
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") fetchStatus();
+    };
+    fetchStatus();
+    const interval = window.setInterval(fetchStatus, 30_000);
+    window.addEventListener("focus", fetchStatus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", fetchStatus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   if (loading) {

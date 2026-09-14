@@ -91,7 +91,7 @@ export default function TutorProfile() {
   const educationDetails = (tutor.data as { educationDetails?: string | null })?.educationDetails;
   const teachingMode = (tutor.data as { teachingMode?: string })?.teachingMode ?? "online";
   const travelBufferMinutes = (tutor.data as { travelBufferMinutes?: number })?.travelBufferMinutes ?? 0;
-  const isVerified = verificationStatus === "approved";
+  const isVerified = verificationStatus === "verified";
 
   if (tutor.isLoading) {
     return (

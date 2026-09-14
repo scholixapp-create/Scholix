@@ -1,0 +1,68 @@
+Proceed with implementation now.
+
+Use the audit you just completed as the source of truth.
+
+Implement ONLY the following changes in this pass:
+
+1. Fix tutor verification status
+
+* Standardize the application on `verificationStatus: "verified"` as the canonical approved state.
+* Fix all frontend checks that incorrectly expect `"approved"`.
+* Ensure the tutor onboarding flow actually calls the existing `POST /api/tutors/me/submit-verification` endpoint before showing the submitted state.
+* Ensure tutor status is refetched/invalidated appropriately so an admin approval is reflected without stale UI.
+* Keep `isApproved` synchronized for compatibility.
+
+2. Remove fake dashboard and earnings data
+
+* Remove all fictional chart fallback values.
+* Real zero values must display as zero.
+* When there is no data, display a clear empty state.
+* Remove plausible-looking fallback values such as the fake `$50` hourly rate where appropriate.
+* Do not invent earnings, sessions, students, ratings, attendance or graph data.
+* Do not redesign the dashboards.
+
+3. Fix verification information-request emails
+
+* When an admin requests more information from a tutor, create the appropriate in-app notification AND send an email through the existing central Resend email service.
+* Add a dedicated email template for this action.
+* Use a semantic notification type rather than misusing an unrelated type.
+* Ensure admin-entered text is safely escaped before inclusion in HTML.
+* Link the tutor back to the relevant onboarding/verification page.
+* Email delivery failure should be logged but should not undo the admin's verification-state change.
+
+4. Fix basic notification click behavior
+
+* For existing notification types that already have a valid destination/action URL, clicking them must navigate to that destination rather than merely closing the dropdown.
+* Mark them as read without preventing navigation.
+* Do not redesign the full notification architecture yet.
+
+5. Fix tutor student-progress visibility
+
+* Reuse the existing progress API.
+* Add a tutor-facing progress/history view accessible from the tutor's student list.
+* Do not create a new progress schema in this pass.
+* Preserve authorization so tutors can only see students they legitimately tutor.
+
+Do NOT implement yet:
+
+* tutor document storage migration
+* booking request/accept/decline workflow
+* availability exceptions
+* homework/session-completion redesign
+* phone normalization
+* WWCC redesign
+* branding/rebrand
+* major database architecture changes
+* Railway/deployment changes
+
+Before modifying each area, inspect the current implementation and preserve existing functionality.
+
+After implementation:
+
+1. Run typechecking.
+2. Run relevant tests if any exist.
+3. Build the frontend and API.
+4. Do not run migrations against production.
+5. Give me a concise summary of every file changed.
+6. Tell me any manual database migration required, if one unexpectedly became necessary.
+7. List the exact user flows I should test manually after deployment.

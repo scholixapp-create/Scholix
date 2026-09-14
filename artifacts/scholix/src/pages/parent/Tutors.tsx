@@ -133,7 +133,7 @@ export default function ParentTutors() {
           {filtered.map((tutor) => {
             const sessionCount = (tutor as { sessionCount?: number }).sessionCount ?? 0;
             const verificationStatus = (tutor as { verificationStatus?: string }).verificationStatus;
-            const isVerified = verificationStatus === "approved";
+            const isVerified = verificationStatus === "verified";
             const initials = `${tutor.firstName[0]}${tutor.lastName[0]}`;
 
             return (

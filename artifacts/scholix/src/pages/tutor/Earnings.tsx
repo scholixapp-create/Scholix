@@ -1,11 +1,12 @@
 import { useAuth } from "@/context/AuthContext";
+import { useTutorInvoices } from "@/hooks/useTutorInvoices";
 import { useListSessions, useListTutors } from "@workspace/api-client-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
   DollarSign, TrendingUp, Clock, Users, Calendar,
-  ArrowUpRight, Wallet, AlertCircle, Sparkles, Trophy, ChevronRight, Star,
+  Wallet, AlertCircle, Sparkles, Trophy, ChevronRight, Star,
 } from "lucide-react";
 import { format, parseISO, startOfWeek, addWeeks, subWeeks, isWithinInterval, endOfWeek, nextFriday } from "date-fns";
 
@@ -180,6 +181,7 @@ function FirstStudentFreeCard({ freeSessions }: { freeSessions: number }) {
 
 export default function TutorEarnings() {
   const { user } = useAuth();
+  const invoices = useTutorInvoices(user?.id);
   const tutors = useListTutors();
   const sessions = useListSessions(undefined);
 
@@ -192,19 +194,19 @@ export default function TutorEarnings() {
   const paidCompleted = mySessions.filter((s) => s.status === "completed" && s.isPaid);
   const pendingSessions = mySessions.filter((s) => s.status === "scheduled" && s.isPaid);
 
-  // Per-session earnings — respect actual commission (isCommissionFree means 100% to tutor)
+  const invoiceBySession = new Map((invoices.data ?? []).map((invoice) => [invoice.sessionId, invoice]));
+
+  // Use persisted invoice values as the source of truth for commission and tutor earnings.
   function sessionEarnings(s: typeof mySessions[0]) {
-    if ((s as any).isCommissionFree) return s.totalAmount;
-    return s.totalAmount * 0.7;
+    return invoiceBySession.get(s.id)?.tutorEarnings ?? 0;
   }
   function sessionFee(s: typeof mySessions[0]) {
-    if ((s as any).isCommissionFree) return 0;
-    return s.totalAmount * 0.3;
+    return invoiceBySession.get(s.id)?.platformCommission ?? 0;
   }
 
   const totalEarnings = paidCompleted.reduce((sum, s) => sum + sessionEarnings(s), 0);
   const pendingPayout = pendingSessions.reduce((sum, s) => sum + sessionEarnings(s), 0);
-  const freeSessions = mySessions.filter((s) => (s as any).isCommissionFree).length;
+  const freeSessions = (invoices.data ?? []).filter((invoice) => invoice.commissionRate === 0).length;
 
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -216,8 +218,10 @@ export default function TutorEarnings() {
   const completedCount = paidCompleted.length;
   const uniqueStudents = [...new Set(mySessions.map((s) => s.studentId))].length;
   const avgRate = myTutor?.hourlyRate ?? 0;
-  const weeksActive = Math.max(1, Math.ceil(mySessions.length / 2));
-  const sessionsPerWeek = (mySessions.length / weeksActive).toFixed(1);
+  const sessionsPerWeek = (paidCompleted.filter((s) => {
+    const sessionDate = parseISO(s.scheduledAt);
+    return sessionDate >= subWeeks(now, 8) && sessionDate <= now;
+  }).length / 8).toFixed(1);
   const earningsPerStudent = uniqueStudents > 0 ? (totalEarnings / uniqueStudents).toFixed(2) : "0.00";
 
   const chartData = Array.from({ length: 8 }, (_, i) => {
@@ -228,13 +232,12 @@ export default function TutorEarnings() {
     const earned = paidCompleted
       .filter((s) => isWithinInterval(parseISO(s.scheduledAt), { start: wStart, end: wEnd }))
       .reduce((sum, s) => sum + sessionEarnings(s), 0);
-    const mockBase = [42, 0, 59.5, 85, 0, 119, 0][i] ?? 0;
-    return { label, earned: earned > 0 ? earned : mockBase };
+    return { label, earned };
   });
 
   const nextPayoutDate = nextFriday(now);
   const nextPayoutAmount = (pendingPayout + thisWeekEarnings).toFixed(2);
-  const isLoading = tutors.isLoading || sessions.isLoading;
+  const isLoading = tutors.isLoading || sessions.isLoading || invoices.isLoading;
 
   const allRows = [...mySessions].sort(
     (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
@@ -278,10 +281,14 @@ export default function TutorEarnings() {
             <h2 className="text-sm font-semibold text-foreground">Weekly Earnings</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Last 8 weeks · your share after fees</p>
           </div>
-          <span className="flex items-center gap-1 text-xs font-medium text-accent">
-            <ArrowUpRight size={13} /> Growing
-          </span>
         </div>
+        {paidCompleted.length === 0 ? (
+          <div className="h-44 flex flex-col items-center justify-center text-center">
+            <DollarSign size={24} className="text-muted-foreground mb-2" />
+            <p className="text-sm font-medium text-foreground">No earnings yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Completed paid sessions will appear here.</p>
+          </div>
+        ) : (
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} barCategoryGap="35%" margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -293,6 +300,7 @@ export default function TutorEarnings() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+        )}
       </div>
 
       {/* Payout section */}
@@ -322,8 +330,8 @@ export default function TutorEarnings() {
       <div>
         <h2 className="text-sm font-semibold text-foreground mb-3">Performance</h2>
         <div className="grid grid-cols-3 gap-3">
-          <MetricCard label="Avg hourly rate" value={`$${avgRate}`} sub="per hour billed" />
-          <MetricCard label="Sessions / week" value={sessionsPerWeek} sub="rolling average" />
+          <MetricCard label="Avg hourly rate" value={myTutor?.hourlyRate == null ? "Not set" : `$${avgRate}`} sub="per hour billed" />
+          <MetricCard label="Sessions / week" value={sessionsPerWeek} sub="last 8 weeks" />
           <MetricCard label="Earn / student" value={`$${earningsPerStudent}`} sub="lifetime average" />
         </div>
       </div>

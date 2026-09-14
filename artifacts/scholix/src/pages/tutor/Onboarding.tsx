@@ -107,7 +107,7 @@ export default function TutorOnboarding() {
   useEffect(() => {
     apiGet("/api/tutors/me").then((data: TutorMe) => {
       setTutorMe(data);
-      if (data.verificationStatus === "approved") navigate("/tutor/dashboard");
+      if (data.verificationStatus === "verified") navigate("/tutor/dashboard");
       if (data.wwccNumber) setWwccNumber(data.wwccNumber);
       if (data.wwccExpiry) setWwccExpiry(data.wwccExpiry);
       if (data.educationDetails) setEducationDetails(data.educationDetails);
@@ -127,6 +127,24 @@ export default function TutorOnboarding() {
       setCodeOfConductAccepted(data.codeOfConductAccepted);
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (step !== "submitted") return;
+    const refreshStatus = () => {
+      apiGet("/api/tutors/me")
+        .then((data: TutorMe) => {
+          setTutorMe(data);
+          if (data.verificationStatus === "verified") navigate("/tutor/dashboard");
+        })
+        .catch(() => {});
+    };
+    const interval = window.setInterval(refreshStatus, 30_000);
+    window.addEventListener("focus", refreshStatus);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshStatus);
+    };
+  }, [step, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,6 +180,8 @@ export default function TutorOnboarding() {
       // Save compliance declarations
       await apiPost("/api/tutors/me/compliance", { wwccDeclared, codeOfConductAccepted });
 
+      const submitted = await apiPost("/api/tutors/me/submit-verification", {});
+      setTutorMe((current) => current ? { ...current, verificationStatus: submitted.verificationStatus } : current);
       setStep("submitted");
     } catch (err) {
       setError("Submission failed. Please try again.");

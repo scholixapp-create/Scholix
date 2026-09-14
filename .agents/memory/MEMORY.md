@@ -6,3 +6,4 @@
 - [Express 5 middleware param types](express5-middleware-params.md) — req.params.xxx needs `as string` cast when chaining custom middleware in a route handler signature.
 - [Drizzle lib rebuild after schema changes](drizzle-lib-rebuild.md) — must run `pnpm run typecheck:libs` after adding DB schema columns before api-server typecheck picks them up.
 - [SignupBody generated type gaps](signup-body-extra-fields.md) — OpenAPI-generated SignupBody omits phone/termsAccepted; extract extra fields from req.body directly to avoid codegen churn.
+- [Replit pnpm bootstrap recursion](replit-pnpm-bootstrap.md) — pnpm 10 recursively self-installs the repo-declared pnpm 11; use an invocation-only config override, not source changes.

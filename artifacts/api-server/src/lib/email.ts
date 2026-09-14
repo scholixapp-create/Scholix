@@ -155,6 +155,37 @@ function detailsTable(rows: { label: string; value: string; accent?: boolean }[]
   `;
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+export function verificationInfoRequestedEmailHtml(opts: {
+  recipientName: string;
+  notes?: string;
+  actionUrl: string;
+}) {
+  const recipientName = escapeHtml(opts.recipientName);
+  const notes = opts.notes?.trim()
+    ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin:16px 0;color:#334155;font-size:14px;line-height:1.5;white-space:pre-wrap">${escapeHtml(opts.notes.trim())}</div>`
+    : "";
+  const actionUrl = escapeHtml(opts.actionUrl);
+  const body = `
+    <p style="color:#374151;margin-top:0;margin-bottom:4px">Hi <strong>${recipientName}</strong>,</p>
+    <p style="color:#64748b;margin-top:0;margin-bottom:0">Our verification team needs some more information before we can complete your tutor application.</p>
+    ${notes}
+    <p style="margin:20px 0 0">
+      <a href="${actionUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:600">Update your application</a>
+    </p>
+    <p style="color:#64748b;font-size:13px;margin:16px 0 0">You can also sign in to Scholix and open your verification page.</p>
+  `;
+  return emailWrapper("#2563eb", "More information required", body);
+}
+
 export function sessionBookedEmailHtml(opts: {
   recipientName: string;
   tutorName: string;

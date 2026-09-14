@@ -2,9 +2,12 @@ import { Router, Request } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { db, tutorsTable, tutorDocumentsTable, usersTable, notificationsTable } from "@workspace/db";
+import { db, tutorsTable, tutorDocumentsTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../lib/authMiddleware";
+import { createNotification } from "../lib/notify";
+import { verificationInfoRequestedEmailHtml } from "../lib/email";
+import { config } from "../lib/config";
 
 const router = Router();
 
@@ -168,10 +171,10 @@ router.post("/tutors/me/submit-verification", async (req, res) => {
 
   await db
     .update(tutorsTable)
-    .set({ verificationStatus: "pending" })
+    .set({ verificationStatus: "pending", isApproved: false })
     .where(eq(tutorsTable.id, tutor.id));
 
-  res.json({ success: true });
+  res.json({ success: true, verificationStatus: "pending", isApproved: false });
 });
 
 // ── Admin routes (require admin role) ───────────────────────────────────────
@@ -281,8 +284,12 @@ router.post("/admin/tutors/:tutorId/verify", requireAdmin, async (req, res) => {
 
   // Notify the tutor of the decision
   const [tutorRow] = await db
-    .select({ userId: tutorsTable.userId })
+    .select({
+      userId: tutorsTable.userId,
+      firstName: usersTable.firstName,
+    })
     .from(tutorsTable)
+    .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
     .where(eq(tutorsTable.id, tutorId))
     .limit(1);
 
@@ -297,14 +304,24 @@ router.post("/admin/tutors/:tutorId/verify", requireAdmin, async (req, res) => {
         : action === "request_info"
         ? notes ? `Our team needs more information: ${notes}` : "Our team has requested additional information to complete your verification."
         : notes ? `Your application was not approved: ${notes}` : "Your verification application was not approved. Please resubmit with updated documents.";
-    await db.insert(notificationsTable).values({
+    const actionUrl = action === "approve" ? "/tutor/dashboard" : "/tutor/onboarding";
+    await createNotification({
       userId: tutorRow.userId,
-      type: action === "approve" ? ("session_completed" as any) : ("action_upload_notes" as any),
+      type: action === "request_info" ? "verification_info_requested" : action === "approve" ? "session_completed" : "action_upload_notes",
       title: notifTitle,
       message: notifMessage,
-      actionUrl: action === "approve" ? "/tutor/dashboard" : "/tutor/onboarding",
+      actionUrl,
       actionLabel: action === "approve" ? "Go to dashboard" : "Update application",
-      isRead: false,
+      ...(action === "request_info"
+        ? {
+            emailSubject: "More information required for your Scholix tutor application",
+            emailHtml: verificationInfoRequestedEmailHtml({
+              recipientName: tutorRow.firstName,
+              notes,
+              actionUrl: new URL(actionUrl, config.frontendUrl).toString(),
+            }),
+          }
+        : {}),
     });
   }
 

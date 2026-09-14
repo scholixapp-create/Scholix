@@ -2,12 +2,75 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useListTutors, useGetTutorStudents, useListSessions, useGetTutorRelationships, useUpsertTutorRelationship } from "@workspace/api-client-react";
 import { getGetTutorRelationshipsQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, GraduationCap, BookOpen, Target, Settings2, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 
 type LessonModeOverride = "online" | "in_person" | null;
+
+interface ProgressEntry {
+  id: number;
+  sessionId: number;
+  score: number;
+  notes: string | null;
+  subject: string;
+  scheduledAt: string;
+}
+
+function StudentProgressHistory({ studentId }: { studentId: number }) {
+  const [open, setOpen] = useState(false);
+  const progress = useQuery<ProgressEntry[]>({
+    queryKey: ["tutor", "student-progress", studentId],
+    enabled: open,
+    queryFn: async () => {
+      const response = await fetch(`/api/students/${studentId}/progress`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("scholix_token") ?? ""}` },
+      });
+      if (!response.ok) throw new Error("Could not load progress history");
+      return response.json();
+    },
+  });
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-primary transition-colors"
+        aria-expanded={open}
+      >
+        <GraduationCap size={12} />
+        Progress history
+        {open ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+      </button>
+      {open && (
+        <div className="mt-3">
+          {progress.isLoading ? (
+            <div className="h-16 rounded-lg bg-muted animate-pulse" />
+          ) : progress.isError ? (
+            <p className="text-xs text-destructive">Progress history could not be loaded.</p>
+          ) : progress.data?.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No progress notes have been recorded yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {[...(progress.data ?? [])].reverse().map((entry) => (
+                <div key={entry.id} className="rounded-lg bg-muted/50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-medium text-foreground">{entry.subject}</p>
+                    <span className="text-[10px] text-muted-foreground">{format(parseISO(entry.scheduledAt), "MMM d, yyyy")}</span>
+                  </div>
+                  <p className="text-[11px] font-medium text-primary mt-1">Progress score: {entry.score}/10</p>
+                  {entry.notes && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{entry.notes}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface PrefEditorProps {
   tutorId: number;
@@ -252,6 +315,8 @@ export default function TutorStudents() {
                     </div>
                   </div>
                 )}
+
+                <StudentProgressHistory studentId={student.id} />
 
                 {parentId && tutorId && (
                   <div className="mt-3 pt-3 border-t border-border">

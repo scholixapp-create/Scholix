@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Bell, Check, CheckCheck, Trash2, BookOpen, CreditCard, GraduationCap, XCircle, X, Upload, Star, MessageCircle, ExternalLink, ArrowRight } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import type { AppNotification } from "@/hooks/useNotifications";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 const typeConfig: Record<string, { icon: any; iconBg: string; iconColor: string; isActionable?: boolean }> = {
   session_booked:          { icon: BookOpen,       iconBg: "bg-primary/10",       iconColor: "text-primary" },
@@ -14,9 +14,19 @@ const typeConfig: Record<string, { icon: any; iconBg: string; iconColor: string;
   action_upload_notes:     { icon: Upload,         iconBg: "bg-blue-100",         iconColor: "text-blue-600",   isActionable: true },
   action_rate_session:     { icon: Star,           iconBg: "bg-yellow-100",       iconColor: "text-yellow-600", isActionable: true },
   whatsapp_connect:        { icon: MessageCircle,  iconBg: "bg-green-100",        iconColor: "text-green-600",  isActionable: true },
+  invoice_generated:       { icon: CreditCard,     iconBg: "bg-accent/10",        iconColor: "text-accent",     isActionable: true },
+  verification_info_requested: { icon: Upload,     iconBg: "bg-blue-100",         iconColor: "text-blue-600",   isActionable: true },
 };
 
-function ActionButton({ notification, onMarkRead }: { notification: AppNotification; onMarkRead: (id: number) => void }) {
+function ActionButton({
+  notification,
+  onMarkRead,
+  onClose,
+}: {
+  notification: AppNotification;
+  onMarkRead: (id: number) => void;
+  onClose: () => void;
+}) {
   if (!notification.actionUrl || !notification.actionLabel) return null;
 
   const isExternal = notification.actionUrl.startsWith("http");
@@ -28,7 +38,10 @@ function ActionButton({ notification, onMarkRead }: { notification: AppNotificat
         href={notification.actionUrl}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => !notification.isRead && onMarkRead(notification.id)}
+        onClick={() => {
+          if (!notification.isRead) onMarkRead(notification.id);
+          onClose();
+        }}
         className={cls}
       >
         {notification.actionLabel}
@@ -40,7 +53,10 @@ function ActionButton({ notification, onMarkRead }: { notification: AppNotificat
   return (
     <Link
       href={notification.actionUrl}
-      onClick={() => !notification.isRead && onMarkRead(notification.id)}
+      onClick={() => {
+        if (!notification.isRead) onMarkRead(notification.id);
+        onClose();
+      }}
       className={cls}
     >
       {notification.actionLabel}
@@ -53,14 +69,30 @@ function NotificationItem({
   notification,
   onMarkRead,
   onDismiss,
+  onClose,
 }: {
   notification: AppNotification;
   onMarkRead: (id: number) => void;
   onDismiss: (id: number) => void;
+  onClose: () => void;
 }) {
+  const [, navigate] = useLocation();
   const cfg = typeConfig[notification.type] ?? typeConfig["session_booked"];
   const Icon = cfg.icon;
   const isActionable = cfg.isActionable && !!notification.actionUrl;
+  const openNotification = () => {
+    if (!notification.actionUrl) {
+      if (!notification.isRead) onMarkRead(notification.id);
+      return;
+    }
+    if (!notification.isRead) onMarkRead(notification.id);
+    onClose();
+    if (notification.actionUrl.startsWith("http")) {
+      window.location.assign(notification.actionUrl);
+    } else {
+      navigate(notification.actionUrl);
+    }
+  };
 
   return (
     <div
@@ -71,7 +103,18 @@ function NotificationItem({
       <div className={`w-8 h-8 rounded-full ${cfg.iconBg} flex items-center justify-center shrink-0 mt-0.5`}>
         <Icon size={14} className={cfg.iconColor} />
       </div>
-      <div className="flex-1 min-w-0" onClick={() => !notification.isRead && onMarkRead(notification.id)}>
+      <div
+        className={`flex-1 min-w-0 ${notification.actionUrl ? "cursor-pointer" : ""}`}
+        onClick={openNotification}
+        role={notification.actionUrl ? "link" : undefined}
+        tabIndex={notification.actionUrl ? 0 : undefined}
+        onKeyDown={(event) => {
+          if (notification.actionUrl && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            openNotification();
+          }
+        }}
+      >
         <p className="text-xs font-semibold leading-tight text-foreground">
           {notification.title}
         </p>
@@ -81,7 +124,9 @@ function NotificationItem({
         <p className="text-[10px] text-muted-foreground/70 mt-1">
           {formatDistanceToNow(parseISO(notification.createdAt), { addSuffix: true })}
         </p>
-        <ActionButton notification={notification} onMarkRead={onMarkRead} />
+        <div onClick={(event) => event.stopPropagation()}>
+          <ActionButton notification={notification} onMarkRead={onMarkRead} onClose={onClose} />
+        </div>
       </div>
       <div className="flex items-center gap-1 shrink-0 mt-0.5">
         {!notification.isRead && (
@@ -213,6 +258,7 @@ export default function NotificationsPanel({
                 notification={n}
                 onMarkRead={onMarkRead}
                 onDismiss={onDismiss}
+                onClose={onClose}
               />
             ))}
           </div>

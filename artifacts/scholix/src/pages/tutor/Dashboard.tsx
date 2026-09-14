@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
+import { useTutorInvoices } from "@/hooks/useTutorInvoices";
 import { useListSessions, useGetSessionSummary, useListTutors, useGetTutorAvailability } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
@@ -306,11 +307,12 @@ function GrowEarningsSection({
 
 export default function TutorDashboard() {
   const { user } = useAuth();
+  const invoices = useTutorInvoices(user?.id);
   const [verif, setVerif] = useState<TutorVerification | null>(null);
   const tutors = useListTutors();
   const tutorProfile = tutors.data?.find((t) => t.userId === user?.id);
   const tutorId = tutorProfile?.id;
-  const hourlyRate = tutorProfile?.hourlyRate ?? 50;
+  const hourlyRate = tutorProfile?.hourlyRate;
 
   const availability = useGetTutorAvailability(tutorId ?? 0, {
     query: { enabled: !!tutorId } as any,
@@ -344,9 +346,7 @@ export default function TutorDashboard() {
 
   const completedSessions = sessions.data?.filter((s) => s.status === "completed").length ?? 0;
 
-  const totalEarnings = sessions.data
-    ?.filter((s) => s.status === "completed" && s.isPaid)
-    .reduce((sum, s) => sum + s.totalAmount * 0.7, 0) ?? 0;
+  const totalEarnings = invoices.data?.reduce((sum, invoice) => sum + invoice.tutorEarnings, 0) ?? 0;
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -385,7 +385,7 @@ export default function TutorDashboard() {
             <span className="text-xs font-medium text-muted-foreground">Your Growth</span>
           </div>
           <p className="text-2xl font-bold text-foreground">${totalEarnings.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">total (70%)</p>
+          <p className="text-xs text-muted-foreground mt-0.5">total after fees</p>
         </div>
         <div className="bg-card border border-card-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -400,7 +400,7 @@ export default function TutorDashboard() {
             <DollarSign size={16} className="text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground">Rate</span>
           </div>
-          <p className="text-2xl font-bold text-foreground">${hourlyRate}</p>
+          <p className="text-2xl font-bold text-foreground">{hourlyRate == null ? "Not set" : `$${hourlyRate}`}</p>
           <p className="text-xs text-muted-foreground mt-0.5">per hour</p>
         </div>
       </div>
@@ -472,12 +472,14 @@ export default function TutorDashboard() {
       </div>
 
       {/* Grow Your Earnings */}
-      <GrowEarningsSection
-        completedSessions={completedSessions}
-        hourlyRate={hourlyRate}
-        profileComplete={profileComplete}
-        hasAvailability={hasAvailability}
-      />
+      {hourlyRate != null && (
+        <GrowEarningsSection
+          completedSessions={completedSessions}
+          hourlyRate={hourlyRate}
+          profileComplete={profileComplete}
+          hasAvailability={hasAvailability}
+        />
+      )}
 
       {/* Coming soon */}
       <div className="mb-6">
