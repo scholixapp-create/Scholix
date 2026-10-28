@@ -37,7 +37,10 @@ test("only successful OTP verification issues a session token", async () => {
   assert.equal(issueCalls.length, 1);
   assert.ok(issueCalls[0] > verifyStart && issueCalls[0] < resendStart);
   assert.ok(source.lastIndexOf("if (!otpRecord)", issueCalls[0]) > verifyStart);
-  assert.ok(source.lastIndexOf("if (!user)", issueCalls[0]) > verifyStart);
+  assert.match(
+    source.slice(verifyStart, issueCalls[0]),
+    /if \(!user \|\| !user\.isActive\)/,
+  );
   assert.doesNotMatch(
     source.slice(
       source.indexOf('router.post("/auth/signup"'),

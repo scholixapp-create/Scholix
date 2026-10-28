@@ -25,25 +25,60 @@ router.use((req, res, next) => {
 
 async function findAdminUser(userId: number) {
   const [row] = await db
-    .select({
-      id: usersTable.id,
-      email: usersTable.email,
-      firstName: usersTable.firstName,
-      lastName: usersTable.lastName,
-      role: usersTable.role,
-      createdAt: usersTable.createdAt,
-      isActive: usersTable.isActive,
-      tutorVerificationStatus: tutorsTable.verificationStatus,
-      tutorApproved: tutorsTable.isApproved,
-      studentIdentityVerified: studentsTable.isIdentityVerified,
-    })
+    .select(adminUserSelection)
     .from(usersTable)
-    .leftJoin(tutorsTable, eq(tutorsTable.userId, usersTable.id))
-    .leftJoin(studentsTable, eq(studentsTable.userId, usersTable.id))
     .where(eq(usersTable.id, userId))
     .limit(1);
 
   if (!row) return undefined;
+  return toAdminUser(row);
+}
+
+const adminUserSelection = {
+  id: usersTable.id,
+  email: usersTable.email,
+  firstName: usersTable.firstName,
+  lastName: usersTable.lastName,
+  role: usersTable.role,
+  createdAt: usersTable.createdAt,
+  isActive: usersTable.isActive,
+  tutorVerificationStatus: sql<string | null>`(
+    SELECT ${tutorsTable.verificationStatus}
+    FROM ${tutorsTable}
+    WHERE ${tutorsTable.userId} = ${usersTable.id}
+    ORDER BY ${tutorsTable.id}
+    LIMIT 1
+  )`,
+  tutorApproved: sql<boolean | null>`(
+    SELECT ${tutorsTable.isApproved}
+    FROM ${tutorsTable}
+    WHERE ${tutorsTable.userId} = ${usersTable.id}
+    ORDER BY ${tutorsTable.id}
+    LIMIT 1
+  )`,
+  studentIdentityVerified: sql<boolean | null>`(
+    SELECT ${studentsTable.isIdentityVerified}
+    FROM ${studentsTable}
+    WHERE ${studentsTable.userId} = ${usersTable.id}
+    ORDER BY ${studentsTable.id}
+    LIMIT 1
+  )`,
+};
+
+type AdminUserRow = {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "tutor" | "parent" | "student" | "admin";
+  createdAt: Date;
+  isActive: boolean;
+  tutorVerificationStatus: string | null;
+  tutorApproved: boolean | null;
+  studentIdentityVerified: boolean | null;
+};
+
+function toAdminUser(row: AdminUserRow) {
   return {
     id: row.id,
     email: row.email,
@@ -67,21 +102,8 @@ router.get("/admin/users", async (req, res): Promise<void> => {
 
   const search = parsed.data.search?.trim();
   const rows = await db
-    .select({
-      id: usersTable.id,
-      email: usersTable.email,
-      firstName: usersTable.firstName,
-      lastName: usersTable.lastName,
-      role: usersTable.role,
-      createdAt: usersTable.createdAt,
-      isActive: usersTable.isActive,
-      tutorVerificationStatus: tutorsTable.verificationStatus,
-      tutorApproved: tutorsTable.isApproved,
-      studentIdentityVerified: studentsTable.isIdentityVerified,
-    })
+    .select(adminUserSelection)
     .from(usersTable)
-    .leftJoin(tutorsTable, eq(tutorsTable.userId, usersTable.id))
-    .leftJoin(studentsTable, eq(studentsTable.userId, usersTable.id))
     .where(search
       ? or(
           ilike(usersTable.email, `%${search}%`),
@@ -91,18 +113,7 @@ router.get("/admin/users", async (req, res): Promise<void> => {
       : undefined)
     .orderBy(desc(usersTable.createdAt), desc(usersTable.id));
 
-  const users = rows.map((row) => ({
-    id: row.id,
-    email: row.email,
-    firstName: row.firstName,
-    lastName: row.lastName,
-    role: row.role,
-    createdAt: row.createdAt,
-    isActive: row.isActive,
-    verificationStatus: row.tutorVerificationStatus,
-    tutorApproved: row.tutorApproved,
-    studentIdentityVerified: row.studentIdentityVerified,
-  }));
+  const users = rows.map(toAdminUser);
   res.json(AdminListUsersResponse.parse(users));
 });
 
@@ -130,7 +141,7 @@ router.patch("/admin/users/:userId/status", async (req, res): Promise<void> => {
   }
 
   try {
-    const actorId = (req as AuthRequest).user.id;
+    const actorId = (req as unknown as AuthRequest).user.id;
     await changeAdminUserStatus(
       adminUserStatusStore,
       actorId,

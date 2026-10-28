@@ -26,7 +26,7 @@ export const LoginBody = zod.object({
 
 export const LoginResponse = zod.object({
   "requiresOtp": zod.literal(true),
-  "pendingUserId": zod.int(),
+  "pendingUserId": zod.number().int(),
   "email": zod.string(),
   "devOtp": zod.string().optional(),
   "emailFailed": zod.boolean().optional()
@@ -46,7 +46,7 @@ export const SignupBody = zod.object({
 
 export const SignupResponse = zod.object({
   "requiresOtp": zod.literal(true),
-  "pendingUserId": zod.int(),
+  "pendingUserId": zod.number().int(),
   "email": zod.string(),
   "devOtp": zod.string().optional(),
   "emailFailed": zod.boolean().optional()
@@ -57,13 +57,13 @@ export const SignupResponse = zod.object({
  * @summary Verify a one-time code and create an authenticated session
  */
 export const VerifyOtpBody = zod.object({
-  "pendingUserId": zod.int(),
+  "pendingUserId": zod.number().int(),
   "otp": zod.string()
 })
 
 export const VerifyOtpResponse = zod.object({
   "user": zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
@@ -78,7 +78,7 @@ export const VerifyOtpResponse = zod.object({
  * @summary Send a replacement one-time code
  */
 export const ResendOtpBody = zod.object({
-  "pendingUserId": zod.int()
+  "pendingUserId": zod.number().int()
 })
 
 export const ResendOtpResponse = zod.object({
@@ -92,7 +92,7 @@ export const ResendOtpResponse = zod.object({
  * @summary Get current authenticated user
  */
 export const GetMeResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
@@ -113,8 +113,8 @@ export const LogoutResponse = zod.object({
  * @summary List all approved tutors
  */
 export const ListTutorsResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "firstName": zod.string(),
   "lastName": zod.string(),
   "email": zod.string(),
@@ -124,10 +124,10 @@ export const ListTutorsResponseItem = zod.object({
   "isApproved": zod.boolean(),
   "verificationStatus": zod.string(),
   "educationDetails": zod.string().nullish(),
-  "sessionCount": zod.int(),
-  "sessionDurations": zod.array(zod.int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
+  "sessionCount": zod.number().int(),
+  "sessionDurations": zod.array(zod.number().int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
   "teachingMode": zod.enum(['online', 'in_person', 'both']).describe('Tutor\'s default teaching mode'),
-  "travelBufferMinutes": zod.int().describe('Buffer time in minutes the tutor requires between travel sessions'),
+  "travelBufferMinutes": zod.number().int().describe('Buffer time in minutes the tutor requires between travel sessions'),
   "createdAt": zod.string()
 })
 export const ListTutorsResponse = zod.array(ListTutorsResponseItem)
@@ -141,8 +141,8 @@ export const GetTutorParams = zod.object({
 })
 
 export const GetTutorResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "firstName": zod.string(),
   "lastName": zod.string(),
   "email": zod.string(),
@@ -152,10 +152,10 @@ export const GetTutorResponse = zod.object({
   "isApproved": zod.boolean(),
   "verificationStatus": zod.string(),
   "educationDetails": zod.string().nullish(),
-  "sessionCount": zod.int(),
-  "sessionDurations": zod.array(zod.int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
+  "sessionCount": zod.number().int(),
+  "sessionDurations": zod.array(zod.number().int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
   "teachingMode": zod.enum(['online', 'in_person', 'both']).describe('Tutor\'s default teaching mode'),
-  "travelBufferMinutes": zod.int().describe('Buffer time in minutes the tutor requires between travel sessions'),
+  "travelBufferMinutes": zod.number().int().describe('Buffer time in minutes the tutor requires between travel sessions'),
   "createdAt": zod.string()
 })
 
@@ -171,14 +171,14 @@ export const UpdateTutorProfileBody = zod.object({
   "bio": zod.string().optional(),
   "subjects": zod.array(zod.string()).optional(),
   "hourlyRate": zod.number().optional(),
-  "sessionDurations": zod.array(zod.int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
+  "sessionDurations": zod.array(zod.number().int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
   "teachingMode": zod.enum(['online', 'in_person', 'both']).optional().describe('Tutor\'s default teaching mode'),
-  "travelBufferMinutes": zod.int().optional().describe('Buffer time in minutes the tutor requires between travel sessions')
+  "travelBufferMinutes": zod.number().int().optional().describe('Buffer time in minutes the tutor requires between travel sessions')
 })
 
 export const UpdateTutorProfileResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "firstName": zod.string(),
   "lastName": zod.string(),
   "email": zod.string(),
@@ -188,10 +188,10 @@ export const UpdateTutorProfileResponse = zod.object({
   "isApproved": zod.boolean(),
   "verificationStatus": zod.string(),
   "educationDetails": zod.string().nullish(),
-  "sessionCount": zod.int(),
-  "sessionDurations": zod.array(zod.int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
+  "sessionCount": zod.number().int(),
+  "sessionDurations": zod.array(zod.number().int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
   "teachingMode": zod.enum(['online', 'in_person', 'both']).describe('Tutor\'s default teaching mode'),
-  "travelBufferMinutes": zod.int().describe('Buffer time in minutes the tutor requires between travel sessions'),
+  "travelBufferMinutes": zod.number().int().describe('Buffer time in minutes the tutor requires between travel sessions'),
   "createdAt": zod.string()
 })
 
@@ -204,9 +204,9 @@ export const GetTutorAvailabilityParams = zod.object({
 })
 
 export const GetTutorAvailabilityResponseItem = zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "dayOfWeek": zod.int().describe('0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun'),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "dayOfWeek": zod.number().int().describe('0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun'),
   "startTime": zod.string().describe('HH:MM format (24h)'),
   "endTime": zod.string().describe('HH:MM format (24h)'),
   "timezone": zod.string().optional()
@@ -223,16 +223,16 @@ export const SetTutorAvailabilityParams = zod.object({
 
 export const SetTutorAvailabilityBody = zod.object({
   "windows": zod.array(zod.object({
-  "dayOfWeek": zod.int().describe('0=Mon … 6=Sun'),
+  "dayOfWeek": zod.number().int().describe('0=Mon … 6=Sun'),
   "startTime": zod.string().describe('HH:MM format'),
   "endTime": zod.string().describe('HH:MM format')
 }))
 })
 
 export const SetTutorAvailabilityResponseItem = zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "dayOfWeek": zod.int().describe('0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun'),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "dayOfWeek": zod.number().int().describe('0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun'),
   "startTime": zod.string().describe('HH:MM format (24h)'),
   "endTime": zod.string().describe('HH:MM format (24h)'),
   "timezone": zod.string().optional()
@@ -254,7 +254,7 @@ export const GetTutorAvailableSlotsQueryParams = zod.object({
 
 export const GetTutorAvailableSlotsResponse = zod.object({
   "date": zod.string().describe('YYYY-MM-DD'),
-  "duration": zod.int().describe('Session duration in minutes'),
+  "duration": zod.number().int().describe('Session duration in minutes'),
   "slots": zod.array(zod.string()).describe('Available start times in HH:MM (24h) format')
 })
 
@@ -267,8 +267,8 @@ export const GetTutorStudentsParams = zod.object({
 })
 
 export const GetTutorStudentsResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int().nullish(),
   "firstName": zod.string(),
   "lastName": zod.string().nullish(),
   "email": zod.string().nullish(),
@@ -276,7 +276,7 @@ export const GetTutorStudentsResponseItem = zod.object({
   "school": zod.string().nullish(),
   "subjects": zod.string().nullish(),
   "goals": zod.string().nullish(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "dateOfBirth": zod.string().nullish(),
   "isIdentityVerified": zod.boolean(),
   "createdAt": zod.string()
@@ -292,11 +292,11 @@ export const GetTutorRelationshipsParams = zod.object({
 })
 
 export const GetTutorRelationshipsResponseItem = zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "parentId": zod.int(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "parentId": zod.number().int(),
   "lessonMode": zod.string().nullish().describe('Override the tutor\'s default teaching mode for this family'),
-  "travelBufferMinutes": zod.int().nullish().describe('Override travel buffer in minutes (null = use tutor default)'),
+  "travelBufferMinutes": zod.number().int().nullish().describe('Override travel buffer in minutes (null = use tutor default)'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }).describe('Per-parent lesson-mode and travel-buffer override for a tutor')
@@ -312,11 +312,11 @@ export const GetTutorRelationshipForParentParams = zod.object({
 })
 
 export const GetTutorRelationshipForParentResponse = zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "parentId": zod.int(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "parentId": zod.number().int(),
   "lessonMode": zod.string().nullish().describe('Override the tutor\'s default teaching mode for this family'),
-  "travelBufferMinutes": zod.int().nullish().describe('Override travel buffer in minutes (null = use tutor default)'),
+  "travelBufferMinutes": zod.number().int().nullish().describe('Override travel buffer in minutes (null = use tutor default)'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }).describe('Per-parent lesson-mode and travel-buffer override for a tutor')
@@ -332,15 +332,15 @@ export const UpsertTutorRelationshipParams = zod.object({
 
 export const UpsertTutorRelationshipBody = zod.object({
   "lessonMode": zod.string().nullish(),
-  "travelBufferMinutes": zod.int().nullish()
+  "travelBufferMinutes": zod.number().int().nullish()
 }).describe('Fields to set on a tutor-parent relationship record')
 
 export const UpsertTutorRelationshipResponse = zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "parentId": zod.int(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "parentId": zod.number().int(),
   "lessonMode": zod.string().nullish().describe('Override the tutor\'s default teaching mode for this family'),
-  "travelBufferMinutes": zod.int().nullish().describe('Override travel buffer in minutes (null = use tutor default)'),
+  "travelBufferMinutes": zod.number().int().nullish().describe('Override travel buffer in minutes (null = use tutor default)'),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
 }).describe('Per-parent lesson-mode and travel-buffer override for a tutor')
@@ -350,8 +350,8 @@ export const UpsertTutorRelationshipResponse = zod.object({
  * @summary List all students
  */
 export const ListStudentsResponseItem = zod.object({
-  "id": zod.int(),
-  "userId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int().nullish(),
   "firstName": zod.string(),
   "lastName": zod.string().nullish(),
   "email": zod.string().nullish(),
@@ -359,7 +359,7 @@ export const ListStudentsResponseItem = zod.object({
   "school": zod.string().nullish(),
   "subjects": zod.string().nullish(),
   "goals": zod.string().nullish(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "dateOfBirth": zod.string().nullish(),
   "isIdentityVerified": zod.boolean(),
   "createdAt": zod.string()
@@ -379,12 +379,12 @@ export const CreateStudentBody = zod.object({
   "subjects": zod.string().optional(),
   "goals": zod.string().optional(),
   "dateOfBirth": zod.string().optional(),
-  "parentId": zod.int().optional()
+  "parentId": zod.number().int().optional()
 })
 
 export const CreateStudentResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int().nullish(),
   "firstName": zod.string(),
   "lastName": zod.string().nullish(),
   "email": zod.string().nullish(),
@@ -392,7 +392,7 @@ export const CreateStudentResponse = zod.object({
   "school": zod.string().nullish(),
   "subjects": zod.string().nullish(),
   "goals": zod.string().nullish(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "dateOfBirth": zod.string().nullish(),
   "isIdentityVerified": zod.boolean(),
   "createdAt": zod.string()
@@ -407,8 +407,8 @@ export const GetStudentParams = zod.object({
 })
 
 export const GetStudentResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int().nullish(),
+  "id": zod.number().int(),
+  "userId": zod.number().int().nullish(),
   "firstName": zod.string(),
   "lastName": zod.string().nullish(),
   "email": zod.string().nullish(),
@@ -416,7 +416,7 @@ export const GetStudentResponse = zod.object({
   "school": zod.string().nullish(),
   "subjects": zod.string().nullish(),
   "goals": zod.string().nullish(),
-  "parentId": zod.int().nullish(),
+  "parentId": zod.number().int().nullish(),
   "dateOfBirth": zod.string().nullish(),
   "isIdentityVerified": zod.boolean(),
   "createdAt": zod.string()
@@ -447,12 +447,12 @@ export const ListSessionsQueryParams = zod.object({
 })
 
 export const ListSessionsResponseItem = zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "studentId": zod.int(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
-  "durationMinutes": zod.int(),
+  "durationMinutes": zod.number().int(),
   "status": zod.enum(['scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -467,21 +467,21 @@ export const ListSessionsResponse = zod.array(ListSessionsResponseItem)
  * @summary Create a new session
  */
 export const CreateSessionBody = zod.object({
-  "tutorId": zod.int(),
-  "studentId": zod.int(),
+  "tutorId": zod.number().int(),
+  "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
-  "durationMinutes": zod.int(),
-  "availabilitySlotId": zod.int().nullish()
+  "durationMinutes": zod.number().int(),
+  "availabilitySlotId": zod.number().int().nullish()
 })
 
 export const CreateSessionResponse = zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "studentId": zod.int(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
-  "durationMinutes": zod.int(),
+  "durationMinutes": zod.number().int(),
   "status": zod.enum(['scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -499,12 +499,12 @@ export const GetSessionParams = zod.object({
 })
 
 export const GetSessionResponse = zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "studentId": zod.int(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
-  "durationMinutes": zod.int(),
+  "durationMinutes": zod.number().int(),
   "status": zod.enum(['scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -523,12 +523,12 @@ export const CompleteSessionParams = zod.object({
 
 export const CompleteSessionResponse = zod.object({
   "session": zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "studentId": zod.int(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
-  "durationMinutes": zod.int(),
+  "durationMinutes": zod.number().int(),
   "status": zod.enum(['scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -537,8 +537,8 @@ export const CompleteSessionResponse = zod.object({
   "createdAt": zod.string()
 }),
   "invoice": zod.object({
-  "id": zod.int(),
-  "sessionId": zod.int(),
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
   "totalAmount": zod.number(),
   "platformCommission": zod.number(),
   "tutorEarnings": zod.number(),
@@ -547,7 +547,7 @@ export const CompleteSessionResponse = zod.object({
   "tutorName": zod.string(),
   "studentName": zod.string(),
   "subject": zod.string(),
-  "durationMinutes": zod.int()
+  "durationMinutes": zod.number().int()
 })
 })
 
@@ -560,12 +560,12 @@ export const CancelSessionParams = zod.object({
 })
 
 export const CancelSessionResponse = zod.object({
-  "id": zod.int(),
-  "tutorId": zod.int(),
-  "studentId": zod.int(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
-  "durationMinutes": zod.int(),
+  "durationMinutes": zod.number().int(),
   "status": zod.enum(['scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -579,12 +579,12 @@ export const CancelSessionResponse = zod.object({
  * @summary Simulate a payment for a session
  */
 export const SimulatePaymentBody = zod.object({
-  "sessionId": zod.int()
+  "sessionId": zod.number().int()
 })
 
 export const SimulatePaymentResponse = zod.object({
-  "id": zod.int(),
-  "sessionId": zod.int(),
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
   "amount": zod.number(),
   "status": zod.enum(['pending', 'paid', 'refunded']),
   "simulatedAt": zod.string()
@@ -599,8 +599,8 @@ export const ListPaymentsQueryParams = zod.object({
 })
 
 export const ListPaymentsResponseItem = zod.object({
-  "id": zod.int(),
-  "sessionId": zod.int(),
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
   "amount": zod.number(),
   "status": zod.enum(['pending', 'paid', 'refunded']),
   "simulatedAt": zod.string()
@@ -620,7 +620,7 @@ export const AdminListUsersQueryParams = zod.object({
 })
 
 export const AdminListUsersResponseItem = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
@@ -642,7 +642,7 @@ export const GetAdminUserParams = zod.object({
 })
 
 export const GetAdminUserResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
@@ -667,7 +667,7 @@ export const UpdateAdminUserStatusBody = zod.object({
 })
 
 export const UpdateAdminUserStatusResponse = zod.object({
-  "id": zod.int(),
+  "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
@@ -692,8 +692,8 @@ export const ApproveTutorBody = zod.object({
 })
 
 export const ApproveTutorResponse = zod.object({
-  "id": zod.int(),
-  "userId": zod.int(),
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
   "firstName": zod.string(),
   "lastName": zod.string(),
   "email": zod.string(),
@@ -703,10 +703,10 @@ export const ApproveTutorResponse = zod.object({
   "isApproved": zod.boolean(),
   "verificationStatus": zod.string(),
   "educationDetails": zod.string().nullish(),
-  "sessionCount": zod.int(),
-  "sessionDurations": zod.array(zod.int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
+  "sessionCount": zod.number().int(),
+  "sessionDurations": zod.array(zod.number().int()).nullish().describe('Allowed session lengths in minutes, e.g. [60, 90]'),
   "teachingMode": zod.enum(['online', 'in_person', 'both']).describe('Tutor\'s default teaching mode'),
-  "travelBufferMinutes": zod.int().describe('Buffer time in minutes the tutor requires between travel sessions'),
+  "travelBufferMinutes": zod.number().int().describe('Buffer time in minutes the tutor requires between travel sessions'),
   "createdAt": zod.string()
 })
 
@@ -715,13 +715,13 @@ export const ApproveTutorResponse = zod.object({
  * @summary Get platform-wide statistics
  */
 export const GetAdminStatsResponse = zod.object({
-  "totalUsers": zod.int(),
-  "totalTutors": zod.int(),
-  "approvedTutors": zod.int(),
-  "totalStudents": zod.int(),
-  "totalSessions": zod.int(),
-  "completedSessions": zod.int(),
-  "scheduledSessions": zod.int(),
+  "totalUsers": zod.number().int(),
+  "totalTutors": zod.number().int(),
+  "approvedTutors": zod.number().int(),
+  "totalStudents": zod.number().int(),
+  "totalSessions": zod.number().int(),
+  "completedSessions": zod.number().int(),
+  "scheduledSessions": zod.number().int(),
   "totalRevenue": zod.number(),
   "platformCommission": zod.number()
 })
@@ -736,10 +736,10 @@ export const GetSessionSummaryQueryParams = zod.object({
 })
 
 export const GetSessionSummaryResponse = zod.object({
-  "scheduled": zod.int(),
-  "completed": zod.int(),
-  "cancelled": zod.int(),
-  "total": zod.int()
+  "scheduled": zod.number().int(),
+  "completed": zod.number().int(),
+  "cancelled": zod.number().int(),
+  "total": zod.number().int()
 })
 
 
