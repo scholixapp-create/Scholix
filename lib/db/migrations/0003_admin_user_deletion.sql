@@ -1,3 +1,5 @@
+BEGIN;
+
 ALTER TABLE "legal_agreements"
   ALTER COLUMN "user_id" DROP NOT NULL;
 
@@ -22,3 +24,5 @@ $$;
 ALTER TABLE "admin_user_actions"
   ADD CONSTRAINT "admin_user_actions_action_check"
   CHECK ("action" IN ('deactivated', 'reactivated', 'deleted'));
+
+COMMIT;

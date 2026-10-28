@@ -1,3 +1,5 @@
+BEGIN;
+
 ALTER TABLE "users"
   ADD COLUMN IF NOT EXISTS "is_active" boolean NOT NULL DEFAULT true;
 
@@ -30,7 +32,7 @@ $$;
 
 ALTER TABLE "admin_user_actions"
   ADD CONSTRAINT "admin_user_actions_action_check"
-  CHECK ("action" IN ('deactivated', 'reactivated'));
+  CHECK ("action" IN ('deactivated', 'reactivated', 'deleted'));
 
 CREATE INDEX IF NOT EXISTS "admin_user_actions_actor_created_idx"
   ON "admin_user_actions" ("actor_user_id", "created_at");
@@ -52,3 +54,5 @@ DROP TRIGGER IF EXISTS "admin_user_actions_append_only" ON "admin_user_actions";
 CREATE TRIGGER "admin_user_actions_append_only"
   BEFORE UPDATE OR DELETE ON "admin_user_actions"
   FOR EACH ROW EXECUTE FUNCTION "reject_admin_user_action_mutation"();
+
+COMMIT;

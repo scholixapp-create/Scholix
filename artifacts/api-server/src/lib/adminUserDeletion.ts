@@ -67,7 +67,7 @@ export async function deleteAdminUser(
     const blockers = await tx.findDeletionBlockers(targetUserId);
     if (blockers.length > 0) {
       throw new AdminUserDeletionError(
-        `This account can't be permanently deleted because it has ${blockers.join(", ")}. Deactivate it instead.`,
+        `This account can't be permanently deleted because it has ${blockers.join(", ")}. Use deactivation instead.`,
         409,
       );
     }

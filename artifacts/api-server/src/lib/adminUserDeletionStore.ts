@@ -53,7 +53,20 @@ export const adminUserDeletionStore: AdminUserDeletionStore = {
               FROM sessions s
               WHERE s.tutor_id IN (SELECT id FROM tutors WHERE user_id = ${userId})
                  OR s.student_id IN (SELECT id FROM students WHERE user_id = ${userId})
-            ) THEN 'booking, lesson, payment, or invoice history' END,
+            ) THEN 'booking or lesson history' END,
+            CASE WHEN EXISTS (
+              SELECT 1
+              FROM payments p
+              JOIN sessions s ON s.id = p.session_id
+              WHERE s.tutor_id IN (SELECT id FROM tutors WHERE user_id = ${userId})
+                 OR s.student_id IN (SELECT id FROM students WHERE user_id = ${userId})
+            ) OR EXISTS (
+              SELECT 1
+              FROM invoices i
+              JOIN sessions s ON s.id = i.session_id
+              WHERE s.tutor_id IN (SELECT id FROM tutors WHERE user_id = ${userId})
+                 OR s.student_id IN (SELECT id FROM students WHERE user_id = ${userId})
+            ) THEN 'payment or invoice history' END,
             CASE WHEN EXISTS (
               SELECT 1
               FROM student_progress sp

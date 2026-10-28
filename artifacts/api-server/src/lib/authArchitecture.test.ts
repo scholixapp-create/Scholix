@@ -89,6 +89,46 @@ test("admin user endpoints are guarded and status changes are audited transactio
   assert.match(storeSource, /db\.transaction/);
 });
 
+test("admin deletion checks durable dependencies and preserves agreement and audit history", async () => {
+  const routeSource = await readFile(path.join(routesRoot, "admin.ts"), "utf8");
+  const serviceSource = await readFile(path.join(sourceRoot, "lib", "adminUserDeletion.ts"), "utf8");
+  const storeSource = await readFile(path.join(sourceRoot, "lib", "adminUserDeletionStore.ts"), "utf8");
+  const migration = await readFile(
+    path.join(sourceRoot, "..", "..", "..", "lib", "db", "migrations", "0003_admin_user_deletion.sql"),
+    "utf8",
+  );
+
+  assert.match(routeSource, /req\.path\.startsWith\("\/admin"\)[\s\S]*?requireAdmin/);
+  assert.match(routeSource, /router\.delete\("\/admin\/users\/:userId"/);
+  assert.match(routeSource, /deleteAdminUser\(adminUserDeletionStore/);
+  for (const table of [
+    "sessions",
+    "payments",
+    "invoices",
+    "student_progress",
+    "reviews",
+    "reports",
+    "tutor_documents",
+    "tutor_compliance",
+    "tutor_relationships",
+    "subject_requests",
+    "account_deletion_requests",
+    "tutor_articles",
+    "students",
+    "availability",
+  ]) {
+    assert.ok(storeSource.includes(`FROM ${table}`), `deletion guard checks ${table}`);
+  }
+  assert.match(storeSource, /update\(legalAgreementsTable\)[\s\S]*?set\(\{ userId: null \}\)/);
+  assert.doesNotMatch(storeSource, /delete\(adminUserActionsTable\)/);
+  assert.ok(
+    serviceSource.indexOf("await tx.deleteAccount(targetUserId)")
+      < serviceSource.indexOf("await tx.appendDeletionAudit"),
+  );
+  assert.match(migration, /ALTER COLUMN "user_id" DROP NOT NULL/);
+  assert.match(migration, /'deleted'/);
+});
+
 test("authentication and token issuance paths reject inactive accounts", async () => {
   const source = await readFile(path.join(routesRoot, "auth.ts"), "utf8");
   const middlewareSource = await readFile(path.join(sourceRoot, "lib", "authMiddleware.ts"), "utf8");
