@@ -656,6 +656,16 @@ export const GetAdminUserResponse = zod.object({
 
 
 /**
+ * @summary Delete a user without durable business history (admin only)
+ */
+export const DeleteAdminUserParams = zod.object({
+  "userId": zod.coerce.number().int()
+})
+
+export const DeleteAdminUserResponse = zod.void()
+
+
+/**
  * @summary Activate or deactivate a user (admin only)
  */
 export const UpdateAdminUserStatusParams = zod.object({

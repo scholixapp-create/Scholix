@@ -678,6 +678,31 @@ paths:
                 $ref: "#/components/schemas/AdminUser"
         "404":
           description: User not found
+    delete:
+      operationId: deleteAdminUser
+      tags: [admin]
+      summary: Delete a user without durable business history (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Account deleted
+        "400":
+          description: Self-deletion is not allowed
+        "403":
+          description: Admin access required
+        "404":
+          description: User not found
+        "409":
+          description: Account has related records that prevent safe deletion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserManagementError"
 
   /admin/users/{userId}/status:
     patch:
@@ -923,6 +948,13 @@ components:
         isActive:
           type: boolean
       required: [isActive]
+
+    AdminUserManagementError:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
 
     TutorProfile:
       type: object

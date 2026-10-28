@@ -13,6 +13,8 @@ import {
 import { requireAdmin, type AuthRequest } from "../lib/authMiddleware";
 import { AdminUserStatusError, changeAdminUserStatus } from "../lib/adminUserManagement";
 import { adminUserStatusStore } from "../lib/adminUserManagementStore";
+import { AdminUserDeletionError, deleteAdminUser } from "../lib/adminUserDeletion";
+import { adminUserDeletionStore } from "../lib/adminUserDeletionStore";
 import { getEmailServiceStatus } from "../lib/email";
 
 const router = Router();
@@ -130,6 +132,26 @@ router.get("/admin/users/:userId", async (req, res): Promise<void> => {
     return;
   }
   res.json(GetAdminUserResponse.parse(user));
+});
+
+router.delete("/admin/users/:userId", async (req, res): Promise<void> => {
+  const params = GetAdminUserParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+
+  try {
+    const actorId = (req as unknown as AuthRequest).user.id;
+    await deleteAdminUser(adminUserDeletionStore, actorId, params.data.userId);
+    res.sendStatus(204);
+  } catch (error) {
+    if (error instanceof AdminUserDeletionError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
 });
 
 router.patch("/admin/users/:userId/status", async (req, res): Promise<void> => {

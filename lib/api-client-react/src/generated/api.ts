@@ -28,6 +28,7 @@ import type {
   AdminListUsersParams,
   AdminStats,
   AdminUser,
+  AdminUserManagementError,
   AdminUserStatusUpdate,
   ApproveTutorBody,
   AuthResponse,
@@ -2945,6 +2946,80 @@ export function useGetAdminUser<TData = Awaited<ReturnType<typeof getAdminUser>>
 
 
 
+
+export const getDeleteAdminUserUrl = (userId: number,) => {
+
+
+
+
+  return `/api/admin/users/${userId}`
+}
+
+/**
+ * @summary Delete a user without durable business history (admin only)
+ */
+export const deleteAdminUser = async (userId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminUserUrl(userId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminUserMutationKey = () => ['deleteAdminUser'] as const;
+
+export const getDeleteAdminUserMutationOptions = <TError = ErrorType<void | AdminUserManagementError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminUser>>, TError,DeleteAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminUser>>, TError,DeleteAdminUserMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdminUserMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminUser>>, DeleteAdminUserMutationVariables> = (props) => {
+          const {userId} = props ?? {};
+
+          return  deleteAdminUser(userId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminUserMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminUser>>>
+
+    export type DeleteAdminUserMutationError = ErrorType<void | AdminUserManagementError>
+    export type DeleteAdminUserMutationVariables = {userId: number}
+
+    /**
+ * @summary Delete a user without durable business history (admin only)
+ */
+export const useDeleteAdminUser = <TError = ErrorType<void | AdminUserManagementError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminUser>>, TError,DeleteAdminUserMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminUser>>,
+        TError,
+        DeleteAdminUserMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdminUserMutationOptions(options), queryClient);
+    }
 
 export const getUpdateAdminUserStatusUrl = (userId: number,) => {
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getGetAdminUserQueryKey,
   useAdminListUsers,
+  useDeleteAdminUser,
   useGetAdminUser,
   useUpdateAdminUserStatus,
 } from "@workspace/api-client-react";
@@ -41,7 +42,9 @@ export default function AdminUsers() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [statusError, setStatusError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
@@ -68,6 +71,30 @@ export default function AdminUsers() {
           typeof apiError.data?.error === "string"
             ? apiError.data.error
             : apiError.message ?? "Could not update this account. Please try again.",
+        );
+      },
+    },
+  });
+
+  const deleteMutation = useDeleteAdminUser({
+    mutation: {
+      onSuccess: async () => {
+        setDeleteError("");
+        setDeleteConfirmOpen(false);
+        setSelectedUserId(null);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }),
+          queryClient.invalidateQueries({
+            queryKey: getGetAdminUserQueryKey(selectedUserId ?? 0),
+          }),
+        ]);
+      },
+      onError: (error) => {
+        const apiError = error as { data?: { error?: unknown }; message?: string };
+        setDeleteError(
+          typeof apiError.data?.error === "string"
+            ? apiError.data.error
+            : apiError.message ?? "Could not delete this account. Please try again.",
         );
       },
     },
@@ -173,7 +200,9 @@ export default function AdminUsers() {
           if (!open) {
             setSelectedUserId(null);
             setConfirmOpen(false);
+            setDeleteConfirmOpen(false);
             setStatusError("");
+            setDeleteError("");
           }
         }}
       >
@@ -228,23 +257,36 @@ export default function AdminUsers() {
               </div>
 
               {isSelf ? (
-                <p className="text-sm text-muted-foreground">You cannot change your own account status.</p>
+                <p className="text-sm text-muted-foreground">You cannot change or delete your own account.</p>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStatusError("");
-                    setConfirmOpen(true);
-                  }}
-                  className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${
-                    selectedUser.isActive
-                      ? "border border-destructive/40 text-destructive hover:bg-destructive/5"
-                      : "bg-primary text-primary-foreground hover:opacity-90"
-                  }`}
-                  disabled={statusMutation.isPending}
-                >
-                  {selectedUser.isActive ? "Deactivate account" : "Reactivate account"}
-                </button>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusError("");
+                      setConfirmOpen(true);
+                    }}
+                    className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${
+                      selectedUser.isActive
+                        ? "border border-destructive/40 text-destructive hover:bg-destructive/5"
+                        : "bg-primary text-primary-foreground hover:opacity-90"
+                    }`}
+                    disabled={statusMutation.isPending || deleteMutation.isPending}
+                  >
+                    {selectedUser.isActive ? "Deactivate account" : "Reactivate account"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteError("");
+                      setDeleteConfirmOpen(true);
+                    }}
+                    className="w-full rounded-lg border border-destructive/40 px-4 py-2.5 text-sm font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-50"
+                    disabled={statusMutation.isPending || deleteMutation.isPending}
+                  >
+                    Permanently delete test account
+                  </button>
+                </div>
               )}
               {statusError && (
                 <p className="flex items-center gap-2 text-sm text-destructive" role="alert">
@@ -287,6 +329,42 @@ export default function AdminUsers() {
               className={selectedUser?.isActive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
             >
               {statusMutation.isPending ? "Saving..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently delete this account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. Confirm the account by email and role:
+              <span className="mt-2 block font-semibold text-foreground break-all">
+                {selectedUser?.email} · {role?.label}
+              </span>
+              <span className="mt-2 block">
+                Deletion is allowed only when no durable booking, lesson, payment, review, or compliance history would be affected. Signup agreement evidence and the admin audit entry are retained.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && (
+            <p className="flex items-start gap-2 text-sm text-destructive" role="alert">
+              <AlertCircle size={15} className="mt-0.5 shrink-0" /> {deleteError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!selectedUser || deleteMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!selectedUser) return;
+                deleteMutation.mutate({ userId: selectedUser.id });
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

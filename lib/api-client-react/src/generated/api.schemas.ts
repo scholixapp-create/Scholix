@@ -117,6 +117,10 @@ export interface AdminUserStatusUpdate {
   isActive: boolean;
 }
 
+export interface AdminUserManagementError {
+  error: string;
+}
+
 /**
  * Tutor's default teaching mode
  */
