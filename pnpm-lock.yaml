@@ -61,7 +61,7 @@ catalogs:
       specifier: ^4.1.14
       version: 4.3.2
     tsx:
-      specifier: ^4.21.0
+      specifier: 4.22.4
       version: 4.22.4
     vite:
       specifier: ^7.3.2
@@ -180,6 +180,9 @@ importers:
       express:
         specifier: ^5
         version: 5.2.1
+      jose:
+        specifier: ^6.2.13
+        version: 6.2.13
       multer:
         specifier: ^2.1.1
         version: 2.2.0
@@ -229,6 +232,9 @@ importers:
       thread-stream:
         specifier: 3.1.0
         version: 3.1.0
+      tsx:
+        specifier: 'catalog:'
+        version: 4.22.4
 
   artifacts/mockup-sandbox:
     devDependencies:
@@ -2597,6 +2603,9 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
+
+  jose@6.2.13:
+    resolution: {integrity: sha512-7TIg10ZE1x82YediN+lcrPNvGMKge9yFHQD+Qho/b8y2adfugU3AsvvHfxV0fzyFllT6l9xCjf4RWY9g/Z9PJQ==}
 
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
@@ -5567,6 +5576,8 @@ snapshots:
   isexe@2.0.0: {}
 
   jiti@2.7.0: {}
+
+  jose@6.2.13: {}
 
   joycon@3.1.1: {}
 

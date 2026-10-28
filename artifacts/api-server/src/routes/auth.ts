@@ -5,6 +5,7 @@ import { createHash, randomBytes } from "crypto";
 import bcrypt from "bcrypt";
 import { LoginBody, SignupBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/authMiddleware";
+import { generateOtp, issueAccessToken } from "../lib/authTokens";
 import { sendEmail, passwordResetEmailHtml, otpEmailHtml, accountDeletionConfirmEmailHtml } from "../lib/email";
 import { config } from "../lib/config";
 import { logger } from "../lib/logger";
@@ -18,14 +19,6 @@ function legacyHashPassword(password: string): string {
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
-}
-
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-function makeToken(userId: number): string {
-  return Buffer.from(`${userId}:${Date.now()}`).toString("base64");
 }
 
 async function hashPassword(password: string): Promise<string> {
@@ -192,7 +185,7 @@ router.post("/auth/verify-otp", async (req, res) => {
   }
 
   logger.info({ userId: user.id, role: user.role }, "OTP verified — session started");
-  res.json({ user: userToJson(user), token: makeToken(user.id) });
+  res.json({ user: userToJson(user), token: await issueAccessToken(user.id) });
 });
 
 // Resend OTP
@@ -345,34 +338,31 @@ router.post("/auth/signup", async (req, res) => {
     });
   }
 
-  res.status(201).json({ user: userToJson(user), token: makeToken(user.id) });
+  const otp = generateOtp();
+  const otpHash = hashToken(otp);
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await db.insert(authOtpTokensTable).values({ userId: user.id, otpHash, expiresAt });
+
+  const emailResult = await sendEmail({
+    to: user.email,
+    subject: "Your Scholix sign-in code",
+    html: otpEmailHtml({ firstName: user.firstName, otp }),
+  });
+
+  res.status(201).json({
+    requiresOtp: true,
+    pendingUserId: user.id,
+    email: user.email,
+    devOtp: emailResult.devMode ? otp : undefined,
+    emailFailed: !emailResult.devMode && !emailResult.delivered ? true : undefined,
+  });
 });
 
-router.get("/auth/me", async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    res.status(401).json({ error: "Not authenticated" });
-    return;
-  }
-  const token = authHeader.slice(7);
-  try {
-    const decoded = Buffer.from(token, "base64").toString("utf-8");
-    const userId = parseInt(decoded.split(":")[0], 10);
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.id, userId))
-      .limit(1);
-    if (!user) {
-      res.status(401).json({ error: "Not authenticated" });
-      return;
-    }
-    res.json(userToJson(user));
-  } catch {
-    res.status(401).json({ error: "Invalid token" });
-  }
+router.get("/auth/me", requireAuth, async (req, res) => {
+  res.json(userToJson((req as AuthRequest).user));
 });
 
+// Access tokens are short-lived but not server-side revocable; logout clears the client copy.
 router.post("/auth/logout", (_req, res) => {
   res.json({ success: true });
 });

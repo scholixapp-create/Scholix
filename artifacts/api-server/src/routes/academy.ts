@@ -1,26 +1,11 @@
 import { Router } from "express";
 import { db, tutorArticlesTable, usersTable, legalAgreementsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { requireAuth, requireAdmin, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
-function parseAuth(authHeader: string | undefined): number | null {
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  try {
-    const decoded = Buffer.from(authHeader.slice(7), "base64").toString("utf-8");
-    const id = parseInt(decoded.split(":")[0], 10);
-    return isNaN(id) ? null : id;
-  } catch { return null; }
-}
-
-async function getUserRole(userId: number): Promise<string | null> {
-  const [u] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  return u?.role ?? null;
-}
-
-router.get("/academy", async (req, res) => {
-  const userId = parseAuth(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+router.get("/academy", requireAuth, async (_req, res) => {
   const articles = await db
     .select()
     .from(tutorArticlesTable)
@@ -29,9 +14,7 @@ router.get("/academy", async (req, res) => {
   res.json(articles);
 });
 
-router.get("/academy/:id", async (req, res) => {
-  const userId = parseAuth(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+router.get("/academy/:id", requireAuth, async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   const [article] = await db
     .select()
@@ -42,11 +25,7 @@ router.get("/academy/:id", async (req, res) => {
   res.json(article);
 });
 
-router.get("/admin/academy", async (req, res) => {
-  const userId = parseAuth(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const role = await getUserRole(userId);
-  if (role !== "admin") { res.status(403).json({ error: "Admin only" }); return; }
+router.get("/admin/academy", requireAdmin, async (_req, res) => {
   const articles = await db
     .select()
     .from(tutorArticlesTable)
@@ -54,11 +33,8 @@ router.get("/admin/academy", async (req, res) => {
   res.json(articles);
 });
 
-router.post("/admin/academy", async (req, res) => {
-  const userId = parseAuth(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const role = await getUserRole(userId);
-  if (role !== "admin") { res.status(403).json({ error: "Admin only" }); return; }
+router.post("/admin/academy", requireAdmin, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const { title, category, summary, content, type, videoUrl, isPublished } = req.body as Record<string, unknown>;
   if (!title || !category || !summary || !content) {
@@ -90,12 +66,7 @@ router.post("/admin/academy", async (req, res) => {
   res.status(201).json(article);
 });
 
-router.put("/admin/academy/:id", async (req, res) => {
-  const userId = parseAuth(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const role = await getUserRole(userId);
-  if (role !== "admin") { res.status(403).json({ error: "Admin only" }); return; }
-
+router.put("/admin/academy/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   const { title, category, summary, content, type, videoUrl, isPublished } = req.body as Record<string, unknown>;
 
@@ -118,20 +89,14 @@ router.put("/admin/academy/:id", async (req, res) => {
   res.json(updated);
 });
 
-router.delete("/admin/academy/:id", async (req, res) => {
-  const userId = parseAuth(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const role = await getUserRole(userId);
-  if (role !== "admin") { res.status(403).json({ error: "Admin only" }); return; }
-
+router.delete("/admin/academy/:id", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   await db.delete(tutorArticlesTable).where(eq(tutorArticlesTable.id, id));
   res.json({ ok: true });
 });
 
-router.post("/agreements/accept", async (req, res) => {
-  const userId = parseAuth(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+router.post("/agreements/accept", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
   const { agreementType, agreementVersion } = req.body as { agreementType?: string; agreementVersion?: string };
   if (!agreementType) { res.status(400).json({ error: "agreementType required" }); return; }
   const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? null;

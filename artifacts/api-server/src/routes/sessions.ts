@@ -5,7 +5,7 @@ import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
 import { sessionBookedEmailHtml, sessionCompletedEmailHtml } from "../lib/email";
 import { format } from "date-fns";
-import { requireAuth, parseUserId, type AuthRequest } from "../lib/authMiddleware";
+import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
@@ -303,7 +303,7 @@ router.post("/sessions", async (req, res) => {
   const tutorMode = tutor.teachingMode ?? "online";
   let bufferMins = tutor.travelBufferMinutes ?? 0;
 
-  const requestingUserId = parseUserId(req.headers.authorization as string | undefined);
+  const requestingUserId = await getUserIdFromBearer(req.headers.authorization);
   if (requestingUserId && tutorMode !== "online") {
     const [rel] = await db
       .select({ travelBufferMinutes: tutorRelationshipsTable.travelBufferMinutes })

@@ -1,21 +1,12 @@
 import { Router } from "express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
-function getUserId(authHeader: string | undefined): number | null {
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  try {
-    const decoded = Buffer.from(authHeader.slice(7), "base64").toString("utf-8");
-    const id = parseInt(decoded.split(":")[0], 10);
-    return isNaN(id) ? null : id;
-  } catch { return null; }
-}
-
-router.get("/settings", async (req, res) => {
-  const userId = getUserId(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+router.get("/settings", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const [user] = await db
     .select({
@@ -37,9 +28,8 @@ router.get("/settings", async (req, res) => {
   res.json({ ...user, phone: user.phone ?? "", address: user.address ?? "" });
 });
 
-router.put("/settings", async (req, res) => {
-  const userId = getUserId(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+router.put("/settings", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const body = req.body as Record<string, unknown>;
 

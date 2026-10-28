@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable, tutorComplianceTable, tutorRelationshipsTable } from "@workspace/db";
 import { eq, inArray, and, isNotNull } from "drizzle-orm";
 import { UpdateTutorProfileBody, SetTutorAvailabilityBody } from "@workspace/api-zod";
-import { requireAuth, parseUserId, type AuthRequest } from "../lib/authMiddleware";
+import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
@@ -246,7 +246,7 @@ router.get("/tutors/:tutorId/available-slots", async (req, res) => {
   // Per-parent relationship override.
   // Prefer the authenticated user from the Bearer token; fall back to the
   // parentId query param only when the request is unauthenticated.
-  const tokenUserId = parseUserId(req.headers.authorization as string | undefined);
+  const tokenUserId = await getUserIdFromBearer(req.headers.authorization);
   const resolvedParentId = tokenUserId ?? parentId;
   if (resolvedParentId && !isNaN(resolvedParentId)) {
     const [rel] = await db

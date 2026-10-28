@@ -1,10 +1,10 @@
-import { Router, Request } from "express";
+import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db, tutorsTable, tutorDocumentsTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAdmin } from "../lib/authMiddleware";
+import { requireAdmin, requireAuth, type AuthRequest } from "../lib/authMiddleware";
 import { createNotification } from "../lib/notify";
 import { verificationInfoRequestedEmailHtml } from "../lib/email";
 import { config } from "../lib/config";
@@ -33,22 +33,11 @@ const upload = multer({
   },
 });
 
-function getUserId(req: Request): number | null {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith("Bearer ")) return null;
-  try {
-    const decoded = Buffer.from(auth.slice(7), "base64").toString("utf-8");
-    const id = parseInt(decoded.split(":")[0], 10);
-    return isNaN(id) ? null : id;
-  } catch { return null; }
-}
-
 // ── Tutor-facing routes ──────────────────────────────────────────────────────
 
 // GET /api/tutors/me  — own profile with verification status (includes WWCC for own use)
-router.get("/tutors/me", async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+router.get("/tutors/me", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const [row] = await db
     .select()
@@ -90,9 +79,8 @@ router.get("/tutors/me", async (req, res) => {
 });
 
 // PUT /api/tutors/me/details  — update WWCC + education info
-router.put("/tutors/me/details", async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+router.put("/tutors/me/details", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const { wwccNumber, wwccExpiry, educationDetails, abn, teachingMode, travelBufferMinutes } = req.body as Record<string, unknown>;
 
@@ -123,9 +111,8 @@ router.put("/tutors/me/details", async (req, res) => {
 });
 
 // POST /api/tutors/me/documents  — upload a document
-router.post("/tutors/me/documents", upload.single("file"), async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+router.post("/tutors/me/documents", requireAuth, upload.single("file"), async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   if (!req.file) { res.status(400).json({ error: "No file uploaded" }); return; }
 
@@ -157,9 +144,8 @@ router.post("/tutors/me/documents", upload.single("file"), async (req, res) => {
 });
 
 // POST /api/tutors/me/submit-verification  — mark as submitted for admin review
-router.post("/tutors/me/submit-verification", async (req, res) => {
-  const userId = getUserId(req);
-  if (!userId) { res.status(401).json({ error: "Not authenticated" }); return; }
+router.post("/tutors/me/submit-verification", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const [tutor] = await db
     .select({ id: tutorsTable.id })
@@ -254,15 +240,7 @@ router.post("/admin/tutors/:tutorId/verify", requireAdmin, async (req, res) => {
     return;
   }
 
-  // Get admin user ID from token
-  const authHeader = req.headers.authorization;
-  let adminUserId: number | null = null;
-  if (authHeader?.startsWith("Bearer ")) {
-    try {
-      const decoded = Buffer.from(authHeader.slice(7), "base64").toString("utf-8");
-      adminUserId = parseInt(decoded.split(":")[0], 10) || null;
-    } catch { /* noop */ }
-  }
+  const adminUserId = (req as AuthRequest).user.id;
 
   const verificationStatus =
     action === "approve" ? "verified" :

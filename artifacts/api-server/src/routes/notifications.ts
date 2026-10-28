@@ -1,24 +1,12 @@
 import { Router } from "express";
 import { db, notificationsTable, studentsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
+import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
-function getUserIdFromToken(authHeader: string | undefined): number | null {
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  try {
-    const token = authHeader.slice(7);
-    const decoded = Buffer.from(token, "base64").toString("utf8");
-    const userId = parseInt(decoded.split(":")[0], 10);
-    return isNaN(userId) ? null : userId;
-  } catch {
-    return null;
-  }
-}
-
-router.get("/notifications", async (req, res) => {
-  const userId = getUserIdFromToken(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+router.get("/notifications", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const notifications = await db
     .select()
@@ -39,9 +27,8 @@ router.get("/notifications", async (req, res) => {
   })));
 });
 
-router.patch("/notifications/read-all", async (req, res) => {
-  const userId = getUserIdFromToken(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+router.patch("/notifications/read-all", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   await db
     .update(notificationsTable)
@@ -51,9 +38,8 @@ router.patch("/notifications/read-all", async (req, res) => {
   res.json({ ok: true });
 });
 
-router.patch("/notifications/:id/read", async (req, res) => {
-  const userId = getUserIdFromToken(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+router.patch("/notifications/:id/read", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const id = parseInt(req.params.id, 10);
   await db
@@ -64,9 +50,8 @@ router.patch("/notifications/:id/read", async (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete("/notifications/:id", async (req, res) => {
-  const userId = getUserIdFromToken(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+router.delete("/notifications/:id", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const id = parseInt(req.params.id, 10);
   await db
@@ -77,9 +62,8 @@ router.delete("/notifications/:id", async (req, res) => {
 });
 
 // Student requests a session — notifies their parent
-router.post("/notifications/request-session", async (req, res) => {
-  const userId = getUserIdFromToken(req.headers.authorization);
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+router.post("/notifications/request-session", requireAuth, async (req, res) => {
+  const userId = (req as AuthRequest).user.id;
 
   const [student] = await db
     .select()
