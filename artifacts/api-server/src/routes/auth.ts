@@ -79,6 +79,11 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
+  if (!user.isActive) {
+    res.status(403).json({ error: "This account is inactive" });
+    return;
+  }
+
   logger.info({ email: normalisedEmail, role: user.role, userId: user.id }, "Login credentials accepted — issuing OTP");
 
   // Rate limit: max 3 OTP requests per user in 10 minutes
@@ -148,38 +153,54 @@ router.post("/auth/verify-otp", async (req, res) => {
 
   const otpHash = hashToken(String(otp));
   const now = new Date();
+  const verification = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1)
+      .for("update");
 
-  const [otpRecord] = await db
-    .update(authOtpTokensTable)
-    .set({ usedAt: now })
-    .where(
-      and(
-        eq(authOtpTokensTable.userId, userId),
-        eq(authOtpTokensTable.otpHash, otpHash),
-        gt(authOtpTokensTable.expiresAt, now),
-        isNull(authOtpTokensTable.usedAt)
+    if (!user || !user.isActive) {
+      return { kind: "inactive" as const };
+    }
+
+    const [otpRecord] = await tx
+      .update(authOtpTokensTable)
+      .set({ usedAt: now })
+      .where(
+        and(
+          eq(authOtpTokensTable.userId, userId),
+          eq(authOtpTokensTable.otpHash, otpHash),
+          gt(authOtpTokensTable.expiresAt, now),
+          isNull(authOtpTokensTable.usedAt)
+        )
       )
-    )
-    .returning({ id: authOtpTokensTable.id });
+      .returning({ id: authOtpTokensTable.id });
 
-  if (!otpRecord) {
+    if (!otpRecord) {
+      return { kind: "invalid" as const };
+    }
+
+    return {
+      kind: "verified" as const,
+      user,
+      token: await issueAccessToken(user.id),
+    };
+  });
+
+  if (verification.kind === "inactive") {
+    res.status(403).json({ error: "This account is inactive" });
+    return;
+  }
+  if (verification.kind === "invalid") {
     res.status(401).json({ error: "Invalid or expired code. Please check the code or request a new one." });
     return;
   }
 
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .limit(1);
-
-  if (!user) {
-    res.status(401).json({ error: "User not found" });
-    return;
-  }
-
+  const { user, token } = verification;
   logger.info({ userId: user.id, role: user.role }, "OTP verified — session started");
-  res.json({ user: userToJson(user), token: await issueAccessToken(user.id) });
+  res.json({ user: userToJson(user), token });
 });
 
 // Resend OTP
@@ -204,6 +225,10 @@ router.post("/auth/resend-otp", async (req, res) => {
 
   if (!user) {
     res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (!user.isActive) {
+    res.status(403).json({ error: "This account is inactive" });
     return;
   }
 

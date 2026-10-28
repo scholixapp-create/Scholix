@@ -63,9 +63,35 @@ test("OTP verification checks expiry and one-time use before token issuance", as
 
 test("admin middleware verifies the token, loads the current user, and checks the database role", async () => {
   const source = await readFile(path.join(sourceRoot, "lib", "authMiddleware.ts"), "utf8");
-  assert.match(source, /verifyAccessToken\(authHeader\)/);
+  assert.match(source, /verifyAccessToken\(req\.headers\.authorization\)/);
   assert.match(source, /\.where\(eq\(usersTable\.id,\s*userId\)\)/);
+  assert.match(source, /!user\.isActive/);
   assert.match(source, /isAdminRole\(user\.role\)/);
+  assert.match(source, /getUserIdFromBearer[\s\S]*?usersTable\.isActive/);
+});
+
+test("admin user endpoints are guarded and status changes are audited transactionally", async () => {
+  const routeSource = await readFile(path.join(routesRoot, "admin.ts"), "utf8");
+  const serviceSource = await readFile(path.join(sourceRoot, "lib", "adminUserManagement.ts"), "utf8");
+  const storeSource = await readFile(path.join(sourceRoot, "lib", "adminUserManagementStore.ts"), "utf8");
+  assert.match(routeSource, /req\.path\.startsWith\("\/admin"\)[\s\S]*?requireAdmin/);
+  assert.match(routeSource, /router\.get\("\/admin\/users"/);
+  assert.match(routeSource, /router\.get\("\/admin\/users\/:userId"/);
+  assert.match(routeSource, /router\.patch\("\/admin\/users\/:userId\/status"/);
+  assert.match(routeSource, /changeAdminUserStatus/);
+  assert.match(serviceSource, /actorUserId === targetUserId/);
+  assert.match(serviceSource, /countActiveAdmins\(\) <= 1/);
+  assert.match(serviceSource, /appendAudit/);
+  assert.match(storeSource, /pg_advisory_xact_lock/);
+  assert.match(storeSource, /db\.transaction/);
+});
+
+test("authentication and token issuance paths reject inactive accounts", async () => {
+  const source = await readFile(path.join(routesRoot, "auth.ts"), "utf8");
+  const middlewareSource = await readFile(path.join(sourceRoot, "lib", "authMiddleware.ts"), "utf8");
+  assert.match(source, /if \(!user\.isActive\)[\s\S]*?This account is inactive/);
+  assert.match(source, /\.for\("update"\)[\s\S]*?if \(!user \|\| !user\.isActive\)/);
+  assert.match(middlewareSource, /if \(!user \|\| !user\.isActive\)/);
 });
 
 test("authenticated route families use shared middleware or the shared token verifier", async () => {

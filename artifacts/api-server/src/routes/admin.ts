@@ -1,7 +1,18 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable, sessionsTable, invoicesTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
-import { requireAdmin } from "../lib/authMiddleware";
+import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable } from "@workspace/db";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import {
+  AdminListUsersQueryParams,
+  AdminListUsersResponse,
+  GetAdminUserParams,
+  GetAdminUserResponse,
+  UpdateAdminUserStatusBody,
+  UpdateAdminUserStatusParams,
+  UpdateAdminUserStatusResponse,
+} from "@workspace/api-zod";
+import { requireAdmin, type AuthRequest } from "../lib/authMiddleware";
+import { AdminUserStatusError, changeAdminUserStatus } from "../lib/adminUserManagement";
+import { adminUserStatusStore } from "../lib/adminUserManagementStore";
 import { getEmailServiceStatus } from "../lib/email";
 
 const router = Router();
@@ -12,18 +23,134 @@ router.use((req, res, next) => {
   return requireAdmin(req, res, next);
 });
 
-router.get("/admin/users", async (_req, res) => {
-  const users = await db.select().from(usersTable);
-  res.json(
-    users.map((u) => ({
-      id: u.id,
-      email: u.email,
-      firstName: u.firstName,
-      lastName: u.lastName,
-      role: u.role,
-      createdAt: u.createdAt.toISOString(),
-    }))
-  );
+async function findAdminUser(userId: number) {
+  const [row] = await db
+    .select({
+      id: usersTable.id,
+      email: usersTable.email,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      role: usersTable.role,
+      createdAt: usersTable.createdAt,
+      isActive: usersTable.isActive,
+      tutorVerificationStatus: tutorsTable.verificationStatus,
+      tutorApproved: tutorsTable.isApproved,
+      studentIdentityVerified: studentsTable.isIdentityVerified,
+    })
+    .from(usersTable)
+    .leftJoin(tutorsTable, eq(tutorsTable.userId, usersTable.id))
+    .leftJoin(studentsTable, eq(studentsTable.userId, usersTable.id))
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!row) return undefined;
+  return {
+    id: row.id,
+    email: row.email,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    role: row.role,
+    createdAt: row.createdAt,
+    isActive: row.isActive,
+    verificationStatus: row.tutorVerificationStatus,
+    tutorApproved: row.tutorApproved,
+    studentIdentityVerified: row.studentIdentityVerified,
+  };
+}
+
+router.get("/admin/users", async (req, res): Promise<void> => {
+  const parsed = AdminListUsersQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid search query" });
+    return;
+  }
+
+  const search = parsed.data.search?.trim();
+  const rows = await db
+    .select({
+      id: usersTable.id,
+      email: usersTable.email,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      role: usersTable.role,
+      createdAt: usersTable.createdAt,
+      isActive: usersTable.isActive,
+      tutorVerificationStatus: tutorsTable.verificationStatus,
+      tutorApproved: tutorsTable.isApproved,
+      studentIdentityVerified: studentsTable.isIdentityVerified,
+    })
+    .from(usersTable)
+    .leftJoin(tutorsTable, eq(tutorsTable.userId, usersTable.id))
+    .leftJoin(studentsTable, eq(studentsTable.userId, usersTable.id))
+    .where(search
+      ? or(
+          ilike(usersTable.email, `%${search}%`),
+          ilike(usersTable.firstName, `%${search}%`),
+          ilike(usersTable.lastName, `%${search}%`),
+        )
+      : undefined)
+    .orderBy(desc(usersTable.createdAt), desc(usersTable.id));
+
+  const users = rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    role: row.role,
+    createdAt: row.createdAt,
+    isActive: row.isActive,
+    verificationStatus: row.tutorVerificationStatus,
+    tutorApproved: row.tutorApproved,
+    studentIdentityVerified: row.studentIdentityVerified,
+  }));
+  res.json(AdminListUsersResponse.parse(users));
+});
+
+router.get("/admin/users/:userId", async (req, res): Promise<void> => {
+  const params = GetAdminUserParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid user ID" });
+    return;
+  }
+
+  const user = await findAdminUser(params.data.userId);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  res.json(GetAdminUserResponse.parse(user));
+});
+
+router.patch("/admin/users/:userId/status", async (req, res): Promise<void> => {
+  const params = UpdateAdminUserStatusParams.safeParse(req.params);
+  const body = UpdateAdminUserStatusBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid status update" });
+    return;
+  }
+
+  try {
+    const actorId = (req as AuthRequest).user.id;
+    await changeAdminUserStatus(
+      adminUserStatusStore,
+      actorId,
+      params.data.userId,
+      body.data.isActive,
+    );
+
+    const user = await findAdminUser(params.data.userId);
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json(UpdateAdminUserStatusResponse.parse(user));
+  } catch (error) {
+    if (error instanceof AdminUserStatusError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
 });
 
 router.get("/admin/stats", async (_req, res) => {

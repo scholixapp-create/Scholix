@@ -640,16 +640,77 @@ paths:
     get:
       operationId: adminListUsers
       tags: [admin]
-      summary: List all users (admin only)
+      summary: Search users (admin only)
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 120
       responses:
         "200":
-          description: All users
+          description: Matching users
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/User"
+                  $ref: "#/components/schemas/AdminUser"
+
+  /admin/users/{userId}:
+    get:
+      operationId: getAdminUser
+      tags: [admin]
+      summary: Get user details (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "404":
+          description: User not found
+
+  /admin/users/{userId}/status:
+    patch:
+      operationId: updateAdminUserStatus
+      tags: [admin]
+      summary: Activate or deactivate a user (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserStatusUpdate"
+      responses:
+        "200":
+          description: Updated user status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "400":
+          description: Invalid request or self-action
+        "403":
+          description: Admin access required
+        "404":
+          description: User not found
+        "409":
+          description: Cannot deactivate the last active administrator
 
   /admin/tutors/{tutorId}/approve:
     post:
@@ -828,6 +889,40 @@ components:
         createdAt:
           type: string
       required: [id, email, firstName, lastName, role, createdAt]
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [tutor, parent, student, admin]
+        createdAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+        verificationStatus:
+          type: [string, "null"]
+        tutorApproved:
+          type: [boolean, "null"]
+        studentIdentityVerified:
+          type: [boolean, "null"]
+      required: [id, email, firstName, lastName, role, createdAt, isActive, verificationStatus, tutorApproved, studentIdentityVerified]
+
+    AdminUserStatusUpdate:
+      type: object
+      properties:
+        isActive:
+          type: boolean
+      required: [isActive]
 
     TutorProfile:
       type: object

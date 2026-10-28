@@ -18,3 +18,4 @@ export * from "./reports";
 export * from "./account-deletion-requests";
 export * from "./tutor-articles";
 export * from "./tutor-relationships";
+export * from "./admin-user-actions";

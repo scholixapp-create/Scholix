@@ -7,7 +7,15 @@ import { isAdminRole } from "./authPolicy";
 export type AuthRequest = Request & { user: typeof usersTable.$inferSelect };
 
 export async function getUserIdFromBearer(authHeader: string | undefined): Promise<number | null> {
-  return verifyAccessToken(authHeader);
+  const userId = await verifyAccessToken(authHeader);
+  if (!userId) return null;
+
+  const [user] = await db
+    .select({ isActive: usersTable.isActive })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  return user?.isActive ? userId : null;
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
@@ -25,7 +33,7 @@ async function authenticateRequest(
   adminOnly: boolean,
 ): Promise<void> {
   try {
-    const userId = await getUserIdFromBearer(req.headers.authorization);
+    const userId = await verifyAccessToken(req.headers.authorization);
     if (!userId) {
       res.status(401).json({ error: "Not authenticated" });
       return;
@@ -37,7 +45,7 @@ async function authenticateRequest(
       .where(eq(usersTable.id, userId))
       .limit(1);
 
-    if (!user) {
+    if (!user || !user.isActive) {
       res.status(401).json({ error: "Not authenticated" });
       return;
     }
