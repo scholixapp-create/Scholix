@@ -27,18 +27,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("scholix_token");
-    const storedUser = localStorage.getItem("scholix_user");
-    if (storedToken && storedUser) {
-      try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem("scholix_token");
-        localStorage.removeItem("scholix_user");
+    let active = true;
+    const clearStoredAuth = () => {
+      localStorage.removeItem("scholix_token");
+      localStorage.removeItem("scholix_user");
+      if (active) {
+        setToken(null);
+        setUser(null);
       }
-    }
-    setIsLoading(false);
+    };
+
+    const handleInvalidToken = () => clearStoredAuth();
+    window.addEventListener("scholix:auth-invalid", handleInvalidToken);
+
+    const restoreSession = async () => {
+      const storedToken = localStorage.getItem("scholix_token");
+      if (!storedToken) {
+        clearStoredAuth();
+        if (active) setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/auth/me", {
+          headers: { Authorization: `Bearer ${storedToken}` },
+        });
+        if (!response.ok) throw new Error("Stored session is no longer valid");
+        const currentUser = (await response.json()) as AuthUser;
+        if (!active) return;
+        setToken(storedToken);
+        setUser(currentUser);
+        localStorage.setItem("scholix_user", JSON.stringify(currentUser));
+      } catch {
+        clearStoredAuth();
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    void restoreSession();
+    return () => {
+      active = false;
+      window.removeEventListener("scholix:auth-invalid", handleInvalidToken);
+    };
   }, []);
 
   const login = (user: AuthUser, token: string) => {

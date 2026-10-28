@@ -23,15 +23,11 @@ export const LoginBody = zod.object({
 });
 
 export const LoginResponse = zod.object({
-  user: zod.object({
-    id: zod.number(),
-    email: zod.string(),
-    firstName: zod.string(),
-    lastName: zod.string(),
-    role: zod.enum(["tutor", "parent", "student", "admin"]),
-    createdAt: zod.string(),
-  }),
-  token: zod.string(),
+  requiresOtp: zod.literal(true),
+  pendingUserId: zod.number(),
+  email: zod.string(),
+  devOtp: zod.string().optional(),
+  emailFailed: zod.boolean().optional(),
 });
 
 /**

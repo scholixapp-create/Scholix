@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { verifyAccessToken } from "./authTokens";
+import { isAdminRole } from "./authPolicy";
 
 export type AuthRequest = Request & { user: typeof usersTable.$inferSelect };
 
@@ -40,7 +41,7 @@ async function authenticateRequest(
       res.status(401).json({ error: "Not authenticated" });
       return;
     }
-    if (adminOnly && user.role !== "admin") {
+    if (adminOnly && !isAdminRole(user.role)) {
       res.status(403).json({ error: "Admin access required" });
       return;
     }

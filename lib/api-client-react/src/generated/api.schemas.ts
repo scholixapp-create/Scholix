@@ -63,6 +63,14 @@ export interface AuthResponse {
   token: string;
 }
 
+export interface OtpChallengeResponse {
+  requiresOtp: true;
+  pendingUserId: number;
+  email: string;
+  devOtp?: string;
+  emailFailed?: boolean;
+}
+
 /**
  * Tutor's default teaching mode
  */

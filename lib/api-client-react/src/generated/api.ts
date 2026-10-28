@@ -19,7 +19,6 @@ import type {
 import type {
   AdminStats,
   ApproveTutorBody,
-  AuthResponse,
   AvailabilitySlot,
   AvailableSlotsResponse,
   CreateSessionBody,
@@ -32,6 +31,7 @@ import type {
   ListPaymentsParams,
   ListSessionsParams,
   LoginBody,
+  OtpChallengeResponse,
   Payment,
   Session,
   SessionSummary,
@@ -142,8 +142,8 @@ export const getLoginUrl = () => {
 export const login = async (
   loginBody: LoginBody,
   options?: RequestInit,
-): Promise<AuthResponse> => {
-  return customFetch<AuthResponse>(getLoginUrl(), {
+): Promise<OtpChallengeResponse> => {
+  return customFetch<OtpChallengeResponse>(getLoginUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -228,8 +228,8 @@ export const getSignupUrl = () => {
 export const signup = async (
   signupBody: SignupBody,
   options?: RequestInit,
-): Promise<AuthResponse> => {
-  return customFetch<AuthResponse>(getSignupUrl(), {
+): Promise<OtpChallengeResponse> => {
+  return customFetch<OtpChallengeResponse>(getSignupUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },

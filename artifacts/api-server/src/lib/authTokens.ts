@@ -46,7 +46,12 @@ export async function verifyAccessToken(
   const token = authorization.slice("Bearer ".length).trim();
   if (!token || /\s/.test(token)) return null;
 
-  const key = signingKey(secret);
+  let key: Uint8Array;
+  try {
+    key = signingKey(secret);
+  } catch {
+    return null;
+  }
   try {
     const { payload } = await jwtVerify(token, key, {
       algorithms: ["HS256"],

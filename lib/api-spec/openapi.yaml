@@ -51,11 +51,11 @@ paths:
               $ref: "#/components/schemas/LoginBody"
       responses:
         "200":
-          description: Login successful
+          description: Credentials accepted; OTP verification is required
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
+                $ref: "#/components/schemas/OtpChallengeResponse"
         "401":
           description: Invalid credentials
           content:
@@ -76,17 +76,61 @@ paths:
               $ref: "#/components/schemas/SignupBody"
       responses:
         "201":
-          description: Signup successful
+          description: Account created; OTP verification is required
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthResponse"
+                $ref: "#/components/schemas/OtpChallengeResponse"
         "409":
           description: Email already in use
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/verify-otp:
+    post:
+      operationId: verifyOtp
+      tags: [auth]
+      summary: Verify a one-time code and create an authenticated session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpBody"
+      responses:
+        "200":
+          description: OTP verified and access token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: OTP is invalid, expired, or already used
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/resend-otp:
+    post:
+      operationId: resendOtp
+      tags: [auth]
+      summary: Send a replacement one-time code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResendOtpBody"
+      responses:
+        "200":
+          description: Replacement code sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OtpResendResponse"
 
   /auth/me:
     get:
@@ -723,6 +767,49 @@ components:
         token:
           type: string
       required: [user, token]
+
+    OtpChallengeResponse:
+      type: object
+      properties:
+        requiresOtp:
+          type: boolean
+          const: true
+        pendingUserId:
+          type: integer
+        email:
+          type: string
+        devOtp:
+          type: string
+        emailFailed:
+          type: boolean
+      required: [requiresOtp, pendingUserId, email]
+
+    VerifyOtpBody:
+      type: object
+      properties:
+        pendingUserId:
+          type: integer
+        otp:
+          type: string
+      required: [pendingUserId, otp]
+
+    ResendOtpBody:
+      type: object
+      properties:
+        pendingUserId:
+          type: integer
+      required: [pendingUserId]
+
+    OtpResendResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        devOtp:
+          type: string
+        emailFailed:
+          type: boolean
+      required: [ok]
 
     User:
       type: object

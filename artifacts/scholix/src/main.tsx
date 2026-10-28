@@ -13,6 +13,9 @@ console.log("VITE_API_URL =", apiUrl);
 const originalFetch = window.fetch.bind(window);
 
 window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+  const requestHeaders = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+  const hasBearerToken = requestHeaders.get("Authorization")?.startsWith("Bearer ") ?? false;
+
   if (apiUrl) {
     if (typeof input === "string" && input.startsWith("/api")) {
       input = apiUrl + input;
@@ -21,7 +24,12 @@ window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
     }
   }
 
-  return originalFetch(input, init);
+  return originalFetch(input, init).then((response) => {
+    if (response.status === 401 && hasBearerToken) {
+      window.dispatchEvent(new Event("scholix:auth-invalid"));
+    }
+    return response;
+  });
 };
 
 setAuthTokenGetter(() => localStorage.getItem("scholix_token"));

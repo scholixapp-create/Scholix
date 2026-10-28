@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, tutorArticlesTable, usersTable, legalAgreementsTable } from "@workspace/db";
+import { db, tutorArticlesTable, legalAgreementsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/authMiddleware";
 

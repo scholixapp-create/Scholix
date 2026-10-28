@@ -150,8 +150,8 @@ router.post("/auth/verify-otp", async (req, res) => {
   const now = new Date();
 
   const [otpRecord] = await db
-    .select()
-    .from(authOtpTokensTable)
+    .update(authOtpTokensTable)
+    .set({ usedAt: now })
     .where(
       and(
         eq(authOtpTokensTable.userId, userId),
@@ -160,18 +160,12 @@ router.post("/auth/verify-otp", async (req, res) => {
         isNull(authOtpTokensTable.usedAt)
       )
     )
-    .limit(1);
+    .returning({ id: authOtpTokensTable.id });
 
   if (!otpRecord) {
     res.status(401).json({ error: "Invalid or expired code. Please check the code or request a new one." });
     return;
   }
-
-  // Mark OTP as used
-  await db
-    .update(authOtpTokensTable)
-    .set({ usedAt: now })
-    .where(eq(authOtpTokensTable.id, otpRecord.id));
 
   const [user] = await db
     .select()

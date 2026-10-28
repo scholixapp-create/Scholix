@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useSignup } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
-import { BookOpen, AlertCircle, Phone, Users } from "lucide-react";
+import { BookOpen, AlertCircle, Phone, Users, ShieldCheck, RefreshCw, ArrowLeft } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 type Role = "tutor" | "parent";
@@ -45,6 +45,15 @@ export default function Signup() {
   const { login } = useAuth();
   const signupMutation = useSignup();
   const [role, setRole] = useState<Role>("tutor");
+  const [step, setStep] = useState<"details" | "otp">("details");
+  const [pendingUserId, setPendingUserId] = useState<number | null>(null);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [emailFailed, setEmailFailed] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(search);
@@ -77,6 +86,63 @@ export default function Signup() {
     setPhoneError("");
   };
 
+  const finishLogin = (user: any, token: string) => {
+    login(user, token);
+    navigate(user.role === "tutor" ? "/tutor/onboarding" : getDashboard(user.role));
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError("");
+    if (!pendingUserId || !/^\d{6}$/.test(otp)) {
+      setOtpError("Enter the six-digit code sent to your email.");
+      return;
+    }
+    setOtpLoading(true);
+    try {
+      const response = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pendingUserId, otp }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setOtpError(data.error ?? "That code is invalid or expired. Request a new one and try again.");
+        return;
+      }
+      finishLogin(data.user, data.token);
+    } catch {
+      setOtpError("Unable to reach the server. Please try again.");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!pendingUserId || resending) return;
+    setOtpError("");
+    setResending(true);
+    try {
+      const response = await fetch("/api/auth/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pendingUserId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setOtpError(data.error ?? "Could not send a new code.");
+        return;
+      }
+      setDevOtp(data.devOtp ?? null);
+      setEmailFailed(!!data.emailFailed);
+      setOtp(data.devOtp ?? "");
+    } catch {
+      setOtpError("Unable to reach the server. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -96,12 +162,12 @@ export default function Signup() {
       { data: { firstName, lastName, email, password, role, phone, termsAccepted } as any },
       {
         onSuccess: (data) => {
-          login(data.user as any, data.token);
-          if (data.user.role === "tutor") {
-            navigate("/tutor/onboarding");
-          } else {
-            navigate(getDashboard(data.user.role));
-          }
+          setPendingUserId(data.pendingUserId);
+          setPendingEmail(data.email);
+          setDevOtp(data.devOtp ?? null);
+          setEmailFailed(!!data.emailFailed);
+          setOtp(data.devOtp ?? "");
+          setStep("otp");
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.error ?? err?.message ?? "";
@@ -114,6 +180,85 @@ export default function Signup() {
       }
     );
   };
+
+  if (step === "otp") {
+    return (
+      <>
+        <TestModeBanner />
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="w-full max-w-sm">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
+                <ShieldCheck size={24} className="text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">Verify your email</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter the six-digit code sent to {pendingEmail}.
+              </p>
+            </div>
+            <div className="bg-card border border-card-border rounded-xl p-6 shadow-sm">
+              {emailFailed && (
+                <p className="text-sm text-destructive mb-4">
+                  We could not deliver the email. You can request another code.
+                </p>
+              )}
+              {devOtp && (
+                <p className="text-sm text-muted-foreground mb-4">
+                  Development code: <strong className="text-foreground">{devOtp}</strong>
+                </p>
+              )}
+              {otpError && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm mb-4">
+                  <AlertCircle size={14} />
+                  {otpError}
+                </div>
+              )}
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <label className="block text-sm font-medium text-foreground" htmlFor="signup-otp">
+                  Verification code
+                </label>
+                <input
+                  id="signup-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  required
+                  className="w-full px-3 py-3 rounded-lg border border-input bg-background text-center text-xl tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <button
+                  type="submit"
+                  disabled={otpLoading || otp.length !== 6}
+                  className="w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+                >
+                  {otpLoading ? "Verifying..." : "Verify and continue"}
+                </button>
+              </form>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resending}
+                className="w-full mt-4 flex items-center justify-center gap-2 text-sm text-primary hover:underline disabled:opacity-60"
+              >
+                <RefreshCw size={14} className={resending ? "animate-spin" : ""} />
+                {resending ? "Sending..." : "Send a new code"}
+              </button>
+              <Link
+                href="/login"
+                className="mt-5 flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft size={14} />
+                Back to sign in
+              </Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
