@@ -44,7 +44,7 @@ let lastEmailError: { message: string; statusCode?: number; name?: string; time:
 
 export function getEmailServiceStatus(): EmailServiceStatus {
   const resendConfigured = !!config.resendApiKey;
-  const devMode = !config.isProduction || !resendConfigured;
+  const devMode = config.nodeEnv === "development" || config.nodeEnv === "test";
   return {
     resendConfigured,
     devMode,
@@ -55,7 +55,8 @@ export function getEmailServiceStatus(): EmailServiceStatus {
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult> {
-  const devMode = !config.isProduction || !config.resendApiKey;
+  // Missing email configuration must never expose an authentication code in production.
+  const devMode = config.nodeEnv === "development" || config.nodeEnv === "test";
 
   if (devMode) {
     logger.info(
@@ -67,7 +68,7 @@ export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult>
 
   const resend = await getResend();
   if (!resend) {
-    const errInfo = { message: "Resend client failed to initialise", time: new Date().toISOString() };
+    const errInfo = { message: "Email delivery is not configured or could not initialise", time: new Date().toISOString() };
     lastEmailError = errInfo;
     logger.error({ to: payload.to }, "EMAIL_SEND_FAILED — Resend client could not be initialised");
     return { delivered: false, devMode: false };

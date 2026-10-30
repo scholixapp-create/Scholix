@@ -128,7 +128,7 @@ router.post("/auth/login", async (req, res) => {
     html: otpEmailHtml({ firstName: user.firstName, otp }),
   });
 
-  // devMode = no real email sent (dev env or no API key) → expose OTP in response for UI auto-fill
+  // Only explicit development/test environments may expose an OTP for UI auto-fill.
   const devOtp = emailResult.devMode ? otp : undefined;
   // production delivery failure → warn the client so it can surface a message
   const emailFailed = !emailResult.devMode && !emailResult.delivered ? true : undefined;

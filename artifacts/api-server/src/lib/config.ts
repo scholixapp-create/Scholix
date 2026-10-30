@@ -28,5 +28,9 @@ export const config = {
 } as const;
 
 if (!config.resendApiKey) {
-  logger.warn("RESEND_API_KEY not set — email notifications will be logged to console only");
+  if (config.isProduction) {
+    logger.error("RESEND_API_KEY not set — production email delivery is unavailable; authentication codes will not be exposed");
+  } else {
+    logger.warn("RESEND_API_KEY not set — email delivery is unavailable outside explicit development/test mode");
+  }
 }
