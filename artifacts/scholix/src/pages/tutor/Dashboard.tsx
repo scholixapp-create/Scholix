@@ -204,7 +204,7 @@ function GrowEarningsSection({
               to reach {nextTier.name} tier ({nextTier.rate}% fee) — save ${((currentTier.rate - nextTier.rate) / 100 * hourlyRate).toFixed(0)}/session
             </p>
           ) : (
-            <p className="text-[11px] text-accent font-semibold">🎉 You've reached Expert tier — only 5% fee on Scholix!</p>
+            <p className="text-[11px] text-accent font-semibold">You've reached Expert tier — only 5% fee on Scholix!</p>
           )}
 
           {/* Tier ladder */}

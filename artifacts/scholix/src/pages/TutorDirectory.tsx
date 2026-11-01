@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { BrandMark } from "@/components/Brand";
 import { Link } from "wouter";
-import { GraduationCap, Star, Search, BookOpen, ArrowRight, Monitor, MapPin, Layers } from "lucide-react";
+import { GraduationCap, Star, Search, ArrowRight, Monitor, MapPin, Layers } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 type ModeFilter = "all" | "online" | "in_person" | "both";
@@ -70,13 +71,11 @@ export default function TutorDirectory() {
   return (
     <>
     <TestModeBanner />
-    <div className="min-h-screen bg-[#f9fafb]">
+    <div className="min-h-screen bg-background">
       {/* Header bar */}
-      <div className="bg-[#0f2240] py-14 px-5 text-center">
+      <div className="bg-[#0f2747] py-14 px-5 text-center">
         <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <BookOpen size={14} className="text-white" />
-          </div>
+          <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-brand-cream"><BrandMark size={26} /></span>
           <Link href="/" className="font-bold text-lg text-white tracking-tight">Scholix</Link>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-3 tracking-tight">
@@ -106,7 +105,7 @@ export default function TutorDirectory() {
               onClick={() => setModeFilter(m)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 modeFilter === m
-                  ? "bg-white text-[#0f2240] border-white"
+                  ? "bg-white text-[#0f2747] border-white"
                   : "bg-white/10 text-white/70 border-white/20 hover:bg-white/20 hover:text-white"
               }`}
             >
@@ -123,7 +122,7 @@ export default function TutorDirectory() {
               onClick={() => setSubjectFilter(null)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 subjectFilter === null
-                  ? "bg-white text-[#0f2240] border-white"
+                  ? "bg-white text-[#0f2747] border-white"
                   : "bg-white/10 text-white/70 border-white/20 hover:bg-white/20 hover:text-white"
               }`}
             >
@@ -135,7 +134,7 @@ export default function TutorDirectory() {
                 onClick={() => setSubjectFilter(subjectFilter === subject ? null : subject)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                   subjectFilter === subject
-                    ? "bg-white text-[#0f2240] border-white"
+                    ? "bg-white text-[#0f2747] border-white"
                     : "bg-white/10 text-white/70 border-white/20 hover:bg-white/20 hover:text-white"
                 }`}
               >
@@ -188,7 +187,7 @@ export default function TutorDirectory() {
                     <div className="flex-1 min-w-0">
                       <Link
                         href={`/tutor/${tutor.id}`}
-                        className="text-sm font-bold text-[#0f2240] truncate hover:text-primary transition-colors hover:underline block"
+                        className="text-sm font-bold text-[#0f2747] truncate hover:text-primary transition-colors hover:underline block"
                       >
                         {tutor.firstName} {tutor.lastName}
                       </Link>
@@ -200,7 +199,7 @@ export default function TutorDirectory() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="text-base font-bold text-[#0f2240]">${tutor.hourlyRate}</span>
+                      <span className="text-base font-bold text-[#0f2747]">${tutor.hourlyRate}</span>
                       <span className="text-xs text-gray-400">/hr</span>
                     </div>
                   </div>
@@ -270,7 +269,7 @@ export default function TutorDirectory() {
           <p className="text-gray-500 text-sm mb-4">Are you a tutor? Join Scholix and start earning.</p>
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#0f2240] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#0f2747] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
           >
             Start tutoring free
             <ArrowRight size={15} />

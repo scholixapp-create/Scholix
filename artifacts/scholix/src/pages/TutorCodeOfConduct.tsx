@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowLeft, Shield, CheckCircle, Users, Clock, BookOpen, Heart } from "lucide-react";
+import { ArrowLeft, BookOpen, Shield, CheckCircle, Users, Clock, Heart } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 const STANDARDS = [
@@ -81,8 +81,8 @@ export default function TutorCodeOfConduct() {
   return (
     <>
       <TestModeBanner />
-      <div className="min-h-screen bg-[#f9fafb]">
-        <div className="bg-[#0f2240] px-5 pt-8 pb-6">
+      <div className="min-h-screen bg-background">
+        <div className="bg-[#0f2747] px-5 pt-8 pb-6">
           <div className="max-w-2xl mx-auto">
             <Link href="/" className="inline-flex items-center gap-1.5 text-white/60 text-sm mb-5 hover:text-white transition-colors">
               <ArrowLeft size={14} /> Back

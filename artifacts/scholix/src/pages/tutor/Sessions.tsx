@@ -200,7 +200,7 @@ function ProgressModal({ sessionId, studentName, onClose }: {
     }
   };
 
-  const scoreEmoji = score <= 3 ? "🔴" : score <= 5 ? "🟡" : score <= 7 ? "🟢" : "⭐";
+  const scoreDot = score <= 3 ? "bg-red-500" : score <= 5 ? "bg-amber-400" : score <= 7 ? "bg-emerald-500" : "bg-brand-gold";
   const scoreLabel = score <= 3 ? "Needs support" : score <= 5 ? "Developing" : score <= 7 ? "On track" : "Excelling";
 
   return (
@@ -234,7 +234,7 @@ function ProgressModal({ sessionId, studentName, onClose }: {
             <>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-3">
-                  Progress score — <span className="text-primary">{score}/10</span> {scoreEmoji} <span className="text-muted-foreground font-normal">{scoreLabel}</span>
+                  Progress score — <span className="text-primary">{score}/10</span> <span className={`inline-block w-2 h-2 rounded-full align-middle ${scoreDot}`} aria-hidden="true" /> <span className="text-muted-foreground font-normal">{scoreLabel}</span>
                 </label>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground">1</span>

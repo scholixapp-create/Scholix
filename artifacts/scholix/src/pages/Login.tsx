@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
+import { BrandMark } from "@/components/Brand";
 import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { BookOpen, AlertCircle, ShieldCheck, RefreshCw, ArrowLeft, FlaskConical, Users, MailX } from "lucide-react";
+import { AlertCircle, ShieldCheck, RefreshCw, ArrowLeft, FlaskConical, Users, MailX } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 function getDashboard(role: string) {
@@ -188,9 +189,7 @@ export default function Login() {
             </div>
           )}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
-              <BookOpen size={24} className="text-white" />
-            </div>
+            <BrandMark size={56} className="mx-auto mb-4" />
             {step === "credentials" ? (
               <>
                 <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>

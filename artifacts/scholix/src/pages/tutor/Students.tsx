@@ -128,7 +128,7 @@ function PrefEditor({ tutorId, parentId, currentMode, currentBuffer }: PrefEdito
                     : "border-border bg-card text-muted-foreground hover:border-primary/40"
                 }`}
               >
-                {m === null ? "Default" : m === "online" ? "🖥️ Online" : "📍 In-person"}
+                {m === null ? "Default" : m === "online" ? "Online" : "In-person"}
               </button>
             ))}
           </div>
@@ -328,7 +328,7 @@ export default function TutorStudents() {
                       Lesson preferences
                       {rel?.lessonMode && (
                         <span className="ml-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px]">
-                          {rel.lessonMode === "online" ? "🖥️ Online" : "📍 In-person"}
+                          {rel.lessonMode === "online" ? "Online" : "In-person"}
                         </span>
                       )}
                       {rel?.travelBufferMinutes !== null && rel?.travelBufferMinutes !== undefined && (

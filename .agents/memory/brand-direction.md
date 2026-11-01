@@ -11,6 +11,8 @@ The brand assets are the S-with-star logo, the standalone Scholix star, and the 
 
 For the main page, avoid excessive empty space, welcome purposeful animation, and promote the commission tiers—particularly the first student-pair offer—more prominently. Keep icons simple and visually consistent with the palette rather than generic mixed selections.
 
-**Why:** The user explicitly supplied these colours and requirements for the Scholix homepage refresh.
+Carry the palette, logo treatment and style choices through the entire site, not just the homepage: public pages, authentication and onboarding, and all tutor, parent, student and admin areas.
+
+**Why:** The user explicitly supplied these colours and requirements, then clarified that the palette, logos and styling must apply to the entire site rather than only the homepage.
 
 **How to apply:** Use these constraints for Scholix branding and homepage work. Keep the commission wording consistent with the implemented rules, preserve the beta payment disclosure, and do not invent business details or customer metrics.

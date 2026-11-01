@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   ArrowLeft, CheckCircle, CreditCard, Baby, Plus, Calendar, Clock,
   Bell, ChevronRight, ShieldCheck, ChevronLeft, Info,
+  AlertTriangle,
 } from "lucide-react";
 import {
   format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -195,7 +196,6 @@ export default function BookSession() {
   const isFamilyOverride = !!relationshipLessonMode;
 
   const modeLabel = effectiveMode === "in_person" ? "In-person" : effectiveMode === "both" ? "Online & in-person" : "Online";
-  const modeIcon = effectiveMode === "online" || !effectiveMode ? "🖥️" : effectiveMode === "both" ? "🌐" : "📍";
 
   const TutorCard = () => (
     <div className="bg-card border border-card-border rounded-xl p-4 mb-5">
@@ -215,7 +215,7 @@ export default function BookSession() {
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <p className="text-xs text-muted-foreground">${tutor.data!.hourlyRate}/hr</p>
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">
-              {modeIcon} {modeLabel}
+              {modeLabel}
             </span>
             {isFamilyOverride && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
@@ -280,7 +280,7 @@ export default function BookSession() {
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5">
-          <p className="text-xs font-semibold text-amber-800 mb-1">💳 Pay your tutor directly</p>
+          <p className="text-xs font-semibold text-amber-800 mb-1">Pay your tutor directly</p>
           <p className="text-xs text-amber-700 leading-relaxed">
             Scholix is in beta — payments are simulated. Please pay <strong>{tutor.data!.firstName} {tutor.data!.lastName}</strong> via PayID, bank transfer, or cash.
           </p>
@@ -312,7 +312,7 @@ export default function BookSession() {
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4 flex items-start gap-2.5">
-          <span className="text-amber-500 text-base shrink-0 mt-0.5">⚠️</span>
+          <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
           <div>
             <p className="text-xs font-semibold text-amber-800">This is a simulated payment</p>
             <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">Scholix is in beta — no real charges are made.</p>
@@ -633,7 +633,7 @@ export default function BookSession() {
           <Info size={14} className="text-primary shrink-0 mt-0.5" />
           <div>
             <p className="text-xs font-semibold text-foreground">
-              {modeIcon} {tutor.data!.firstName} has set this family's sessions to {modeLabel.toLowerCase()}
+              {tutor.data!.firstName} has set this family's sessions to {modeLabel.toLowerCase()}
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">
               This preference was chosen by your tutor and can't be changed here.

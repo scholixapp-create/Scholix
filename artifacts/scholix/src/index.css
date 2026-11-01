@@ -65,6 +65,31 @@
   --color-sidebar-accent-border: var(--sidebar-accent-border);
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
+
+  --font-display: var(--app-font-display);
+  --color-brand-cream: #faf7f0;
+  --color-brand-navy: #0f2747;
+  --color-brand-teal: #0e8b6b;
+  --color-brand-gold: #d4a850;
+  --color-brand-sand: #f1eadb;
+  --color-brand-ink: #081a33;
+
+  /* Legacy hard-coded blue/indigo/violet utilities are remapped to the Scholix navy/turquoise family */
+  --color-blue-50: #eef6f3; --color-blue-100: #d7ece5; --color-blue-200: #b0d9cb; --color-blue-300: #7fc2ad;
+  --color-blue-400: #3fa587; --color-blue-500: #0e8b6b; --color-blue-600: #0b7559; --color-blue-700: #0f2747;
+  --color-blue-800: #0c2140; --color-blue-900: #081a33;
+  --color-indigo-50: #eef1f6; --color-indigo-100: #dbe2ee; --color-indigo-200: #b6c3d9; --color-indigo-300: #8297b8;
+  --color-indigo-400: #4f6a93; --color-indigo-500: #2a4670; --color-indigo-600: #1b365c; --color-indigo-700: #0f2747;
+  --color-indigo-800: #0c2140; --color-indigo-900: #081a33;
+  --color-violet-50: #fbf6ea; --color-violet-100: #f5ead0; --color-violet-200: #ecd7a6; --color-violet-300: #e2c17c;
+  --color-violet-400: #d4a850; --color-violet-500: #c09238; --color-violet-600: #9a7428; --color-violet-700: #7a5a1f;
+  --color-violet-800: #5c4418; --color-violet-900: #3f2f12;
+  --color-purple-50: #fbf6ea; --color-purple-100: #f5ead0; --color-purple-600: #9a7428; --color-purple-700: #7a5a1f;
+  /* Warm the neutral grays toward the cream paper */
+  --color-gray-50: #f8f5ee; --color-gray-100: #efeadf; --color-gray-200: #e2dccf; --color-gray-300: #cbc4b5;
+  --color-gray-400: #9a9486; --color-gray-500: #6f6a60; --color-gray-600: #55514a; --color-gray-700: #3d3a35;
+  --color-gray-800: #1f2a3a; --color-gray-900: #0f2747;
+  --color-white-paper: #fffdf8;
   --font-sans: var(--app-font-sans);
   --font-serif: var(--app-font-serif);
   --font-mono: var(--app-font-mono);
@@ -82,55 +107,57 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Scholix — light navy/blue-green academic palette */
-  --background: 210 20% 97%;
-  --foreground: 222 47% 11%;
-  --border: 214 32% 88%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 91%;
-  --sidebar: 222 47% 11%;
-  --sidebar-foreground: 210 40% 92%;
-  --sidebar-border: 222 40% 18%;
-  --sidebar-primary: 217 91% 60%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 222 40% 18%;
-  --sidebar-accent-foreground: 210 40% 92%;
-  --sidebar-ring: 217 91% 60%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 88%;
-  --primary: 222 83% 53%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 210 40% 94%;
-  --secondary-foreground: 222 47% 16%;
-  --muted: 210 40% 94%;
-  --muted-foreground: 215 16% 47%;
-  --accent: 158 64% 42%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 72% 51%;
+  /* Scholix brand: cream #faf7f0, navy #0f2747, turquoise #0e8b6b, gold #d4a850 */
+  --background: 43 55% 96%;
+  --foreground: 214 65% 17%;
+  --border: 40 28% 85%;
+  --card: 45 60% 99%;
+  --card-foreground: 214 65% 17%;
+  --card-border: 40 30% 88%;
+  --sidebar: 214 65% 17%;
+  --sidebar-foreground: 43 40% 90%;
+  --sidebar-border: 214 45% 24%;
+  --sidebar-primary: 164 82% 30%;
+  --sidebar-primary-foreground: 43 55% 97%;
+  --sidebar-accent: 214 48% 23%;
+  --sidebar-accent-foreground: 43 55% 96%;
+  --sidebar-ring: 40 60% 57%;
+  --popover: 45 60% 99%;
+  --popover-foreground: 214 65% 17%;
+  --popover-border: 40 28% 85%;
+  --primary: 214 65% 17%;
+  --primary-foreground: 43 55% 97%;
+  --secondary: 42 38% 91%;
+  --secondary-foreground: 214 65% 17%;
+  --muted: 42 35% 92%;
+  --muted-foreground: 214 18% 40%;
+  --accent: 164 82% 30%;
+  --accent-foreground: 43 55% 97%;
+  --gold: 40 60% 57%;
+  --destructive: 0 68% 46%;
   --destructive-foreground: 0 0% 100%;
-  --input: 214 32% 88%;
-  --ring: 222 83% 53%;
-  --chart-1: 222 83% 53%;
-  --chart-2: 158 64% 42%;
-  --chart-3: 43 96% 56%;
-  --chart-4: 262 80% 60%;
-  --chart-5: 0 72% 51%;
+  --input: 40 25% 82%;
+  --ring: 164 82% 30%;
+  --chart-1: 214 65% 17%;
+  --chart-2: 164 82% 30%;
+  --chart-3: 40 60% 57%;
+  --chart-4: 200 45% 45%;
+  --chart-5: 0 68% 50%;
 
-  --app-font-sans: 'Inter', system-ui, sans-serif;
-  --app-font-serif: Georgia, serif;
+  --app-font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --app-font-display: 'Fraunces', Georgia, serif;
+  --app-font-serif: 'Fraunces', Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: .625rem;
+  --radius: .75rem;
 
-  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-  --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.07);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08);
-  --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.08);
-  --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.15);
-  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-2xs: 0 1px 2px 0 rgb(15 39 71 / 0.04);
+  --shadow-xs: 0 1px 3px 0 rgb(15 39 71 / 0.07);
+  --shadow-sm: 0 1px 3px 0 rgb(15 39 71 / 0.07), 0 1px 2px -1px rgb(15 39 71 / 0.07);
+  --shadow: 0 4px 6px -1px rgb(15 39 71 / 0.08), 0 2px 4px -2px rgb(15 39 71 / 0.08);
+  --shadow-md: 0 10px 15px -3px rgb(15 39 71 / 0.08), 0 4px 6px -4px rgb(15 39 71 / 0.08);
+  --shadow-lg: 0 20px 25px -5px rgb(15 39 71 / 0.08), 0 8px 10px -6px rgb(15 39 71 / 0.08);
+  --shadow-xl: 0 25px 50px -12px rgb(15 39 71 / 0.15);
+  --shadow-2xl: 0 25px 50px -12px rgb(15 39 71 / 0.25);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -150,45 +177,79 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 222 47% 8%;
-  --foreground: 210 40% 95%;
-  --border: 222 40% 18%;
-  --card: 222 47% 11%;
-  --card-foreground: 210 40% 95%;
-  --card-border: 222 40% 18%;
-  --sidebar: 222 47% 7%;
-  --sidebar-foreground: 210 40% 90%;
-  --sidebar-border: 222 40% 14%;
-  --sidebar-primary: 217 91% 60%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 222 40% 14%;
-  --sidebar-accent-foreground: 210 40% 90%;
-  --sidebar-ring: 217 91% 60%;
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 95%;
-  --popover-border: 222 40% 18%;
-  --primary: 217 91% 60%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 222 40% 16%;
-  --secondary-foreground: 210 40% 88%;
-  --muted: 222 40% 16%;
-  --muted-foreground: 215 16% 57%;
-  --accent: 158 64% 45%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 72% 51%;
+  --background: 214 60% 9%;
+  --foreground: 43 45% 94%;
+  --border: 214 40% 20%;
+  --card: 214 60% 12%;
+  --card-foreground: 43 45% 94%;
+  --card-border: 214 40% 20%;
+  --sidebar: 214 65% 8%;
+  --sidebar-foreground: 43 40% 90%;
+  --sidebar-border: 214 40% 16%;
+  --sidebar-primary: 164 70% 38%;
+  --sidebar-primary-foreground: 43 55% 97%;
+  --sidebar-accent: 214 40% 16%;
+  --sidebar-accent-foreground: 43 40% 90%;
+  --sidebar-ring: 40 60% 57%;
+  --popover: 214 60% 12%;
+  --popover-foreground: 43 45% 94%;
+  --popover-border: 214 40% 20%;
+  --primary: 164 70% 38%;
+  --primary-foreground: 43 55% 97%;
+  --secondary: 214 40% 18%;
+  --secondary-foreground: 43 40% 90%;
+  --muted: 214 40% 18%;
+  --muted-foreground: 214 15% 65%;
+  --accent: 40 60% 57%;
+  --accent-foreground: 214 65% 12%;
+  --gold: 40 60% 57%;
+  --destructive: 0 68% 52%;
   --destructive-foreground: 0 0% 100%;
-  --input: 222 40% 18%;
-  --ring: 217 91% 60%;
-  --chart-1: 217 91% 60%;
-  --chart-2: 158 64% 45%;
-  --chart-3: 43 96% 56%;
-  --chart-4: 262 80% 65%;
-  --chart-5: 0 72% 55%;
+  --input: 214 40% 20%;
+  --ring: 164 70% 38%;
+  --chart-1: 164 70% 38%;
+  --chart-2: 40 60% 57%;
+  --chart-3: 200 45% 55%;
+  --chart-4: 43 45% 85%;
+  --chart-5: 0 68% 55%;
 }
 
 @layer base {
   * { @apply border-border; }
   body { @apply font-sans antialiased bg-background text-foreground; }
+}
+
+@layer base {
+  h1, h2, h3 { font-family: var(--app-font-display); letter-spacing: -0.015em; }
+  ::selection { background: #d4a85055; color: #0f2747; }
+  :focus-visible { outline: 2px solid #0e8b6b; outline-offset: 2px; }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--app-font-display); }
+  .font-sans-ui { font-family: var(--app-font-sans); }
+  .paper-grain { position: relative; isolation: isolate; }
+  .paper-grain::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; z-index: -1; opacity: .5;
+    background-image: radial-gradient(rgba(15,39,71,.06) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+  .ruled-lines {
+    background-image: repeating-linear-gradient(to bottom, transparent 0 31px, rgba(15,39,71,.07) 31px 32px);
+  }
+  .gold-underline {
+    background-image: linear-gradient(transparent 62%, rgba(212,168,80,.45) 62%, rgba(212,168,80,.45) 92%, transparent 92%);
+  }
+  @keyframes sx-float { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(6deg); } }
+  @keyframes sx-spin-slow { to { transform: rotate(360deg); } }
+  @keyframes sx-marquee { to { transform: translateX(-50%); } }
+  .sx-float { animation: sx-float 6s ease-in-out infinite; }
+  .sx-spin-slow { animation: sx-spin-slow 40s linear infinite; }
+  .sx-marquee { animation: sx-marquee 38s linear infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .sx-float, .sx-spin-slow, .sx-marquee, .animate-pulse, .animate-bounce { animation: none !important; }
+    html { scroll-behavior: auto !important; }
+  }
 }
 
 @layer utilities {

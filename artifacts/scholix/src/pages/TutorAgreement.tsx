@@ -1,5 +1,6 @@
 import { Link } from "wouter";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { BrandMark } from "@/components/Brand";
+import { ArrowLeft } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 function Section({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
@@ -15,16 +16,14 @@ export default function TutorAgreement() {
   return (
     <>
       <TestModeBanner />
-      <div className="min-h-screen bg-[#f9fafb]">
-        <div className="bg-[#0f2240] px-5 pt-8 pb-6">
+      <div className="min-h-screen bg-background">
+        <div className="bg-[#0f2747] px-5 pt-8 pb-6">
           <div className="max-w-2xl mx-auto">
             <Link href="/" className="inline-flex items-center gap-1.5 text-white/60 text-sm mb-5 hover:text-white transition-colors">
               <ArrowLeft size={14} /> Back
             </Link>
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shrink-0">
-                <BookOpen size={18} className="text-white" />
-              </div>
+              <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-brand-cream shrink-0"><BrandMark size={30} /></span>
               <div>
                 <h1 className="text-2xl font-extrabold text-white">Tutor Agreement</h1>
                 <p className="text-sm text-white/60 mt-0.5">Last updated: June 2026 · Version 2.0</p>

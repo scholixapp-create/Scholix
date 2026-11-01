@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { BrandMark } from "@/components/Brand";
 import { Link, useLocation, useSearch } from "wouter";
 import { useSignup } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
-import { BookOpen, AlertCircle, Phone, Users, ShieldCheck, RefreshCw, ArrowLeft } from "lucide-react";
+import { AlertCircle, Phone, Users, ShieldCheck, RefreshCw, ArrowLeft } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 type Role = "tutor" | "parent";
@@ -266,9 +267,7 @@ export default function Signup() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
-            <BookOpen size={24} className="text-white" />
-          </div>
+          <BrandMark size={56} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground">Create account</h1>
           <p className="text-sm text-muted-foreground mt-1">Join Scholix today</p>
         </div>

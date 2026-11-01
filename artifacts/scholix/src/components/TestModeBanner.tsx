@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { X } from "lucide-react";
+import { X, FlaskConical } from "lucide-react";
 
 export default function TestModeBanner() {
   const [location] = useLocation();
@@ -15,8 +15,9 @@ export default function TestModeBanner() {
   return (
     <div className="w-full bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-3 z-50">
       <div className="flex-1 flex items-center justify-center gap-2">
-        <span className="text-amber-600 text-sm font-medium leading-snug text-center">
-          ⚠️ Scholix is currently in beta. Payments are simulated — no real charges are made.
+        <FlaskConical size={15} className="text-amber-700 shrink-0" aria-hidden="true" />
+        <span className="text-amber-800 text-sm font-medium leading-snug text-center">
+          Scholix is currently in beta. Payments are simulated — no real charges are made.
         </span>
       </div>
       <button

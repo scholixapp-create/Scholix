@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { BrandMark } from "@/components/Brand";
 import { BookOpen, Shield, CreditCard, Calendar, Star, Users, ArrowRight, CheckCircle } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 import { AccountNavigation } from "@/components/AccountNavigation";
@@ -49,12 +50,10 @@ export default function About() {
       <TestModeBanner />
 
       {/* Nav */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-border">
+      <header className="sticky top-0 z-40 bg-brand-cream/95 backdrop-blur border-b border-border">
         <div className="max-w-5xl mx-auto px-5 min-h-14 py-2 flex flex-wrap gap-3 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-              <BookOpen size={14} className="text-white" />
-            </div>
+            <BrandMark size={28} />
             <span className="font-bold text-base text-foreground">Scholix</span>
           </Link>
           <div className="flex items-center gap-3">
@@ -165,7 +164,7 @@ export default function About() {
       {/* Footer */}
       <footer className="border-t border-border bg-background">
         <div className="max-w-5xl mx-auto px-5 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>© {new Date().getFullYear()} Scholix Pty Ltd · ABN 00 000 000 000</span>
+          <span>© {new Date().getFullYear()} Scholix</span>
           <div className="flex items-center gap-4">
             <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>

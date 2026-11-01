@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { BrandMark } from "@/components/Brand";
 import { Link } from "wouter";
-import { BookOpen, AlertCircle, Mail, CheckCircle, ArrowLeft } from "lucide-react";
+import { AlertCircle, Mail, CheckCircle, ArrowLeft } from "lucide-react";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -65,9 +66,7 @@ export default function ForgotPassword() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
-            <BookOpen size={24} className="text-white" />
-          </div>
+          <BrandMark size={56} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground">Forgot password?</h1>
           <p className="text-sm text-muted-foreground mt-1">Enter your email and we'll send you a reset link</p>
         </div>

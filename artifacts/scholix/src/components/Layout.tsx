@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BrandMark } from "@/components/Brand";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useLogout } from "@workspace/api-client-react";
@@ -125,18 +126,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar — desktop only */}
       <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-sidebar text-sidebar-foreground">
         <div className="px-6 py-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <BookOpen size={16} className="text-white" />
-            </div>
-            <span className="font-bold text-lg text-white tracking-tight">Scholix</span>
-          </div>
+          <Link href="/" className="flex items-center gap-2.5" aria-label="Scholix home">
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-brand-cream"><BrandMark size={26} /></span>
+            <span className="font-display font-semibold text-xl text-brand-cream tracking-tight">Scholix</span>
+          </Link>
         </div>
 
         <div className="px-4 py-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
             <div className="flex-1 px-2 py-2 rounded-lg bg-sidebar-accent">
-              <p className="text-xs text-sidebar-foreground/60 font-medium uppercase tracking-wider mb-0.5">{getRoleLabel(user.role)}</p>
+              <p className="text-[10px] text-brand-gold font-semibold uppercase tracking-[0.16em] mb-0.5">{getRoleLabel(user.role)}</p>
               <p className="text-sm font-semibold text-white truncate">{user.firstName} {user.lastName}</p>
             </div>
             <div className="relative">
@@ -179,7 +178,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   active
-                    ? "bg-primary text-white"
+                    ? "bg-sidebar-primary text-white shadow-[inset_3px_0_0_#d4a850]"
                     : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent"
                 }`}
               >
@@ -195,7 +194,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             href="/profile/me"
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               location === "/profile/me"
-                ? "bg-primary text-white"
+                ? "bg-sidebar-primary text-white shadow-[inset_3px_0_0_#d4a850]"
                 : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent"
             }`}
           >
@@ -206,7 +205,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             href="/settings"
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               location === "/settings"
-                ? "bg-primary text-white"
+                ? "bg-sidebar-primary text-white shadow-[inset_3px_0_0_#d4a850]"
                 : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent"
             }`}
           >
@@ -241,12 +240,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile header */}
         <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-sidebar text-white border-b border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-              <BookOpen size={14} className="text-white" />
-            </div>
-            <span className="font-bold text-base tracking-tight">Scholix</span>
-          </div>
+          <Link href="/" className="flex items-center gap-2" aria-label="Scholix home">
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-cream"><BrandMark size={22} /></span>
+            <span className="font-display font-semibold text-lg tracking-tight">Scholix</span>
+          </Link>
           <div className="flex items-center gap-1">
             <span className="text-xs text-white/60 mr-1">{user.firstName}</span>
             {/* Bell — mobile */}
@@ -297,7 +294,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Legal footer — desktop only */}
         <footer className="hidden lg:flex items-center justify-between px-6 py-3 border-t border-border bg-background/50 text-[11px] text-muted-foreground shrink-0">
-          <span>© {new Date().getFullYear()} Scholix Pty Ltd · ABN 00 000 000 000</span>
+          <span>© {new Date().getFullYear()} Scholix · Independent tutoring, organised</span>
           <div className="flex items-center gap-4">
             <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
             <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
@@ -321,7 +318,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={`flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground"
+                  active ? "text-brand-teal" : "text-muted-foreground"
                 }`}
               >
                 {item.icon}

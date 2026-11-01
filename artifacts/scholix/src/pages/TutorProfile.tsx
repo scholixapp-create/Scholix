@@ -95,7 +95,7 @@ export default function TutorProfile() {
 
   if (tutor.isLoading) {
     return (
-      <div className="min-h-screen bg-[#f9fafb] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -103,7 +103,7 @@ export default function TutorProfile() {
 
   if (!tutor.data) {
     return (
-      <div className="min-h-screen bg-[#f9fafb] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <p className="text-lg font-bold text-gray-800">Tutor not found</p>
           <Link href="/tutors" className="mt-2 text-sm text-primary hover:underline">Back to directory</Link>
@@ -118,10 +118,10 @@ export default function TutorProfile() {
   return (
     <>
       <TestModeBanner />
-      <div className="min-h-screen bg-[#f9fafb]">
+      <div className="min-h-screen bg-background">
 
         {/* Hero */}
-        <div className="bg-[#0f2240] px-5 pt-10 pb-8">
+        <div className="bg-[#0f2747] px-5 pt-10 pb-8">
           <div className="max-w-2xl mx-auto">
             {/* Back */}
             <Link href="/tutors" className="inline-flex items-center gap-1.5 text-white/60 text-sm mb-6 hover:text-white transition-colors">

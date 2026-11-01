@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { BrandMark } from "@/components/Brand";
 import { Link, useLocation } from "wouter";
-import { BookOpen, AlertCircle, CheckCircle, KeyRound, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, CheckCircle, KeyRound, Eye, EyeOff } from "lucide-react";
 
 export default function ResetPassword() {
   const [location] = useLocation();
@@ -79,9 +80,7 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
-            <BookOpen size={24} className="text-white" />
-          </div>
+          <BrandMark size={56} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground">Set new password</h1>
           <p className="text-sm text-muted-foreground mt-1">Choose a strong password for your account</p>
           <p className="text-xs text-muted-foreground mt-3">
