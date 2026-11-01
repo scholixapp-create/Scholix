@@ -15,7 +15,7 @@ paths = [ "/" ]
 localPort = 22255
 
 [services.development]
-run = "pnpm --filter @workspace/scholix run dev"
+run = "node node_modules/vite/bin/vite.js --config vite.config.ts --host 0.0.0.0"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/scholix", "run", "build" ]

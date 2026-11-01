@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useAuth } from "@/context/AuthContext";
+import { AccountNavigation } from "@/components/AccountNavigation";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import TestModeBanner from "@/components/TestModeBanner";
 import {
@@ -96,19 +96,8 @@ function Navbar() {
         </div>
 
         {/* Desktop CTA */}
-        <div className="hidden md:flex items-center gap-3">
-          <button
-            onClick={() => navigate("/login")}
-            className={`text-sm font-medium transition-colors ${scrolled ? "text-[#374151] hover:text-primary" : "text-white/80 hover:text-white"}`}
-          >
-            Sign in
-          </button>
-          <Link
-            href="/signup"
-            className="px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
-          >
-            Sign up for free
-          </Link>
+        <div className={`hidden md:flex items-center gap-3 ${scrolled ? "text-foreground" : "text-white"}`}>
+          <AccountNavigation />
         </div>
 
         {/* Mobile burger */}
@@ -140,12 +129,7 @@ function Navbar() {
                 </button>
               ))}
               <div className="pt-2 pb-1 space-y-2">
-                <Link href="/login" className="block w-full text-center py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-[#374151]">
-                  Sign in
-                </Link>
-                <Link href="/signup" className="block w-full text-center py-2.5 rounded-xl bg-primary text-white text-sm font-semibold">
-                  Sign up for free
-                </Link>
+                <AccountNavigation />
               </div>
             </div>
           </motion.div>
@@ -260,7 +244,7 @@ function Hero() {
                 </div>
               ))}
             </div>
-            <span>Join 200+ tutors already on Scholix</span>
+            <span>Built for independent tutors and Australian families</span>
           </motion.div>
         </div>
 
@@ -284,8 +268,8 @@ function Hero() {
                 <TrendingUp size={16} className="text-accent" />
               </div>
               <div>
-                <p className="text-[10px] text-gray-400 font-medium">Avg weekly earnings</p>
-                <p className="text-sm font-bold text-gray-800">$1,240+</p>
+                <p className="text-[10px] text-gray-400 font-medium">Your tutoring business</p>
+                <p className="text-sm font-bold text-gray-800">Organised in one place</p>
               </div>
             </div>
             <div className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl px-4 py-3 flex items-center gap-3">
@@ -293,8 +277,8 @@ function Hero() {
                 <Calendar size={16} className="text-primary" />
               </div>
               <div>
-                <p className="text-[10px] text-gray-400 font-medium">Sessions this week</p>
-                <p className="text-sm font-bold text-gray-800">12 booked</p>
+                <p className="text-[10px] text-gray-400 font-medium">Scheduling</p>
+                <p className="text-sm font-bold text-gray-800">Set your availability</p>
               </div>
             </div>
           </div>
@@ -434,35 +418,29 @@ function HowItWorks() {
 // ── Social Proof ───────────────────────────────────────────────────────────
 
 function SocialProof() {
-  const testimonials = [
+  const benefits = [
     {
-      name: "Sarah M.",
-      role: "Maths Tutor · Sydney",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80",
-      text: "I went from juggling spreadsheets and bank transfers to having everything in one place. My income has doubled since joining.",
-      stars: 5,
+      name: "For independent tutors",
+      role: "Plan your teaching",
+      text: "Set your availability, manage bookings and record lesson progress from your teaching hub.",
     },
     {
-      name: "James K.",
-      role: "Science Tutor · Melbourne",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80",
-      text: "The scheduling tool alone saves me hours every week. Parents love being able to book without back-and-forth messages.",
-      stars: 5,
+      name: "For families",
+      role: "Keep tutoring organised",
+      text: "Browse tutor profiles and manage your children's tutoring bookings from one account.",
     },
     {
-      name: "Priya L.",
-      role: "Parent of two · Brisbane",
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80",
-      text: "Finding a verified, quality tutor for my daughter used to be stressful. Scholix made it simple — we booked within minutes.",
-      stars: 5,
+      name: "For learning",
+      role: "Follow the journey",
+      text: "Session notes and progress records help tutors and families keep track of learning.",
     },
   ];
 
   const stats = [
-    { value: "$1,240+", label: "avg tutor earns per week" },
-    { value: "200+", label: "tutors on the platform" },
-    { value: "4.9★", label: "average tutor rating" },
-    { value: "98%", label: "payment success rate" },
+    { value: "Schedule", label: "Set your availability" },
+    { value: "Connect", label: "Find a tutor who fits" },
+    { value: "Organise", label: "Manage your bookings" },
+    { value: "Track", label: "Record learning progress" },
   ];
 
   return (
@@ -489,8 +467,8 @@ function SocialProof() {
         </motion.div>
 
         <FadeUp className="text-center mb-12">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Testimonials</p>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2240] tracking-tight">Tutors and parents love Scholix</h2>
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary mb-3">Built for tutoring</p>
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f2240] tracking-tight">Keep the essentials together</h2>
         </FadeUp>
 
         <motion.div
@@ -500,20 +478,14 @@ function SocialProof() {
           viewport={{ once: true, margin: "-60px" }}
           className="grid md:grid-cols-3 gap-6"
         >
-          {testimonials.map((t) => (
+          {benefits.map((t) => (
             <motion.div
               key={t.name}
               variants={fadeUp}
               className="bg-[#f9fafb] border border-gray-100 rounded-3xl p-6"
             >
-              <div className="flex gap-0.5 mb-4">
-                {Array.from({ length: t.stars }).map((_, i) => (
-                  <Star key={i} size={13} className="fill-amber-400 text-amber-400" />
-                ))}
-              </div>
-              <p className="text-sm text-gray-600 leading-relaxed mb-5">"{t.text}"</p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-5">{t.text}</p>
               <div className="flex items-center gap-3">
-                <img src={t.avatar} alt={t.name} className="w-9 h-9 rounded-full object-cover" />
                 <div>
                   <p className="text-sm font-semibold text-[#0f2240]">{t.name}</p>
                   <p className="text-[11px] text-gray-400">{t.role}</p>
@@ -893,8 +865,7 @@ function Footer() {
             <div>
               <p className="text-white font-semibold mb-4">Account</p>
               <ul className="space-y-2.5">
-                <li><Link href="/signup" className="hover:text-white transition-colors">Sign up</Link></li>
-                <li><Link href="/login" className="hover:text-white transition-colors">Sign in</Link></li>
+                <li><AccountNavigation /></li>
               </ul>
             </div>
             <div>
@@ -941,22 +912,5 @@ function LandingPage() {
 }
 
 export default function Home() {
-  const { user, isLoading } = useAuth();
-  const [, navigate] = useLocation();
-
-  useEffect(() => {
-    if (!isLoading && user) {
-      switch (user.role) {
-        case "tutor": navigate("/tutor/dashboard"); break;
-        case "parent": navigate("/parent/dashboard"); break;
-        case "student": navigate("/student/dashboard"); break;
-        case "admin": navigate("/admin/dashboard"); break;
-      }
-    }
-  }, [user, isLoading]);
-
-  if (isLoading) return null;
-  if (user) return null;
-
   return <LandingPage />;
 }

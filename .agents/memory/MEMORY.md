@@ -6,6 +6,8 @@
 - [Express 5 middleware param types](express5-middleware-params.md) — req.params.xxx needs `as string` cast when chaining custom middleware in a route handler signature.
 - [Drizzle lib rebuild after schema changes](drizzle-lib-rebuild.md) — must run `pnpm run typecheck:libs` after adding DB schema columns before api-server typecheck picks them up.
 - [SignupBody generated type gaps](signup-body-extra-fields.md) — OpenAPI-generated SignupBody omits phone/termsAccepted; extract extra fields from req.body directly to avoid codegen churn.
-- [Replit pnpm bootstrap recursion](replit-pnpm-bootstrap.md) — pnpm 10 recursively self-installs the repo-declared pnpm 11; use an invocation-only config override, not source changes.
+- [Replit pnpm bootstrap recursion](replit-pnpm-bootstrap.md) — local pnpm bootstrap can recurse; use invocation overrides or direct Node dev commands without changing Railway's package-manager version.
 - [Orval generation in restricted installs](orval-generation.md) — registry access may block pinned Orval versions; set output targets explicitly when using an available generator.
 - [Railway operational constraints](railway-operations.md) — dashboard SQL batches may fail; preserve sleeping configuration in service updates and verify schema before API releases.
+- [Marketing accuracy](marketing-accuracy.md) — publish verified figures only; use product statements rather than invented metrics or testimonials.
+- [Protected document previews](protected-document-previews.md) — an authorized PDF response can still leave a blank browser tab; provide visible status and a download fallback.

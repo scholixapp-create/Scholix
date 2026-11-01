@@ -8,6 +8,7 @@ import { requireAuth, requireAdmin, type AuthRequest } from "../lib/authMiddlewa
 import { generateOtp, issueAccessToken } from "../lib/authTokens";
 import { sendEmail, passwordResetEmailHtml, otpEmailHtml, accountDeletionConfirmEmailHtml } from "../lib/email";
 import { config } from "../lib/config";
+import { passwordResetLink } from "../lib/passwordResetLink";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -419,11 +420,7 @@ router.post("/auth/forgot-password", async (req, res) => {
 
     await db.insert(passwordResetTokensTable).values({ userId: user.id, tokenHash, expiresAt });
 
-    const baseUrl = config.isProduction
-      ? (process.env["REPLIT_DOMAINS"]?.split(",")[0] ? `https://${process.env["REPLIT_DOMAINS"].split(",")[0]}` : config.frontendUrl)
-      : config.frontendUrl;
-
-    const resetLink = `${baseUrl}/reset-password?token=${rawToken}`;
+    const resetLink = passwordResetLink(config.frontendUrl, rawToken);
 
     await sendEmail({
       to: user.email,

@@ -173,12 +173,20 @@ export default function NotificationsPanel({
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
+      if (e.target instanceof Element && e.target.closest("[data-notification-trigger]")) return;
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         onClose();
       }
     }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [onClose]);
 
   const actionable = notifications.filter(
@@ -188,8 +196,10 @@ export default function NotificationsPanel({
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-full mt-2 w-80 bg-card border border-card-border rounded-2xl shadow-2xl z-50 overflow-hidden"
-      style={{ maxHeight: "calc(100vh - 120px)" }}
+      role="region"
+      aria-label="Notifications"
+      className="fixed right-3 top-20 w-80 max-w-[calc(100vw-1.5rem)] bg-card border border-card-border rounded-2xl shadow-2xl z-50 overflow-y-auto overscroll-contain"
+      style={{ maxHeight: "calc(100dvh - 6rem)" }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -235,7 +245,7 @@ export default function NotificationsPanel({
       )}
 
       {/* Body */}
-      <div className="overflow-y-auto" style={{ maxHeight: "calc(100vh - 220px)" }}>
+      <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100dvh - 220px)" }}>
         {isLoading ? (
           <div className="space-y-1 p-2">
             {[1, 2, 3].map((i) => (

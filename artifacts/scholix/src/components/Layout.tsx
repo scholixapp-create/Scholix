@@ -76,11 +76,12 @@ function getAdminNav(): NavItem[] {
 }
 
 function getNav(role: string): NavItem[] {
+  const home: NavItem = { href: "/", label: "Scholix home", icon: <BookOpen size={18} /> };
   switch (role) {
-    case "tutor": return getTutorNav();
-    case "parent": return getParentNav();
-    case "student": return getStudentNav();
-    case "admin": return getAdminNav();
+    case "tutor": return [home, ...getTutorNav()];
+    case "parent": return [home, ...getParentNav()];
+    case "student": return [home, ...getStudentNav()];
+    case "admin": return [home, ...getAdminNav()];
     default: return [];
   }
 }
@@ -142,6 +143,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setShowNotifications((v) => !v)}
                 className="relative p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
+                data-notification-trigger
+                aria-expanded={showNotifications}
+                aria-label="Notifications"
                 title="Notifications"
               >
                 <Bell size={17} className="text-sidebar-foreground/70" />
@@ -250,6 +254,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setShowNotifications((v) => !v)}
                 className="relative p-1.5 rounded-md hover:bg-sidebar-accent transition-colors"
+                data-notification-trigger
+                aria-expanded={showNotifications}
+                aria-label="Notifications"
               >
                 <Bell size={16} />
                 {unreadCount > 0 && (

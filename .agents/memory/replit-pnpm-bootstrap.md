@@ -7,4 +7,4 @@ When running pnpm in this Replit workspace, set `npm_config_manage_package_manag
 
 **Why:** The workspace pnpm wrapper repeatedly launched `pnpm add pnpm@11.9.0`, creating a deep process chain that exhausted the container process limit and prevented workflows and shell commands from spawning.
 
-**How to apply:** Keep this as a Replit-only command/workflow concern. Do not change the repository's declared package-manager version or commit a package-manager override without checking Railway compatibility.
+**How to apply:** Keep this as a Replit-only command/workflow concern. Direct Node commands in managed development services are another safe way to avoid the wrapper and nested-script recursion. Managed service commands run from the artifact directory, not the workspace root. Do not change the repository's declared package-manager version or production commands to solve this local problem.

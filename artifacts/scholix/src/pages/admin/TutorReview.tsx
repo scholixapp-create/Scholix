@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { openProtectedDocument } from "@/lib/protectedDocument";
 import { useParams, Link } from "wouter";
 import { ArrowLeft, GraduationCap, FileText, Download, CheckCircle, XCircle, MessageSquare, Clock, Shield, BookOpen } from "lucide-react";
 
@@ -35,6 +36,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function TutorReview() {
+  const [openingDocument, setOpeningDocument] = useState<number | null>(null);
+  const [documentError, setDocumentError] = useState("");
   const { id } = useParams<{ id: string }>();
   const [tutor, setTutor] = useState<TutorWithDocs | null>(null);
   const [loading, setLoading] = useState(true);
@@ -228,6 +231,7 @@ export default function TutorReview() {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Uploaded Documents</p>
           </div>
           <div className="divide-y divide-border">
+            {documentError && <p role="alert" className="text-sm text-destructive">{documentError}</p>}
             {tutor.documents.map((doc) => (
               <div key={doc.id} className="flex items-center gap-3 px-5 py-3">
                 <FileText size={15} className="text-muted-foreground shrink-0" />
@@ -237,14 +241,24 @@ export default function TutorReview() {
                     <p className="text-xs text-muted-foreground truncate">{doc.originalName}</p>
                   )}
                 </div>
-                <a
-                  href={`/api/admin/documents/${doc.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  disabled={openingDocument !== null}
+                  onClick={async () => {
+                    setOpeningDocument(doc.id);
+                    setDocumentError("");
+                    try {
+                      await openProtectedDocument(doc.id, localStorage.getItem("scholix_token"));
+                    } catch (error) {
+                      setDocumentError(error instanceof Error ? error.message : "Unable to open document");
+                    } finally {
+                      setOpeningDocument(null);
+                    }
+                  }}
                   className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                 >
-                  <Download size={12} /> View
-                </a>
+                  <Download size={12} /> {openingDocument === doc.id ? "Opening…" : "View"}
+                </button>
               </div>
             ))}
           </div>

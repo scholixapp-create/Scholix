@@ -3,3 +3,7 @@
 
 # No need to store the pnpm store twice.
 .local
+
+# Private user uploads are runtime data, not deployment source.
+artifacts/api-server/uploads/
+uploads/

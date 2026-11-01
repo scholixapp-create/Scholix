@@ -1,4 +1,5 @@
 import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
+import { PublicNavigation } from "@/components/AccountNavigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -221,7 +222,12 @@ function RequireTutorApproved({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
+  const [location] = useLocation();
+  const publicPage = ["/tutors", "/terms", "/privacy", "/tutor-agreement", "/tutor-code-of-conduct", "/login", "/signup", "/forgot-password", "/reset-password", "/tutor/onboarding"].includes(location)
+    || /^\/tutor\/\d+$/.test(location) || /^\/profile\/\d+$/.test(location);
   return (
+    <>
+    {publicPage && <PublicNavigation />}
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
@@ -398,8 +404,12 @@ function Router() {
         </RequireAuth>
       </Route>
 
-      <Route component={NotFound} />
+      <Route>
+        <PublicNavigation />
+        <NotFound />
+      </Route>
     </Switch>
+    </>
   );
 }
 

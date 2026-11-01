@@ -84,6 +84,10 @@ export default function ResetPassword() {
           </div>
           <h1 className="text-2xl font-bold text-foreground">Set new password</h1>
           <p className="text-sm text-muted-foreground mt-1">Choose a strong password for your account</p>
+          <p className="text-xs text-muted-foreground mt-3">
+            Use your most recent reset email. Links expire after 30 minutes and can only be used once.{" "}
+            <Link href="/forgot-password" className="text-primary underline">Request a new link</Link>
+          </p>
         </div>
 
         <div className="bg-card border border-card-border rounded-xl p-6 shadow-sm">

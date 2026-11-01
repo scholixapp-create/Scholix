@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { BookOpen, Shield, CreditCard, Calendar, Star, Users, ArrowRight, CheckCircle } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
+import { AccountNavigation } from "@/components/AccountNavigation";
 
 const features = [
   {
@@ -11,7 +12,7 @@ const features = [
   {
     icon: <CreditCard size={22} className="text-primary" />,
     title: "Transparent payments",
-    description: "Parents pay through Scholix and tutors receive payouts automatically. Invoices are generated for every session.",
+    description: "Keep booking and invoice records together. During beta, payments are simulated and no real charges are processed.",
   },
   {
     icon: <Shield size={22} className="text-primary" />,
@@ -36,10 +37,10 @@ const features = [
 ];
 
 const stats = [
-  { value: "200+", label: "Active tutors" },
-  { value: "1,500+", label: "Sessions completed" },
-  { value: "$50/hr", label: "Starting rate" },
-  { value: "4.9★", label: "Average rating" },
+  { value: "Flexible", label: "Tutor-set availability" },
+  { value: "Connected", label: "Tutors and families" },
+  { value: "Organised", label: "Bookings in one place" },
+  { value: "Visible", label: "Learning progress" },
 ];
 
 export default function About() {
@@ -49,7 +50,7 @@ export default function About() {
 
       {/* Nav */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-border">
-        <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-5 min-h-14 py-2 flex flex-wrap gap-3 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
               <BookOpen size={14} className="text-white" />
@@ -57,12 +58,7 @@ export default function About() {
             <span className="font-bold text-base text-foreground">Scholix</span>
           </Link>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Sign in
-            </Link>
-            <Link href="/signup" className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">
-              Get started
-            </Link>
+            <AccountNavigation />
           </div>
         </div>
       </header>

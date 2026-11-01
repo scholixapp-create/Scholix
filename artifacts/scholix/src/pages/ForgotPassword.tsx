@@ -40,7 +40,7 @@ export default function ForgotPassword() {
           </div>
           <h1 className="text-xl font-bold text-foreground mb-2">Check your inbox</h1>
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-            If <strong>{email}</strong> is registered with Scholix, you'll receive a password reset link shortly. It expires in 30 minutes.
+            If <strong>{email}</strong> is registered with Scholix, you'll receive a password reset link shortly. It expires in 30 minutes and can be used once. Requesting another link makes older links invalid.
           </p>
           <p className="text-xs text-muted-foreground mb-6">
             Didn't receive it? Check your spam folder, or{" "}

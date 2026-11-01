@@ -324,6 +324,8 @@ router.post("/admin/tutors/:tutorId/approve", requireAdmin, async (req, res) => 
 
 // GET /api/admin/documents/:docId  — download document (admin only)
 router.get("/admin/documents/:docId", requireAdmin, async (req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   const docId = parseInt(req.params["docId"] as string, 10);
 
   const [doc] = await db
@@ -336,7 +338,7 @@ router.get("/admin/documents/:docId", requireAdmin, async (req, res) => {
 
   const filePath = path.resolve(uploadsDir, doc.filePath);
   if (!fs.existsSync(filePath)) {
-    res.status(404).json({ error: "File not found on disk" });
+    res.status(404).json({ error: "The uploaded file is no longer available. Ask the tutor to upload this document again." });
     return;
   }
 
