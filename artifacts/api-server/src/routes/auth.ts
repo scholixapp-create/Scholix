@@ -541,7 +541,7 @@ router.post("/auth/request-deletion", requireAuth, async (req, res) => {
   if (adminEmail) {
     await sendEmail({
       to: adminEmail,
-      subject: "Account deletion request — Scholix",
+      subject: "Account deletion request: Scholix",
       html: `<p>User <strong>${user.firstName} ${user.lastName}</strong> (${user.email}) has requested account deletion.</p>${reason ? `<p>Reason: ${reason}</p>` : ""}`,
     });
   }
@@ -549,7 +549,7 @@ router.post("/auth/request-deletion", requireAuth, async (req, res) => {
   // Confirm to user
   await sendEmail({
     to: user.email,
-    subject: "Deletion request received — Scholix",
+    subject: "Deletion request received: Scholix",
     html: accountDeletionConfirmEmailHtml({ firstName: user.firstName }),
   });
 

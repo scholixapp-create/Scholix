@@ -116,10 +116,10 @@ function NotificationItem({
         }}
       >
         <p className="text-xs font-semibold leading-tight text-foreground">
-          {notification.title}
+          {notification.title.replace(/\s*\u2014\s*/g, ", ")}
         </p>
         <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
-          {notification.message}
+          {notification.message.replace(/\s*\u2014\s*/g, ", ")}
         </p>
         <p className="text-[10px] text-muted-foreground/70 mt-1">
           {formatDistanceToNow(parseISO(notification.createdAt), { addSuffix: true })}

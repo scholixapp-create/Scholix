@@ -41,7 +41,7 @@ router.post("/reports", requireAuth, async (req, res) => {
     const categoryLabel = category.replace(/_/g, " ");
     await sendEmail({
       to: adminEmail,
-      subject: `New ${categoryLabel} report — Scholix`,
+      subject: `New ${categoryLabel} report: Scholix`,
       html: `
         <p><strong>New report submitted on Scholix</strong></p>
         <p><strong>Category:</strong> ${categoryLabel}</p>

@@ -27,8 +27,8 @@ interface InvoiceData {
 
 function tierLabel(tier?: string) {
   switch (tier) {
-    case "first_student_free": return "First student — always commission-free";
-    case "first_session_free": return "First session with this student — commission-free";
+    case "first_student_free": return "First student: always commission-free";
+    case "first_session_free": return "First session with this student: commission-free";
     case "growth": return "Growth tier (10+ sessions)";
     case "established": return "Established tier (25+ sessions)";
     case "expert": return "Expert tier (50+ sessions)";
@@ -99,7 +99,7 @@ function InvoiceModal({ invoice, onClose, onLogProgress }: {
           <div className="px-5 py-2.5 bg-accent/10 border-b border-accent/20 flex items-center gap-2">
             <Sparkles size={13} className="text-accent shrink-0" />
             <p className="text-[12px] font-semibold text-accent leading-tight">
-              First session: No platform fee — you keep 100%
+              First session: No platform fee. You keep 100%
             </p>
           </div>
         )}
@@ -138,7 +138,7 @@ function InvoiceModal({ invoice, onClose, onLogProgress }: {
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">
               Platform fee
-              {isFree ? " (0% — commission-free)" : ` (${commPct}%)`}
+              {isFree ? " (0%: commission-free)" : ` (${commPct}%)`}
             </span>
             <span className={`font-semibold ${isFree ? "text-accent" : "text-destructive"}`}>
               {isFree ? "FREE" : `−$${invoice.platformCommission.toFixed(2)}`}
@@ -234,7 +234,7 @@ function ProgressModal({ sessionId, studentName, onClose }: {
             <>
               <div>
                 <label className="block text-xs font-medium text-foreground mb-3">
-                  Progress score — <span className="text-primary">{score}/10</span> <span className={`inline-block w-2 h-2 rounded-full align-middle ${scoreDot}`} aria-hidden="true" /> <span className="text-muted-foreground font-normal">{scoreLabel}</span>
+                  Progress score: <span className="text-primary">{score}/10</span> <span className={`inline-block w-2 h-2 rounded-full align-middle ${scoreDot}`} aria-hidden="true" /> <span className="text-muted-foreground font-normal">{scoreLabel}</span>
                 </label>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground">1</span>

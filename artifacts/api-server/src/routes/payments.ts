@@ -126,11 +126,11 @@ router.post("/payments/simulate", async (req, res) => {
     await createNotification({
       userId: student.parentId,
       type: "payment_confirmed",
-      title: "Payment confirmed — invoice ready",
+      title: "Payment confirmed: invoice ready",
       message: `Invoice ${invoiceNum} for your ${session.subject} session with ${tutorName} on ${dateStr} is now available`,
       actionUrl: "/parent/invoices",
       actionLabel: "View invoice",
-      emailSubject: `Payment confirmed — ${session.subject} with ${tutorName}`,
+      emailSubject: `Payment confirmed: ${session.subject} with ${tutorName}`,
       emailHtml: paymentConfirmedEmailHtml({
         recipientName: parentUser?.firstName ?? "there",
         tutorName,
@@ -165,7 +165,7 @@ router.post("/payments/simulate", async (req, res) => {
       userId: tutorRow.userId,
       type: "invoice_generated",
       title: `Invoice ${invoiceNum} generated`,
-      message: `Invoice for your ${session.subject} session with ${studentName} on ${dateStr} is ready — available in your Invoices section`,
+      message: `Invoice for your ${session.subject} session with ${studentName} on ${dateStr} is ready. Available in your Invoices section`,
       actionUrl: "/tutor/invoices",
       actionLabel: "View invoices",
     });
@@ -174,10 +174,10 @@ router.post("/payments/simulate", async (req, res) => {
       userId: tutorRow.userId,
       type: "session_booked",
       title: "New session confirmed",
-      message: `${studentName} booked ${session.subject} on ${dateStr} — payment received`,
+      message: `${studentName} booked ${session.subject} on ${dateStr}. Payment received`,
       actionUrl: "/tutor/sessions",
       actionLabel: "View sessions",
-      emailSubject: `New session confirmed — ${session.subject}`,
+      emailSubject: `New session confirmed: ${session.subject}`,
       emailHtml: sessionBookedEmailHtml({
         recipientName: tutorRow.firstName,
         tutorName,
@@ -213,7 +213,7 @@ router.post("/payments/simulate", async (req, res) => {
         userId: tutorRow.userId,
         type: "whatsapp_connect",
         title: "Connect with the parent on WhatsApp",
-        message: `Say hello to ${parentFirstName} — introduce yourself and confirm any session details`,
+        message: `Say hello to ${parentFirstName}. Introduce yourself and confirm any session details`,
         actionUrl: parentWaLink,
         actionLabel: "Open WhatsApp",
       });

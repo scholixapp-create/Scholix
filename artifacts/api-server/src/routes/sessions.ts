@@ -340,7 +340,7 @@ router.post("/sessions", async (req, res) => {
   for (const s of activeSessions) {
     const sEnd = new Date(s.scheduledAt.getTime() + (s.durationMinutes + effectiveBuffer) * 60000);
     if (s.scheduledAt < newEnd && sEnd > newStart) {
-      res.status(409).json({ error: "That time is no longer available — another session overlaps this slot." });
+      res.status(409).json({ error: "That time is no longer available. Another session overlaps this slot." });
       return;
     }
   }
@@ -508,10 +508,10 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
       userId: tutorUserRow2.userId,
       type: "action_upload_notes",
       title: "Upload progress notes",
-      message: `${session.subject} with ${studentName} is done — log their progress now`,
+      message: `${session.subject} with ${studentName} is done. Log their progress now`,
       actionUrl: "/tutor/sessions",
       actionLabel: "Log notes",
-      emailSubject: `Session completed — ${session.subject}`,
+      emailSubject: `Session completed: ${session.subject}`,
       emailHtml: sessionCompletedEmailHtml({
         recipientName: tutorUserRow2.firstName,
         tutorName,
@@ -536,7 +536,7 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
       message: `${studentName}'s ${session.subject} session with ${tutorName} is done. How did it go?`,
       actionUrl: "/parent/sessions",
       actionLabel: "Leave a review",
-      emailSubject: `Session completed — ${session.subject}`,
+      emailSubject: `Session completed: ${session.subject}`,
       emailHtml: sessionCompletedEmailHtml({
         recipientName: studentName.split(" ")[0],
         tutorName,

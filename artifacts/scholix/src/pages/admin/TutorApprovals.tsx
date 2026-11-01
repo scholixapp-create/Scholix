@@ -231,12 +231,12 @@ export default function AdminTutorApprovals() {
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <p className="text-muted-foreground mb-0.5">WWCC Number</p>
-                          <p className="font-medium text-foreground font-mono">{tutor.wwccNumber ?? "—"}</p>
+                          <p className="font-medium text-foreground font-mono">{tutor.wwccNumber ?? "-"}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground mb-0.5">Expiry</p>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="font-medium text-foreground">{tutor.wwccExpiry ?? "—"}</p>
+                            <p className="font-medium text-foreground">{tutor.wwccExpiry ?? "-"}</p>
                             {tutor.wwccExpiry && <WwccExpiryBadge expiry={tutor.wwccExpiry} />}
                           </div>
                         </div>

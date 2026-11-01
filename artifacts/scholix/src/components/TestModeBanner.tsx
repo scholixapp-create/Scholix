@@ -17,7 +17,7 @@ export default function TestModeBanner() {
       <div className="flex-1 flex items-center justify-center gap-2">
         <FlaskConical size={15} className="text-amber-700 shrink-0" aria-hidden="true" />
         <span className="text-amber-800 text-sm font-medium leading-snug text-center">
-          Scholix is currently in beta. Payments are simulated — no real charges are made.
+          Scholix is currently in beta. Payments are simulated. No real charges are made.
         </span>
       </div>
       <button

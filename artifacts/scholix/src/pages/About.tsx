@@ -8,7 +8,7 @@ const features = [
   {
     icon: <Calendar size={22} className="text-primary" />,
     title: "Smart scheduling",
-    description: "Tutors set their weekly availability and parents book confirmed sessions in minutes — no back-and-forth emails.",
+    description: "Tutors set their weekly availability and parents book confirmed sessions in minutes, without back-and-forth emails.",
   },
   {
     icon: <CreditCard size={22} className="text-primary" />,
@@ -72,7 +72,7 @@ export default function About() {
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
           Scholix is a tutoring platform built specifically for independent Australian tutors and the families they work with.
-          We handle scheduling, payments, compliance, and communication so you can focus on what matters — teaching.
+          We handle scheduling, payments, compliance, and communication so you can focus on what matters: teaching.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
           <Link href="/signup" className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity">
@@ -120,7 +120,7 @@ export default function About() {
           <p className="text-muted-foreground leading-relaxed text-base">
             Independent tutors provide some of the most valuable education in Australia, yet most run their businesses
             using a patchwork of text messages, bank transfers, and paper notes. Scholix gives every independent tutor a
-            professional-grade platform — the same tools a large tutoring company would have, without the overhead.
+            professional-grade platform with the same tools a large tutoring company would have, without the overhead.
           </p>
         </div>
       </section>
@@ -130,7 +130,7 @@ export default function About() {
         <h2 className="text-2xl font-bold text-foreground text-center mb-10">Why tutors choose Scholix</h2>
         <div className="space-y-3 max-w-xl mx-auto">
           {[
-            "No setup fees — free to join",
+            "No setup fees. Free to join",
             "Verified WWCC and ABN on every tutor profile",
             "Automated invoices and commission statements",
             "Tiered commission: earn more as you grow",

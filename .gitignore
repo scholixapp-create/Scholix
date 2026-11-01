@@ -51,3 +51,4 @@ Thumbs.db
 # Private tutor documents must never be committed.
 /artifacts/api-server/uploads/
 /uploads/
+/generated-artifacts/

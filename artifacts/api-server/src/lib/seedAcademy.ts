@@ -9,7 +9,7 @@ const SEED_ARTICLES = [
     summary: "Most tutors operating as independent contractors need an ABN. Here's what you need to know and how to get one in under 10 minutes.",
     content: `## What is an ABN?
 
-An Australian Business Number (ABN) is an 11-digit number that identifies your business to the government and other businesses. As an independent tutor, you are running a business — even if it feels like you're "just" helping students.
+An Australian Business Number (ABN) is an 11-digit number that identifies your business to the government and other businesses. As an independent tutor, you are running a business, even if it feels like you're "just" helping students.
 
 ## Do I Need One?
 
@@ -26,8 +26,8 @@ Applying for an ABN is free and takes about 10 minutes through the Australian Bu
 1. Go to abr.business.gov.au
 2. Click "Apply for an ABN"
 3. Select "Sole trader" (most tutors)
-4. Enter your personal details and the nature of your business (e.g. "Education services — private tutoring")
-5. Submit — you may receive your ABN immediately or within 28 days
+4. Enter your personal details and the nature of your business (e.g. "Education services: private tutoring")
+5. Submit. You may receive your ABN immediately or within 28 days
 
 ## Is My ABN Valid?
 
@@ -162,14 +162,14 @@ Start at a rate that reflects your qualifications. Build your reputation on Scho
 
 Parents make quick decisions based on your profile. Make yours work hard:
 
-- **Write a strong bio**: Be specific — "I've helped 15 VCE students achieve study scores above 40" is more compelling than "I'm passionate about maths."
+- **Write a strong bio**: Be specific. "I've helped 15 VCE students achieve study scores above 40" is more compelling than "I'm passionate about maths."
 - **Add your subjects clearly**: Parents search by subject. List every subject you teach.
 - **Set your rate confidently**: Don't undersell yourself. Parents often interpret a low rate as inexperience.
 - **Keep your availability current**: Profiles with available slots attract more bookings.
 
 ## Build Your Reviews
 
-Reviews are the single biggest trust signal for new parents. Deliver consistent quality — one great review leads to another. Address any concerns promptly and professionally.
+Reviews are the single biggest trust signal for new parents. Deliver consistent quality. One great review leads to another. Address any concerns promptly and professionally.
 
 ## Word of Mouth
 
@@ -199,7 +199,7 @@ The tutors with the fullest calendars are the ones with complete profiles, stron
     summary: "The most common mistake new tutors make is spending money they owe the ATO. Here's a simple system to prevent that.",
     content: `## The Problem
 
-Many first-year self-employed tutors are shocked at tax time. Because no one has been withholding tax throughout the year, they suddenly owe the ATO a significant amount — money they've already spent.
+Many first-year self-employed tutors are shocked at tax time. Because no one has been withholding tax throughout the year, they suddenly owe the ATO a significant amount, money they've already spent.
 
 The solution is simple: set aside tax as you earn it.
 
@@ -222,7 +222,7 @@ Open a separate savings account labelled "Tax". Every time a tutoring payment ar
 2. Transfer that amount to your Tax account immediately
 3. Leave it there until tax time
 
-This amount is not your money — it belongs to the ATO. Don't touch it.
+This amount is not your money. It belongs to the ATO. Don't touch it.
 
 ## Claims Reduce Your Bill
 
@@ -267,7 +267,7 @@ When you need to cancel or reschedule:
 
 ## Build Independence, Not Dependency
 
-Great tutors help students become more capable, not more reliant. The goal is for your student to eventually not need you — at least for the topic at hand. A student who achieves their goal and credits your support will refer their friends and siblings.`,
+Great tutors help students become more capable, not more reliant. The goal is for your student to eventually not need you, at least for the topic at hand. A student who achieves their goal and credits your support will refer their friends and siblings.`,
     type: "article",
     isPublished: true,
   },
@@ -293,8 +293,8 @@ No, there is no legal requirement for sole traders to contribute to superannuati
 ## How to Contribute to Your Super
 
 1. If you have an existing super fund from previous employment, you can contribute to it directly
-2. If not, set up a super fund — most major funds accept personal contributions
-3. Make contributions regularly — even $50–100/month makes a difference over time
+2. If not, set up a super fund. Most major funds accept personal contributions
+3. Make contributions regularly. Even $50–100/month makes a difference over time
 4. Claim a tax deduction: personal contributions to super are generally tax-deductible for sole traders
 
 ## Setting Aside Super

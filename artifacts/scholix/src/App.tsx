@@ -141,7 +141,7 @@ function RequireTutorApproved({ children }: { children: React.ReactNode }) {
           </div>
           <h1 className="text-xl font-bold text-foreground">Application under review</h1>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-            Our team is reviewing your documents. You'll be notified by email once approved — typically 1–2 business days.
+            Our team is reviewing your documents. You'll be notified by email once approved, typically within 1–2 business days.
           </p>
           <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-4 text-left">
             <p className="text-xs font-semibold text-amber-800 mb-2">What happens next</p>

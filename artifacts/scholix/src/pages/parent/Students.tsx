@@ -317,7 +317,7 @@ function AddStudentModal({
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border sticky top-0 bg-card z-10">
           <div>
             <h2 className="text-base font-bold text-foreground">Add student profile</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">No account needed — you manage everything</p>
+            <p className="text-xs text-muted-foreground mt-0.5">No account needed. You manage everything</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <X size={16} className="text-muted-foreground" />

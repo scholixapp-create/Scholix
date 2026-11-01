@@ -118,7 +118,7 @@ export default function StudentProgress() {
             </div>
             <div className="bg-card border border-card-border rounded-xl p-3 text-center">
               <p className="text-2xl font-bold text-foreground">
-                {avgScore !== null ? avgScore.toFixed(1) : "—"}
+                {avgScore !== null ? avgScore.toFixed(1) : "-"}
               </p>
               <p className="text-[10px] text-muted-foreground mt-0.5">Avg score</p>
             </div>

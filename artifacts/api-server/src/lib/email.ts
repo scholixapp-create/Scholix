@@ -255,7 +255,7 @@ export function sessionCompletedEmailHtml(opts: {
 
   const freeTag = opts.isCommissionFree
     ? `<div style="background:#d1fae5;border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#065f46;font-weight:500">
-        ✨ Platform fee waived — you keep 100% of this session.
+        ✨ Platform fee waived. You keep 100% of this session.
       </div>`
     : "";
 
@@ -306,7 +306,7 @@ export function passwordResetEmailHtml(opts: { firstName: string; resetLink: str
         Reset my password
       </a>
     </div>
-    <p style="color:#94a3b8;font-size:13px;margin-top:20px;margin-bottom:0">This link expires in <strong>30 minutes</strong>. If you didn't request a password reset, you can safely ignore this email — your password won't change.</p>
+    <p style="color:#94a3b8;font-size:13px;margin-top:20px;margin-bottom:0">This link expires in <strong>30 minutes</strong>. If you didn't request a password reset, you can safely ignore this email. Your password won't change.</p>
   `;
   return emailWrapper("#2563eb", "🔐 Reset your password", body);
 }

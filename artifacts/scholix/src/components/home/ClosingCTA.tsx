@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { ArrowRight, FlaskConical } from "lucide-react";
 import { AccountNavigation } from "@/components/AccountNavigation";
-import { BrandBanner, BrandStar } from "@/components/Brand";
+import { Brand, BrandStar } from "@/components/Brand";
 import { Reveal } from "./shared";
 
 const steps = ["Sign up", "Choose tutor or parent", "Submit requirements", "Set up your space", "Start teaching"];
@@ -47,9 +47,7 @@ export function HomeFooter() {
     <footer className="bg-brand-navy text-brand-cream/60">
       <div className="max-w-6xl mx-auto px-5 sm:px-8 py-12 grid md:grid-cols-[1.3fr_1fr_1fr_1fr] gap-8 text-sm">
         <div>
-          <div className="inline-flex max-w-full rounded-xl bg-brand-cream p-3">
-            <BrandBanner className="w-64 max-w-full" />
-          </div>
+          <Brand size={34} tone="light" />
           <p className="mt-4 max-w-xs leading-relaxed">An Australian platform for independent tutors and the families they teach.</p>
           <p className="mt-4 inline-flex items-start gap-2 text-xs text-brand-gold">
             <FlaskConical size={13} className="mt-0.5 shrink-0" aria-hidden="true" />

@@ -85,7 +85,7 @@ function CommissionTierCard({ completedCount }: { completedCount: number }) {
           Commission Milestones
         </h2>
         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${currentTier.color} ${currentTier.textColor}`}>
-          {currentTier.label} — {currentTier.rate}% fee
+          {currentTier.label}: {currentTier.rate}% fee
         </span>
       </div>
       <p className="text-xs text-muted-foreground mb-3">
@@ -148,7 +148,7 @@ function CommissionTierCard({ completedCount }: { completedCount: number }) {
       {!nextTier && (
         <div className="mt-3 flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
           <Star size={12} className="text-amber-600 shrink-0" />
-          <p className="text-[11px] text-amber-700 font-medium">Expert tier unlocked — lowest possible fee of 5%!</p>
+          <p className="text-[11px] text-amber-700 font-medium">Expert tier unlocked. Lowest possible fee of 5%!</p>
         </div>
       )}
     </div>
@@ -165,7 +165,7 @@ function FirstStudentFreeCard({ freeSessions }: { freeSessions: number }) {
         <div className="flex-1">
           <p className="text-sm font-bold text-foreground">Commission-Free First Student</p>
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-            Your very first student on Scholix pays <span className="font-semibold text-accent">0% commission — forever</span>.
+            Your very first student on Scholix pays <span className="font-semibold text-accent">0% commission, forever</span>.
             All other new students get their first session commission-free too.
           </p>
           {freeSessions > 0 && (

@@ -35,7 +35,7 @@ export default function TermsOfService() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-5">
             <p className="text-sm font-semibold text-blue-800">Beta Platform Notice</p>
-            <p className="text-xs text-blue-700 mt-1 leading-relaxed">Scholix is currently in beta. Payments are simulated — no real financial transactions are processed through the platform at this time. Tutors and parents may need to arrange payment directly during this phase.</p>
+            <p className="text-xs text-blue-700 mt-1 leading-relaxed">Scholix is currently in beta. Payments are simulated. No real financial transactions are processed through the platform at this time. Tutors and parents may need to arrange payment directly during this phase.</p>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-5 prose prose-sm max-w-none text-gray-700 leading-relaxed">

@@ -282,7 +282,7 @@ export default function BookSession() {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5">
           <p className="text-xs font-semibold text-amber-800 mb-1">Pay your tutor directly</p>
           <p className="text-xs text-amber-700 leading-relaxed">
-            Scholix is in beta — payments are simulated. Please pay <strong>{tutor.data!.firstName} {tutor.data!.lastName}</strong> via PayID, bank transfer, or cash.
+            Scholix is in beta. Payments are simulated. Please pay <strong>{tutor.data!.firstName} {tutor.data!.lastName}</strong> via PayID, bank transfer, or cash.
           </p>
         </div>
 
@@ -315,7 +315,7 @@ export default function BookSession() {
           <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
           <div>
             <p className="text-xs font-semibold text-amber-800">This is a simulated payment</p>
-            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">Scholix is in beta — no real charges are made.</p>
+            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">Scholix is in beta. No real charges are made.</p>
           </div>
         </div>
 
@@ -458,7 +458,7 @@ export default function BookSession() {
               {createSession.isPending
                 ? "Booking…"
                 : selectedTime
-                  ? `Book session — $${totalAmount.toFixed(2)}`
+                  ? `Book session: $${totalAmount.toFixed(2)}`
                   : "Select a time above"}
             </button>
           </>

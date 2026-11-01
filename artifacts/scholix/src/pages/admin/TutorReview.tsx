@@ -144,7 +144,7 @@ export default function TutorReview() {
       {done && (
         <div className="bg-accent/10 border border-accent/20 rounded-xl p-3 mb-4 flex items-center gap-2">
           <CheckCircle size={15} className="text-accent" />
-          <p className="text-sm font-medium text-accent">Action completed — tutor has been notified.</p>
+          <p className="text-sm font-medium text-accent">Action completed. The tutor has been notified.</p>
         </div>
       )}
 

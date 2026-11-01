@@ -91,7 +91,7 @@ export async function sendSessionReminders(): Promise<void> {
               <p style="color:#374151;margin-bottom:16px">
                 You have an upcoming <strong>${session.subject}</strong> session scheduled for <strong>${dateStr}</strong> at <strong>${timeStr}</strong>.
               </p>
-              <p style="color:#374151;margin-bottom:24px">Make sure you're ready to go — have your notes and materials prepared ahead of time!</p>
+              <p style="color:#374151;margin-bottom:24px">Make sure you're ready to go. Have your notes and materials prepared ahead of time!</p>
               <p style="color:#6b7280;font-size:13px">Scholix Tutoring Platform</p>
             </div>`,
         });
@@ -156,7 +156,7 @@ export async function checkWwccExpiry(): Promise<void> {
           await createNotification({
             userId: tutor.userId,
             type: "session_booked",
-            title: "WWCC expired — account suspended",
+            title: "WWCC expired: account suspended",
             message: `Your Working With Children Check expired on ${tutor.wwccExpiry}. New bookings are paused until you renew and submit your updated WWCC.`,
             actionUrl: "/tutor/onboarding",
             actionLabel: "Update WWCC",

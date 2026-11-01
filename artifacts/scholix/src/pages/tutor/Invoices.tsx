@@ -24,8 +24,8 @@ function getToken() {
 }
 
 const TIER_LABEL: Record<string, string> = {
-  first_student_free: "First student — free",
-  first_session_free: "First session — free",
+  first_student_free: "First student: free",
+  first_session_free: "First session: free",
   standard: "Starter (30%)",
   growth: "Growth (25%)",
   established: "Established (20%)",
@@ -153,7 +153,7 @@ export default function TutorInvoices() {
                     <span className="text-muted-foreground">
                       Platform fee
                       {isFree
-                        ? " (0% — " + (TIER_LABEL[inv.commissionTier] ?? inv.commissionTier) + ")"
+                        ? " (0%: " + (TIER_LABEL[inv.commissionTier] ?? inv.commissionTier) + ")"
                         : ` (${(rate * 100).toFixed(0)}%)`}
                     </span>
                     <span className="text-muted-foreground">−${commission.toFixed(2)}</span>

@@ -31,7 +31,7 @@ const EVENT_PREFS: {
   color: string;
   bg: string;
 }[] = [
-  { key: "notifBookingConfirmation", icon: BookOpen, title: "Booking confirmation", desc: "When a session is booked — sent to both tutor and parent.", color: "text-primary", bg: "bg-primary/10" },
+  { key: "notifBookingConfirmation", icon: BookOpen, title: "Booking confirmation", desc: "When a session is booked. Sent to both tutor and parent.", color: "text-primary", bg: "bg-primary/10" },
   { key: "notifSessionReminder", icon: Bell, title: "Session reminder", desc: "24 hours before a scheduled session starts.", color: "text-purple-600", bg: "bg-purple-100" },
   { key: "notifSessionCompleted", icon: CheckCircle, title: "Session completed", desc: "When a tutor marks a session as complete, including invoice summary.", color: "text-accent", bg: "bg-accent/10" },
   { key: "notifPaymentConfirmed", icon: DollarSign, title: "Payment confirmed", desc: "When your session payment is processed successfully.", color: "text-green-600", bg: "bg-green-100" },

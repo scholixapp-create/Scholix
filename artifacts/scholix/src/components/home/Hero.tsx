@@ -49,7 +49,7 @@ export default function Hero() {
               <span className="text-[10px] font-bold uppercase tracking-wider mt-1">platform fee</span>
             </span>
             <span className="flex-1 px-4 py-3 border-l-2 border-dashed border-brand-gold/60">
-              <span className="block text-sm font-bold text-brand-navy">On your first student pairing — ongoing.</span>
+              <span className="block text-sm font-bold text-brand-navy">On your first student pairing, ongoing.</span>
               <span className="block text-xs text-brand-navy/65 mt-0.5">Plus 0% platform commission on your first completed session with every new student. See the tiers <ArrowRight size={11} className="inline -mt-0.5" /></span>
             </span>
           </motion.a>

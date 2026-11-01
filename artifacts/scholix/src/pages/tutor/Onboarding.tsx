@@ -234,7 +234,7 @@ export default function TutorOnboarding() {
                 <Sparkles size={13} className="text-accent" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-foreground">First Student — Always Free</p>
+                <p className="text-xs font-semibold text-foreground">First Student: Always Free</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
                   Your very first student on Scholix pays <strong className="text-accent">0% platform commission</strong> on every lesson, forever.
                 </p>
@@ -245,9 +245,9 @@ export default function TutorOnboarding() {
                 <Sparkles size={13} className="text-primary" />
               </div>
               <div>
-                <p className="text-xs font-semibold text-foreground">Every New Student — First Session Commission-Free</p>
+                <p className="text-xs font-semibold text-foreground">Every New Student: First Session Commission-Free</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  The first session with any new student is <strong className="text-primary">0% commission</strong> — helping you build your client base.
+                  The first session with any new student is <strong className="text-primary">0% commission</strong>, helping you build your client base.
                 </p>
               </div>
             </div>
@@ -295,7 +295,7 @@ export default function TutorOnboarding() {
                     maxLength={14}
                     className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-colors font-mono tracking-wider"
                   />
-                  <p className="text-[11px] text-muted-foreground mt-1">11 digits — spaces are fine</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">11 digits. Spaces are fine</p>
                 </div>
                 <a
                   href="https://abr.business.gov.au/"
@@ -309,11 +309,11 @@ export default function TutorOnboarding() {
                 <div className="bg-muted/50 rounded-lg p-3 border border-border space-y-1.5">
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     <strong className="text-foreground">Don't have an ABN?</strong> Apply for free at{" "}
-                    <a href="https://abr.business.gov.au/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">abr.business.gov.au</a>{" "}
-                    — most applications are approved within minutes. Have your Tax File Number (TFN) ready.
+                    <a href="https://abr.business.gov.au/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">abr.business.gov.au</a>.
+                    Most applications are approved within minutes. Have your Tax File Number (TFN) ready.
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    <strong className="text-foreground">GST note:</strong> If your annual tutoring income exceeds $75,000 you must register for GST. Below this threshold, registration is optional — but you may register voluntarily and claim GST credits.
+                    <strong className="text-foreground">GST note:</strong> If your annual tutoring income exceeds $75,000 you must register for GST. Below this threshold, registration is optional, but you may register voluntarily and claim GST credits.
                   </p>
                 </div>
               </div>

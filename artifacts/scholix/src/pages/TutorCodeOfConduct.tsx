@@ -56,7 +56,7 @@ const STANDARDS = [
     color: "bg-red-100 text-red-600",
     title: "Academic Integrity",
     items: [
-      "Support genuine learning — never complete graded work on behalf of a student",
+      "Support genuine learning. Never complete graded work on behalf of a student",
       "Do not assist students in misrepresenting their own work to schools or institutions",
       "Be honest with parents about student progress, including challenges",
       "Encourage students to develop their own understanding rather than dependency",
@@ -106,7 +106,7 @@ export default function TutorCodeOfConduct() {
           </div>
 
           <div className="mb-5">
-            <p className="text-sm text-gray-600 leading-relaxed">Scholix tutors are trusted professionals who play a meaningful role in the lives of their students. This Code of Conduct sets out the professional and ethical standards we expect from every tutor on our platform — not as a set of rules to comply with, but as a shared commitment to quality, safety, and integrity.</p>
+            <p className="text-sm text-gray-600 leading-relaxed">Scholix tutors are trusted professionals who play a meaningful role in the lives of their students. This Code of Conduct sets out the professional and ethical standards we expect from every tutor on our platform, not as a set of rules to comply with, but as a shared commitment to quality, safety, and integrity.</p>
           </div>
 
           <div className="space-y-4 mb-6">
@@ -132,7 +132,7 @@ export default function TutorCodeOfConduct() {
 
           <div className="bg-gray-900 rounded-2xl p-5 mb-5">
             <h2 className="text-sm font-bold text-white mb-2">Consequences of Breach</h2>
-            <p className="text-xs text-white/60 leading-relaxed">Scholix may suspend or permanently remove any tutor who breaches this Code of Conduct, the Tutor Agreement, or the Terms of Service. Serious breaches — particularly those involving child safety, harassment, or fraud — may be referred to relevant authorities without prior notice. We take our obligations to the safety of students and families very seriously.</p>
+            <p className="text-xs text-white/60 leading-relaxed">Scholix may suspend or permanently remove any tutor who breaches this Code of Conduct, the Tutor Agreement, or the Terms of Service. Serious breaches, particularly those involving child safety, harassment, or fraud, may be referred to relevant authorities without prior notice. We take our obligations to the safety of students and families very seriously.</p>
           </div>
 
           <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-5">

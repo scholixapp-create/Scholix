@@ -43,7 +43,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 function renderContent(content: string) {
-  const lines = content.split("\n");
+  const lines = content.replace(/[ \t]*\u2014[ \t]*/g, ", ").split("\n");
   const elements: React.ReactNode[] = [];
   let key = 0;
 

@@ -9,9 +9,15 @@ All website imagery should come from the user. Provide prompts or image briefs f
 
 The brand assets are the S-with-star logo, the standalone Scholix star, and the Scholix banner, supplied as SVGs.
 
+Use the compact logo and wordmark in the homepage navigation, not the full banner. Leave the banner unused unless the user requests a new placement.
+
+**Why:** The user found the full banner in the header far too crowded and asked to ignore it and return to the previous design.
+
 For the main page, avoid excessive empty space, welcome purposeful animation, and promote the commission tiers—particularly the first student-pair offer—more prominently. Keep icons simple and visually consistent with the palette rather than generic mixed selections.
 
 Carry the palette, logo treatment and style choices through the entire site, not just the homepage: public pages, authentication and onboarding, and all tutor, parent, student and admin areas.
+
+Remove em dashes from Scholix-authored website copy, including platform notifications and transactional messages.
 
 **Why:** The user explicitly supplied these colours and requirements, then clarified that the palette, logos and styling must apply to the entire site rather than only the homepage.
 

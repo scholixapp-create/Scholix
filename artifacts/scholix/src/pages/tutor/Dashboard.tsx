@@ -201,10 +201,10 @@ function GrowEarningsSection({
           {nextTier ? (
             <p className="text-[11px] text-muted-foreground">
               <span className="font-semibold text-foreground">{nextTier.min - completedSessions} more sessions</span>{" "}
-              to reach {nextTier.name} tier ({nextTier.rate}% fee) — save ${((currentTier.rate - nextTier.rate) / 100 * hourlyRate).toFixed(0)}/session
+              to reach {nextTier.name} tier ({nextTier.rate}% fee). Save ${((currentTier.rate - nextTier.rate) / 100 * hourlyRate).toFixed(0)}/session
             </p>
           ) : (
-            <p className="text-[11px] text-accent font-semibold">You've reached Expert tier — only 5% fee on Scholix!</p>
+            <p className="text-[11px] text-accent font-semibold">You've reached Expert tier. Only 5% fee on Scholix!</p>
           )}
 
           {/* Tier ladder */}
@@ -241,7 +241,7 @@ function GrowEarningsSection({
             </div>
             <div className="bg-accent/10 rounded-lg px-3 py-2 mb-3">
               <p className="text-xs text-accent font-medium">
-                Top tutors on Scholix charge ${suggestedRate}+/hr — consider raising your rate.
+                Top tutors on Scholix charge ${suggestedRate}+/hr. Consider raising your rate.
               </p>
             </div>
             <Link
@@ -268,7 +268,7 @@ function GrowEarningsSection({
           <div className="bg-muted/50 rounded-lg px-3 py-2">
             <p className="text-[11px] font-semibold text-foreground">Example</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              3 students × ${Math.round(hourlyRate * 0.6)}/hr = <span className="font-bold text-accent">${Math.round(hourlyRate * 0.6 * 3)}/hr</span> — versus ${hourlyRate}/hr solo
+              3 students × ${Math.round(hourlyRate * 0.6)}/hr = <span className="font-bold text-accent">${Math.round(hourlyRate * 0.6 * 3)}/hr</span>, versus ${hourlyRate}/hr solo
             </p>
           </div>
         </div>

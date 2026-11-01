@@ -34,7 +34,7 @@ export async function openProtectedDocument(documentId: number, token: string | 
     // Do not trust uploaded filenames or Content-Type to render HTML on our origin.
     const url = URL.createObjectURL(new Blob([bytes], { type }));
     const explanation = tab.document.createElement("p");
-    explanation.textContent = "Scholix verification document — if the preview is unavailable, download the file below.";
+    explanation.textContent = "Scholix verification document. If the preview is unavailable, download the file below.";
     const download = tab.document.createElement("a");
     download.href = url;
     download.download = `scholix-document-${documentId}.${type === "application/pdf" ? "pdf" : type.split("/")[1]}`;

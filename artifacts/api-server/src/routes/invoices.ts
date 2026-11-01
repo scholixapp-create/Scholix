@@ -286,7 +286,7 @@ router.get("/invoices/:invoiceId/pdf", async (req, res) => {
     .text("Thank you for using Scholix. Payment is processed through the platform.", 50, footerY + 20, { align: "center", width: doc.page.width - 100 })
     .text(`Invoice ${invoiceNum} · Generated ${invoiceDate} · scholix.app`, 50, footerY + 35, { align: "center", width: doc.page.width - 100 });
   doc.rect(50, footerY - 20, doc.page.width - 100, 16).fill(ACCENT);
-  doc.fontSize(7.5).fillColor("#ffffff").font("Helvetica-Bold").text("PAYMENT RECEIVED — THANK YOU", 0, footerY - 14, { align: "center" });
+  doc.fontSize(7.5).fillColor("#ffffff").font("Helvetica-Bold").text("PAYMENT RECEIVED: THANK YOU", 0, footerY - 14, { align: "center" });
 
   doc.end();
 });

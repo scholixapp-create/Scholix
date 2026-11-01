@@ -132,7 +132,7 @@ export default function ReportIssueModal({ onClose }: Props) {
 
               <div className="bg-muted/50 rounded-lg p-3 border border-border">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  <strong className="text-foreground">Confidential</strong> — Your report will only be seen by Scholix staff. For urgent safety concerns, contact emergency services directly.
+                  <strong className="text-foreground">Confidential</strong>: Your report will only be seen by Scholix staff. For urgent safety concerns, contact emergency services directly.
                 </p>
               </div>
 

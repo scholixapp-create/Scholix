@@ -21,6 +21,12 @@ Preserve the existing sleeping flag explicitly when updating these Railway servi
 
 **How to apply:** Read current settings first, retain `sleepApplication: true` where already enabled, and do not interpret this tool validation error as permission to change service capacity or billing.
 
+Treat Railway's AI-agent usage limit separately from the availability of its direct integration tools.
+
+**Why:** The AI-agent call was blocked by its usage limit while direct service inspection and public health checks still worked.
+
+**How to apply:** Use available direct tools for independent evidence, do not change billing or usage limits automatically, and state explicitly when authenticated database or admin-status checks remain unverified.
+
 Keep the tutor-document volume mounted at the legacy API uploads directory unless a deliberate file migration is planned.
 
 **Why:** The mount location was chosen to keep both the previously deployed API and the new mount-aware API compatible during rollout. A different mount location would leave the old API writing ephemeral files between deployment steps. The owner explicitly accepted possible re-uploads for the initial volume attachment, not for every future release.

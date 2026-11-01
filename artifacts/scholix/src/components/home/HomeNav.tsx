@@ -38,7 +38,7 @@ export default function HomeNav() {
       <TestModeBanner />
       <div className="bg-brand-cream/95 backdrop-blur border-b border-brand-navy/10">
         <nav aria-label="Site navigation" className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
-          <Link href="/" aria-label="Scholix home" data-testid="link-home-logo">
+          <Link href="/" aria-label="Scholix home" data-testid="link-home-logo" className="shrink-0">
             <Brand size={34} />
           </Link>
           <div className="hidden md:flex items-center gap-7">

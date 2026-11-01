@@ -183,7 +183,7 @@ export default function Login() {
               <div>
                 <p className="text-sm font-semibold text-foreground">Student accounts are managed by parents</p>
                 <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  Parents create and manage student profiles from their dashboard — students don't need their own login. Ask your parent to add you from their <strong>Parent Dashboard → Students</strong>.
+                  Parents create and manage student profiles from their dashboard. Students don't need their own login. Ask your parent to add you from their <strong>Parent Dashboard → Students</strong>.
                 </p>
               </div>
             </div>

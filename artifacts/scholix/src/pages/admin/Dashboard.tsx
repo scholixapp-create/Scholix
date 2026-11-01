@@ -80,7 +80,7 @@ export default function AdminDashboard() {
             </p>
             <p className="text-xs text-amber-700 mt-0.5">
               {emailStatus.devMode
-                ? "Running in dev mode — OTP codes are returned in the API response instead of being emailed. Verify the sender domain at resend.com/domains and set NODE_ENV=production to enable real email delivery."
+                ? "Running in dev mode. OTP codes are returned in the API response instead of being emailed. Verify the sender domain at resend.com/domains and set NODE_ENV=production to enable real email delivery."
                 : `Last error: ${emailStatus.lastEmailError?.message}${emailStatus.lastEmailError?.statusCode ? ` (${emailStatus.lastEmailError.statusCode})` : ""} · OTP emails may not be reaching users.`}
             </p>
           </div>
