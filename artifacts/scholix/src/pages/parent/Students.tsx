@@ -179,7 +179,7 @@ function StudentCard({ student }: StudentCardProps) {
 
   return (
     <div className="bg-card border border-card-border rounded-xl overflow-hidden">
-      <div className="p-4 flex items-start gap-3">
+      <div className="p-4 grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
         <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
           <span className="text-sm font-bold text-primary">{initials}</span>
         </div>
@@ -215,7 +215,7 @@ function StudentCard({ student }: StudentCardProps) {
         </div>
         <button
           onClick={() => setShowProgress(!showProgress)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
+          className="col-start-2 sm:col-start-3 sm:row-start-1 justify-self-start flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
         >
           <TrendingUp size={12} />
           Progress

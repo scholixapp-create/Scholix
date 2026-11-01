@@ -120,7 +120,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-dvh overflow-hidden">
     <TestModeBanner />
     <div className="flex flex-col lg:flex-row flex-1 min-h-0 bg-background">
       {/* Sidebar — desktop only */}
@@ -154,17 +154,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </span>
                 )}
               </button>
-              {showNotifications && (
-                <NotificationsPanel
-                  notifications={notifications}
-                  unreadCount={unreadCount}
-                  isLoading={notifsLoading}
-                  onMarkRead={markRead}
-                  onMarkAllRead={markAllRead}
-                  onDismiss={dismiss}
-                  onClose={() => setShowNotifications(false)}
-                />
-              )}
             </div>
           </div>
         </div>
@@ -237,15 +226,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main area */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
         {/* Mobile header */}
         <header className="lg:hidden flex items-center justify-between px-4 py-3 bg-sidebar text-white border-b border-sidebar-border">
           <Link href="/" className="flex items-center gap-2" aria-label="Scholix home">
             <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-brand-cream"><BrandMark size={22} /></span>
             <span className="font-display font-semibold text-lg tracking-tight">Scholix</span>
           </Link>
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-white/60 mr-1">{user.firstName}</span>
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="text-xs text-white/60 mr-1 max-w-20 truncate">{user.firstName}</span>
             {/* Bell — mobile */}
             <div className="relative">
               <button
@@ -262,26 +251,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </span>
                 )}
               </button>
-              {showNotifications && (
-                <NotificationsPanel
-                  notifications={notifications}
-                  unreadCount={unreadCount}
-                  isLoading={notifsLoading}
-                  onMarkRead={markRead}
-                  onMarkAllRead={markAllRead}
-                  onDismiss={dismiss}
-                  onClose={() => setShowNotifications(false)}
-                />
-              )}
             </div>
             <button
               onClick={() => setShowReportModal(true)}
               className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors"
               title="Report Issue"
+              aria-label="Report Issue"
             >
               <Flag size={16} />
             </button>
-            <button onClick={handleLogout} className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors">
+            <button onClick={handleLogout} aria-label="Sign out" className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors">
               <LogOut size={16} />
             </button>
           </div>
@@ -310,25 +289,38 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </footer>
 
         {/* Bottom nav — mobile */}
-        <nav className="lg:hidden flex items-center border-t border-border bg-card px-2 py-1 shrink-0">
+        <nav aria-label="Mobile navigation" className="lg:hidden flex items-center overflow-x-auto overscroll-x-contain border-t border-border bg-card px-2 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] shrink-0">
           {navItems.map((item) => {
             const active = location === item.href || location.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-colors ${
+                aria-current={active ? "page" : undefined}
+                className={`flex-1 min-w-20 shrink-0 flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-colors ${
                   active ? "text-brand-teal" : "text-muted-foreground"
                 }`}
               >
                 {item.icon}
-                <span className="text-[10px] font-medium truncate">{item.label}</span>
+                <span className="text-[10px] font-medium max-w-20 truncate">{item.label}</span>
               </Link>
             );
           })}
         </nav>
       </div>
     </div>
+
+    {showNotifications && (
+      <NotificationsPanel
+        notifications={notifications}
+        unreadCount={unreadCount}
+        isLoading={notifsLoading}
+        onMarkRead={markRead}
+        onMarkAllRead={markAllRead}
+        onDismiss={dismiss}
+        onClose={() => setShowNotifications(false)}
+      />
+    )}
 
     {/* Report Issue Modal */}
     {showReportModal && <ReportIssueModal onClose={() => setShowReportModal(false)} />}

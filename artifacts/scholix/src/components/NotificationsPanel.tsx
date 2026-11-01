@@ -198,11 +198,11 @@ export default function NotificationsPanel({
       ref={panelRef}
       role="region"
       aria-label="Notifications"
-      className="fixed right-3 top-20 w-80 max-w-[calc(100vw-1.5rem)] bg-card border border-card-border rounded-2xl shadow-2xl z-50 overflow-y-auto overscroll-contain"
+      className="fixed right-3 top-20 w-80 max-w-[calc(100vw-1.5rem)] bg-card border border-card-border rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
       style={{ maxHeight: "calc(100dvh - 6rem)" }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <Bell size={15} className="text-foreground" />
           <span className="text-sm font-semibold text-foreground">Notifications</span>
@@ -225,6 +225,7 @@ export default function NotificationsPanel({
           )}
           <button
             onClick={onClose}
+            aria-label="Close notifications"
             className="p-1 rounded-lg hover:bg-muted transition-colors"
           >
             <X size={14} className="text-muted-foreground" />
@@ -234,9 +235,9 @@ export default function NotificationsPanel({
 
       {/* Action required banner */}
       {actionable.length > 0 && (
-        <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+        <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2 shrink-0">
           <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center shrink-0">
-            <span className="text-white text-[9px] font-bold">{actionable.length}</span>
+            <span className="text-amber-950 text-[9px] font-bold">{actionable.length}</span>
           </div>
           <p className="text-[11px] text-amber-800 font-medium">
             {actionable.length === 1 ? "1 action required" : `${actionable.length} actions required`}
@@ -245,7 +246,7 @@ export default function NotificationsPanel({
       )}
 
       {/* Body */}
-      <div className="overflow-y-auto overscroll-contain" style={{ maxHeight: "calc(100dvh - 220px)" }}>
+      <div data-notification-list className="min-h-0 overflow-y-auto overscroll-contain">
         {isLoading ? (
           <div className="space-y-1 p-2">
             {[1, 2, 3].map((i) => (

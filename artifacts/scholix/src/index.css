@@ -247,8 +247,11 @@
   .sx-spin-slow { animation: sx-spin-slow 40s linear infinite; }
   .sx-marquee { animation: sx-marquee 38s linear infinite; }
   @media (prefers-reduced-motion: reduce) {
-    .sx-float, .sx-spin-slow, .sx-marquee, .animate-pulse, .animate-bounce { animation: none !important; }
-    html { scroll-behavior: auto !important; }
+    *, *::before, *::after {
+      animation: none !important;
+      transition-duration: 0s !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
