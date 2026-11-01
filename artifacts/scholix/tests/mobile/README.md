@@ -7,7 +7,10 @@ npm_config_manage_package_manager_versions=false pnpm --filter @workspace/scholi
 MOBILE_TEST_BASE_URL=http://localhost:8080 npm_config_manage_package_manager_versions=false pnpm --filter @workspace/scholix test:mobile
 ```
 
-Use the frontend workflow's actual port if it differs, or its `.replit.dev` URL.
+Use the frontend workflow's actual localhost port if it differs (not the API
+server's port). External `.replit.dev` pages can inject a `replit-dev-banner`
+outside the app, which shifts viewport geometry and produces false layout
+failures. Run the viewport checks against the frontend server directly.
 On Replit the configuration uses the preinstalled system Chromium to avoid
 downloaded-browser library mismatches. Elsewhere it uses Playwright's installed
 Chromium; `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` can explicitly select a browser.

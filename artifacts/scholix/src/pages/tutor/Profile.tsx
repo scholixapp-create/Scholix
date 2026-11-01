@@ -44,7 +44,7 @@ export default function TutorProfile() {
   };
 
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
-  const profileUrl = tutorId ? `${window.location.origin}/tutors?id=${tutorId}` : null;
+  const profileUrl = tutorId ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/tutor/${tutorId}` : null;
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">

@@ -1,18 +1,11 @@
-import { useEffect, useState, useMemo } from "react";
+import { useMemo } from "react";
 import { Link, useRoute } from "wouter";
-import { useGetTutor, useGetTutorAvailability } from "@workspace/api-client-react";
+import { useGetTutor, useGetTutorAvailability, useListTutorReviews, getListTutorReviewsQueryKey } from "@workspace/api-client-react";
+import { withRedirect } from "@/lib/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { GraduationCap, ShieldCheck, Star, BookOpen, Clock, ArrowLeft, MapPin, Award, Monitor, Layers } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import TestModeBanner from "@/components/TestModeBanner";
-
-interface Review {
-  id: number;
-  authorId: number;
-  rating: number;
-  comment: string | null;
-  createdAt: string;
-}
 
 const MODE_LABELS: Record<string, string> = {
   online: "Online",
@@ -67,15 +60,10 @@ export default function TutorProfile() {
   const tutor = useGetTutor(tutorId);
   const availability = useGetTutorAvailability(tutorId);
 
-  const [reviews, setReviews] = useState<Review[]>([]);
-
-  useEffect(() => {
-    if (!tutorId) return;
-    fetch(`/api/tutors/${tutorId}/reviews`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setReviews(Array.isArray(data) ? data : []))
-      .catch(() => setReviews([]));
-  }, [tutorId]);
+  const reviewsQuery = useListTutorReviews(tutorId, {
+    query: { enabled: Number.isInteger(tutorId) && tutorId > 0, queryKey: getListTutorReviewsQueryKey(tutorId) },
+  });
+  const reviews = useMemo(() => reviewsQuery.data ?? [], [reviewsQuery.data]);
 
   const availabilityWindows = useMemo(() => {
     if (!availability.data) return [];
@@ -304,13 +292,15 @@ export default function TutorProfile() {
             ) : !user ? (
               <div className="space-y-3">
                 <Link
-                  href="/signup"
+                  href={withRedirect("/signup", `/parent/book/${tutorId}`)}
+                  data-testid="link-signup-to-book"
                   className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-primary text-white text-sm font-bold hover:opacity-90 transition-opacity"
                 >
                   Sign up to book
                 </Link>
                 <Link
-                  href="/login"
+                  href={withRedirect("/login", `/parent/book/${tutorId}`)}
+                  data-testid="link-login-to-book"
                   className="flex items-center justify-center w-full py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-600 hover:border-gray-300 transition-colors"
                 >
                   Already have an account? Log in

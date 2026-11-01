@@ -9,6 +9,99 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary List public reviews for a tutor
+ */
+export const listTutorReviewsPathTutorIdMax = 2147483647;
+
+
+
+export const ListTutorReviewsParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1).max(listTutorReviewsPathTutorIdMax)
+})
+
+export const listTutorReviewsResponseRatingMax = 5;
+
+
+
+export const ListTutorReviewsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "authorId": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "rating": zod.number().int().min(1).max(listTutorReviewsResponseRatingMax),
+  "comment": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+export const ListTutorReviewsResponse = zod.array(ListTutorReviewsResponseItem)
+
+
+/**
+ * @summary Get review eligibility and an existing review for the authenticated parent
+ */
+export const getSessionReviewPathSessionIdMax = 2147483647;
+
+
+
+export const GetSessionReviewParams = zod.object({
+  "sessionId": zod.coerce.number().int().min(1).max(getSessionReviewPathSessionIdMax)
+})
+
+export const getSessionReviewResponseReviewOneRatingMax = 5;
+
+
+
+export const GetSessionReviewResponse = zod.object({
+  "eligible": zod.boolean(),
+  "review": zod.union([zod.object({
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "authorId": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "rating": zod.number().int().min(1).max(getSessionReviewResponseReviewOneRatingMax),
+  "comment": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Submit one review for a completed session belonging to the authenticated parent
+ */
+export const createSessionReviewPathSessionIdMax = 2147483647;
+
+
+
+export const CreateSessionReviewParams = zod.object({
+  "sessionId": zod.coerce.number().int().min(1).max(createSessionReviewPathSessionIdMax)
+})
+
+export const createSessionReviewBodyRatingMax = 5;
+
+export const createSessionReviewBodyCommentMax = 2000;
+
+
+
+export const CreateSessionReviewBody = zod.object({
+  "rating": zod.number().int().min(1).max(createSessionReviewBodyRatingMax),
+  "comment": zod.string().max(createSessionReviewBodyCommentMax).optional()
+})
+
+export const createSessionReviewResponseRatingMax = 5;
+
+
+
+export const CreateSessionReviewResponse = zod.object({
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "authorId": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "rating": zod.number().int().min(1).max(createSessionReviewResponseRatingMax),
+  "comment": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

@@ -12,3 +12,4 @@
 - [Marketing accuracy](marketing-accuracy.md) — publish verified figures only; use product statements rather than invented metrics or testimonials.
 - [Protected document previews](protected-document-previews.md) — an authorized PDF response can still leave a blank browser tab; provide visible status and a download fallback.
 - [Scholix brand direction](brand-direction.md) — approved palette, user-supplied imagery, and homepage priorities for branding work.
+- [Review integrity](review-integrity.md) — serialized review writes avoid a new migration; future writers must share the lock or plan a history-preserving constraint.

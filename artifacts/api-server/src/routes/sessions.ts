@@ -534,7 +534,7 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
       type: "action_rate_session",
       title: "Rate your tutor",
       message: `${studentName}'s ${session.subject} session with ${tutorName} is done. How did it go?`,
-      actionUrl: "/parent/sessions",
+      actionUrl: `/parent/dashboard?reviewSession=${session.id}`,
       actionLabel: "Leave a review",
       emailSubject: `Session completed: ${session.subject}`,
       emailHtml: sessionCompletedEmailHtml({

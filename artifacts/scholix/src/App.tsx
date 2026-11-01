@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation, useSearch, Redirect } from "wouter";
+import { installHistoryTracking, legacyParentSessionsRedirect, legacyTutorRedirect, resolveSafeRedirect } from "@/lib/navigation";
 import { PublicNavigation } from "@/components/AccountNavigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -47,6 +48,8 @@ import AcademyArticle from "@/pages/tutor/AcademyArticle";
 import AdminAcademy from "@/pages/admin/Academy";
 import { Clock, XCircle, AlertTriangle } from "lucide-react";
 
+installHistoryTracking();
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -58,6 +61,8 @@ const queryClient = new QueryClient({
 
 function RequireAuth({ children, role }: { children: React.ReactNode; role?: UserRole | UserRole[] }) {
   const { user, isLoading } = useAuth();
+  const [location] = useLocation();
+  const search = useSearch();
 
   if (isLoading) {
     return (
@@ -68,7 +73,8 @@ function RequireAuth({ children, role }: { children: React.ReactNode; role?: Use
   }
 
   if (!user) {
-    return <Redirect to="/login" />;
+    const target = resolveSafeRedirect(search ? `${location}?${search}` : location);
+    return <Redirect to={target ? `/login?redirect=${encodeURIComponent(target)}` : "/login"} />;
   }
 
   if (role) {
@@ -221,9 +227,21 @@ function RequireTutorApproved({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function TutorsRoute() {
+  const search = useSearch();
+  const legacy = legacyTutorRedirect(search);
+  if (legacy) return <Redirect to={legacy} replace />;
+  return <TutorDirectory />;
+}
+
+function LegacyParentSessionsRoute() {
+  const search = useSearch();
+  return <Redirect to={legacyParentSessionsRedirect(search)} replace />;
+}
+
 function Router() {
   const [location] = useLocation();
-  const publicPage = ["/tutors", "/terms", "/privacy", "/tutor-agreement", "/tutor-code-of-conduct", "/login", "/signup", "/forgot-password", "/reset-password", "/tutor/onboarding"].includes(location)
+  const publicPage = ["/tutors", "/terms", "/privacy", "/tutor-agreement", "/tutor/code-of-conduct", "/login", "/signup", "/forgot-password", "/reset-password", "/tutor/onboarding"].includes(location)
     || /^\/tutor\/\d+$/.test(location) || /^\/profile\/\d+$/.test(location);
   return (
     <>
@@ -240,6 +258,7 @@ function Router() {
       <Route path="/privacy" component={Privacy} />
       <Route path="/tutor-agreement" component={TutorAgreementPage} />
       <Route path="/tutor/code-of-conduct" component={TutorCodeOfConduct} />
+      <Route path="/tutor-code-of-conduct"><Redirect to="/tutor/code-of-conduct" replace /></Route>
 
       {/* Tutor onboarding */}
       <Route path="/tutor/onboarding">
@@ -317,6 +336,11 @@ function Router() {
           <Layout><ParentDashboard /></Layout>
         </RequireAuth>
       </Route>
+      <Route path="/parent/sessions">
+        <RequireAuth role="parent">
+          <LegacyParentSessionsRoute />
+        </RequireAuth>
+      </Route>
       <Route path="/parent/tutors">
         <RequireAuth role="parent">
           <Layout><ParentTutors /></Layout>
@@ -346,7 +370,7 @@ function Router() {
       <Route path="/profile/:id" component={ProfileById} />
 
       {/* Public tutor directory */}
-      <Route path="/tutors" component={TutorDirectory} />
+      <Route path="/tutors" component={TutorsRoute} />
       <Route path="/tutor/:id" component={TutorProfile} />
 
       {/* Student routes */}

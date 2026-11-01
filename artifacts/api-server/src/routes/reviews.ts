@@ -1,91 +1,52 @@
-import { Router } from "express";
-import { db, reviewsTable, sessionsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { Router, type Response } from "express";
+import { db, reviewsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
+import { sessionReviewStore } from "../lib/sessionReviewStore";
+import { getParentReview, submitParentReview, serializeReview, reviewResourceId, ReviewError } from "../lib/sessionReviews";
 
 const router = Router();
 
-// GET /api/tutors/:tutorId/reviews
-router.get("/tutors/:tutorId/reviews", async (req, res) => {
-  const tutorId = parseInt(req.params.tutorId, 10);
-  if (isNaN(tutorId)) {
-    res.status(400).json({ error: "Invalid tutor ID" });
+function respondToError(error: unknown, res: Response) {
+  if (error instanceof ReviewError) {
+    res.status(error.status).json({ error: error.message });
     return;
   }
+  throw error;
+}
 
-  const reviews = await db
-    .select()
-    .from(reviewsTable)
-    .where(eq(reviewsTable.tutorId, tutorId))
-    .orderBy(reviewsTable.createdAt);
-
-  res.json(
-    reviews.map((r) => ({
-      id: r.id,
-      sessionId: r.sessionId,
-      authorId: r.authorId,
-      rating: r.rating,
-      comment: r.comment,
-      createdAt: r.createdAt.toISOString(),
-    }))
-  );
+// Public profiles intentionally expose reviews, never authentication data.
+router.get("/tutors/:tutorId/reviews", async (req, res) => {
+  try {
+    const tutorId = reviewResourceId(req.params.tutorId);
+    const reviews = await db.select().from(reviewsTable)
+      .where(eq(reviewsTable.tutorId, tutorId)).orderBy(reviewsTable.createdAt);
+    res.json(reviews.map(serializeReview));
+  } catch (error) {
+    respondToError(error, res);
+  }
 });
 
-// POST /api/sessions/:sessionId/reviews
-router.post("/sessions/:sessionId/reviews", async (req, res) => {
-  const sessionId = parseInt(req.params.sessionId, 10);
-  if (isNaN(sessionId)) {
-    res.status(400).json({ error: "Invalid session ID" });
-    return;
+router.get("/sessions/:sessionId/reviews", requireAuth, async (req, res) => {
+  try {
+    const state = await getParentReview(
+      sessionReviewStore, (req as AuthRequest).user, reviewResourceId(req.params.sessionId),
+    );
+    res.json({ eligible: state.eligible, review: state.review ? serializeReview(state.review) : null });
+  } catch (error) {
+    respondToError(error, res);
   }
+});
 
-  const { rating, comment, tutorId } = req.body as { rating?: number; comment?: string; tutorId?: number };
-  if (!rating || rating < 1 || rating > 5 || !tutorId) {
-    res.status(400).json({ error: "rating (1-5) and tutorId are required" });
-    return;
+router.post("/sessions/:sessionId/reviews", requireAuth, async (req, res) => {
+  try {
+    const review = await submitParentReview(
+      sessionReviewStore, (req as AuthRequest).user, reviewResourceId(req.params.sessionId), req.body,
+    );
+    res.status(201).json(serializeReview(review));
+  } catch (error) {
+    respondToError(error, res);
   }
-
-  const userId = (req as { user?: { id: number } }).user?.id;
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  // Check session exists and is completed
-  const [session] = await db
-    .select()
-    .from(sessionsTable)
-    .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.status, "completed")))
-    .limit(1);
-
-  if (!session) {
-    res.status(404).json({ error: "Session not found or not yet completed" });
-    return;
-  }
-
-  const [existing] = await db
-    .select()
-    .from(reviewsTable)
-    .where(and(eq(reviewsTable.sessionId, sessionId), eq(reviewsTable.authorId, userId)))
-    .limit(1);
-
-  if (existing) {
-    res.status(409).json({ error: "Review already submitted for this session" });
-    return;
-  }
-
-  const [review] = await db
-    .insert(reviewsTable)
-    .values({ sessionId, authorId: userId, tutorId, rating, comment: comment ?? null })
-    .returning();
-
-  res.status(201).json({
-    id: review.id,
-    sessionId: review.sessionId,
-    authorId: review.authorId,
-    rating: review.rating,
-    comment: review.comment,
-    createdAt: review.createdAt.toISOString(),
-  });
 });
 
 export default router;

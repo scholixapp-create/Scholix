@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { BrandMark } from "@/components/Brand";
 import { Link, useLocation, useSearch } from "wouter";
+import { postAuthDestination, resolveSafeRedirect, withRedirect } from "@/lib/navigation";
 import { useSignup } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { AlertCircle, Phone, Users, ShieldCheck, RefreshCw, ArrowLeft } from "lucide-react";
@@ -45,7 +46,8 @@ export default function Signup() {
   const search = useSearch();
   const { login } = useAuth();
   const signupMutation = useSignup();
-  const [role, setRole] = useState<Role>("tutor");
+  const redirectParam = new URLSearchParams(search).get("redirect");
+  const [role, setRole] = useState<Role>(resolveSafeRedirect(redirectParam) ? "parent" : "tutor");
   const [step, setStep] = useState<"details" | "otp">("details");
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
@@ -72,14 +74,6 @@ export default function Signup() {
   const [phoneError, setPhoneError] = useState("");
   const [error, setError] = useState("");
 
-  const getDashboard = (role: string) => {
-    switch (role) {
-      case "tutor": return "/tutor/dashboard";
-      case "parent": return "/parent/dashboard";
-      default: return "/";
-    }
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     const cleaned = raw.replace(/[^\d\s]/g, "");
@@ -89,7 +83,7 @@ export default function Signup() {
 
   const finishLogin = (user: any, token: string) => {
     login(user, token);
-    navigate(user.role === "tutor" ? "/tutor/onboarding" : getDashboard(user.role));
+    navigate(user.role === "tutor" ? "/tutor/onboarding" : postAuthDestination(redirectParam, user.role), { replace: true });
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -454,7 +448,7 @@ export default function Signup() {
           <div className="mt-4 pt-4 border-t border-border text-center">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/login" className="text-primary font-medium hover:underline">
+              <Link href={withRedirect("/login", redirectParam)} className="text-primary font-medium hover:underline" data-testid="link-login">
                 Sign in
               </Link>
             </p>

@@ -4,21 +4,14 @@ import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { AlertCircle, ShieldCheck, RefreshCw, ArrowLeft, FlaskConical, Users, MailX } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
-
-function getDashboard(role: string) {
-  switch (role) {
-    case "tutor": return "/tutor/dashboard";
-    case "parent": return "/parent/dashboard";
-    case "student": return "/student/dashboard";
-    case "admin": return "/admin/dashboard";
-    default: return "/";
-  }
-}
+import { postAuthDestination, withRedirect } from "@/lib/navigation";
 
 export default function Login() {
   const [, navigate] = useLocation();
   const search = useSearch();
-  const showStudentNote = new URLSearchParams(search).get("student") === "1";
+  const searchParams = new URLSearchParams(search);
+  const showStudentNote = searchParams.get("student") === "1";
+  const redirectParam = searchParams.get("redirect");
   const { login } = useAuth();
 
   // Login step state
@@ -103,7 +96,7 @@ export default function Login() {
         return;
       }
       login(data.user, data.token);
-      navigate(getDashboard(data.user.role));
+      navigate(postAuthDestination(redirectParam, data.user.role), { replace: true });
     } catch {
       setError("Unable to reach the server. Please try again.");
     } finally {
@@ -344,7 +337,7 @@ export default function Login() {
             <div className="mt-4 pt-4 border-t border-border text-center">
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link href="/signup" className="text-primary font-medium hover:underline">
+                <Link href={withRedirect("/signup", redirectParam)} className="text-primary font-medium hover:underline" data-testid="link-signup">
                   Sign up
                 </Link>
               </p>

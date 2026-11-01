@@ -1,8 +1,10 @@
 import { useAuth } from "@/context/AuthContext";
 import { useListSessions, useGetSessionSummary } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
+import { useEffect, useMemo, useRef, useState } from "react";
+import SessionReviewDialog from "@/components/SessionReviewDialog";
 import StatusBadge from "@/components/StatusBadge";
-import { Calendar, GraduationCap, Bell, ChevronRight } from "lucide-react";
+import { Calendar, GraduationCap, Bell, ChevronRight, Star, AlertCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 export default function ParentDashboard() {
@@ -14,6 +16,47 @@ export default function ParentDashboard() {
     ?.filter((s) => s.status === "scheduled")
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
     .slice(0, 5) ?? [];
+
+  const completed = useMemo(
+    () => (sessions.data ?? [])
+      .filter((s) => s.status === "completed")
+      .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()),
+    [sessions.data],
+  );
+  const [showAllCompleted, setShowAllCompleted] = useState(false);
+  const visibleCompleted = showAllCompleted ? completed : completed.slice(0, 3);
+
+  const [, navigate] = useLocation();
+  const search = useSearch();
+  const [reviewSessionId, setReviewSessionId] = useState<number | null>(null);
+  const [deepLinkError, setDeepLinkError] = useState("");
+  const handledDeepLink = useRef<string | null>(null);
+  const reviewSession = completed.find((s) => s.id === reviewSessionId) ?? null;
+
+  useEffect(() => {
+    const raw = new URLSearchParams(search).get("reviewSession");
+    if (!raw || handledDeepLink.current === raw || !sessions.data) return;
+    handledDeepLink.current = raw;
+    const id = /^\d{1,9}$/.test(raw) ? Number(raw) : NaN;
+    const match = sessions.data.find((s) => s.id === id);
+    if (match && match.status === "completed") {
+      setDeepLinkError("");
+      setReviewSessionId(match.id);
+    } else {
+      setDeepLinkError("That session is not available to review. It may not be completed yet or may belong to another account.");
+    }
+  }, [search, sessions.data]);
+
+  const completedSectionRef = useRef<HTMLDivElement | null>(null);
+  const wantsReviewSection = new URLSearchParams(search).get("section") === "reviews";
+  useEffect(() => {
+    if (wantsReviewSection && sessions.data) completedSectionRef.current?.scrollIntoView({ block: "start" });
+  }, [wantsReviewSection, sessions.data]);
+
+  const closeReview = () => {
+    setReviewSessionId(null);
+    if (new URLSearchParams(search).has("reviewSession")) navigate("/parent/dashboard", { replace: true });
+  };
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
@@ -101,6 +144,76 @@ export default function ParentDashboard() {
           </div>
         )}
       </div>
+
+      {/* Completed sessions and reviews */}
+      <div className="mb-6 scroll-mt-4" id="completed-sessions" ref={completedSectionRef} data-testid="section-completed-sessions">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground">Completed sessions</h2>
+          {completed.length > 0 && <span className="text-xs text-muted-foreground">{completed.length} total</span>}
+        </div>
+
+        {deepLinkError && (
+          <div className="flex items-start gap-2 p-3 mb-3 rounded-lg bg-destructive/10 text-destructive text-sm" role="alert" data-testid="text-review-deeplink-error">
+            <AlertCircle size={14} className="shrink-0 mt-0.5" />
+            <span className="flex-1">{deepLinkError}</span>
+            <button type="button" onClick={() => { setDeepLinkError(""); navigate("/parent/dashboard", { replace: true }); }} className="text-xs font-semibold underline" data-testid="button-dismiss-deeplink-error">
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {sessions.isLoading ? (
+          <div className="space-y-2">
+            {[1, 2].map((i) => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}
+          </div>
+        ) : sessions.isError ? (
+          <div className="bg-card border border-card-border rounded-xl p-6 text-center">
+            <p className="text-sm text-muted-foreground">We could not load your sessions.</p>
+            <button type="button" onClick={() => sessions.refetch()} className="mt-3 px-4 py-2 rounded-lg border border-border text-xs font-semibold hover:bg-muted transition-colors" data-testid="button-sessions-retry">
+              Try again
+            </button>
+          </div>
+        ) : completed.length === 0 ? (
+          <div className="bg-card border border-card-border rounded-xl p-6 text-center">
+            <Star size={24} className="text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Completed sessions will appear here for you to review.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {visibleCompleted.map((session) => (
+              <div key={session.id} className="bg-card border border-card-border rounded-xl p-4 flex items-center justify-between gap-3" data-testid={`card-completed-session-${session.id}`}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{session.subject}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">with {session.tutorName}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{format(parseISO(session.scheduledAt), "EEE, MMM d")}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setDeepLinkError(""); setReviewSessionId(session.id); }}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:border-brand-teal hover:text-brand-teal transition-colors"
+                  aria-label={`Review ${session.subject} with ${session.tutorName ?? "tutor"}`}
+                  data-testid={`button-review-session-${session.id}`}
+                >
+                  <Star size={13} /> Review
+                </button>
+              </div>
+            ))}
+            {completed.length > 3 && (
+              <button
+                type="button"
+                onClick={() => setShowAllCompleted((v) => !v)}
+                aria-expanded={showAllCompleted}
+                className="w-full py-2 rounded-lg text-xs font-semibold text-brand-teal hover:bg-muted transition-colors"
+                data-testid="button-toggle-completed"
+              >
+                {showAllCompleted ? "Show fewer" : `Show all ${completed.length} completed sessions`}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {reviewSession && <SessionReviewDialog session={reviewSession} onClose={closeReview} />}
 
       {/* Manage notifications CTA */}
       <Link

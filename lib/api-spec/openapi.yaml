@@ -25,6 +25,62 @@ tags:
     description: Admin operations
 
 paths:
+  /tutors/{tutorId}/reviews:
+    get:
+      operationId: listTutorReviews
+      tags: [tutors]
+      summary: List public reviews for a tutor
+      parameters:
+        - { name: tutorId, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }
+      responses:
+        "200":
+          description: Tutor reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SessionReview" }
+  /sessions/{sessionId}/reviews:
+    get:
+      operationId: getSessionReview
+      security: [{ bearerAuth: [] }]
+      tags: [sessions]
+      summary: Get review eligibility and an existing review for the authenticated parent
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }
+      responses:
+        "200":
+          description: Review state for an owned session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionReviewState"
+        "401": { description: Authentication required }
+        "403": { description: Parent account required }
+        "404": { description: Session unavailable to this parent }
+    post:
+      operationId: createSessionReview
+      security: [{ bearerAuth: [] }]
+      tags: [sessions]
+      summary: Submit one review for a completed session belonging to the authenticated parent
+      parameters:
+        - { name: sessionId, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateSessionReviewBody" }
+      responses:
+        "201":
+          description: Review submitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionReview" }
+        "400": { description: "Invalid rating, comment or session ID" }
+        "401": { description: Authentication required }
+        "403": { description: Parent account required }
+        "404": { description: Session unavailable to this parent }
+        "409": { description: Session incomplete or already reviewed }
   /healthz:
     get:
       operationId: healthCheck
@@ -798,6 +854,11 @@ paths:
                 $ref: "#/components/schemas/SessionSummary"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     HealthStatus:
       type: object
@@ -1342,3 +1403,32 @@ components:
         total:
           type: integer
       required: [scheduled, completed, cancelled, total]
+
+    SessionReview:
+      type: object
+      required: [id, sessionId, authorId, tutorId, rating, comment, createdAt]
+      properties:
+        id: { type: integer }
+        sessionId: { type: integer }
+        authorId: { type: integer }
+        tutorId: { type: integer }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    SessionReviewState:
+      type: object
+      required: [eligible, review]
+      properties:
+        eligible: { type: boolean }
+        review:
+          allOf: [{ $ref: "#/components/schemas/SessionReview" }]
+          nullable: true
+
+    CreateSessionReviewBody:
+      type: object
+      additionalProperties: false
+      required: [rating]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, maxLength: 2000 }

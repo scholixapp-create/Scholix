@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { goBackOrHome } from "@/lib/navigation";
 import { BookOpen, ArrowLeft, Home } from "lucide-react";
 
 export default function NotFound() {
@@ -18,7 +19,8 @@ export default function NotFound() {
 
       <div className="flex flex-col sm:flex-row gap-3">
         <button
-          onClick={() => navigate(-1 as unknown as string)}
+          onClick={() => goBackOrHome(navigate)}
+          data-testid="button-go-back"
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
         >
           <ArrowLeft size={15} />

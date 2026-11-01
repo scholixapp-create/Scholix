@@ -9,6 +9,14 @@ import NotificationsPanel from "@/components/NotificationsPanel";
 import TestModeBanner from "@/components/TestModeBanner";
 import ReportIssueModal from "@/components/ReportIssueModal";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   LayoutDashboard,
   Calendar,
   Users,
@@ -86,6 +94,13 @@ function getNav(role: string): NavItem[] {
     default: return [];
   }
 }
+
+// Shared account destinations for the desktop sidebar footer and mobile account menu.
+const ACCOUNT_LINKS: NavItem[] = [
+  { href: "/profile/me", label: "Profile", icon: <UserCircle size={18} /> },
+  { href: "/settings", label: "Settings", icon: <Settings size={18} /> },
+  { href: "/about", label: "About Scholix", icon: <Info size={18} /> },
+];
 
 function getRoleLabel(role: string) {
   switch (role) {
@@ -179,35 +194,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="px-3 py-4 border-t border-sidebar-border space-y-0.5">
-          <Link
-            href="/profile/me"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              location === "/profile/me"
-                ? "bg-sidebar-primary text-white shadow-[inset_3px_0_0_#d4a850]"
-                : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent"
-            }`}
-          >
-            <UserCircle size={18} />
-            Profile
-          </Link>
-          <Link
-            href="/settings"
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              location === "/settings"
-                ? "bg-sidebar-primary text-white shadow-[inset_3px_0_0_#d4a850]"
-                : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent"
-            }`}
-          >
-            <Settings size={18} />
-            Settings
-          </Link>
-          <Link
-            href="/about"
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent transition-colors"
-          >
-            <Info size={18} />
-            About Scholix
-          </Link>
+          {ACCOUNT_LINKS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location === item.href
+                  ? "bg-sidebar-primary text-white shadow-[inset_3px_0_0_#d4a850]"
+                  : "text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent"
+              }`}
+            >
+              {item.icon}
+              {item.label}
+            </Link>
+          ))}
           <button
             onClick={() => setShowReportModal(true)}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent transition-colors"
@@ -260,9 +260,35 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               <Flag size={16} />
             </button>
-            <button onClick={handleLogout} aria-label="Sign out" className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors">
-              <LogOut size={16} />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Account menu"
+                data-testid="button-account-menu"
+                className="p-1.5 rounded-md hover:bg-sidebar-accent transition-colors"
+              >
+                <UserCircle size={16} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 max-w-[calc(100vw-1rem)]">
+                <DropdownMenuLabel className="truncate">
+                  <span className="block text-[10px] uppercase tracking-[0.16em] text-brand-gold">{getRoleLabel(user.role)}</span>
+                  {user.firstName} {user.lastName}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {ACCOUNT_LINKS.map((item) => (
+                  <DropdownMenuItem key={item.href} asChild>
+                    <Link href={item.href} className="flex items-center gap-2" data-testid={`menu-account-${item.href.replace(/\W+/g, "-").replace(/^-|-$/g, "")}`}>
+                      {item.icon}
+                      {item.label}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleLogout} className="flex items-center gap-2" data-testid="menu-account-sign-out">
+                  <LogOut size={18} />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 

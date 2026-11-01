@@ -395,6 +395,36 @@ export interface SessionSummary {
   total: number;
 }
 
+export interface SessionReview {
+  id: number;
+  sessionId: number;
+  authorId: number;
+  tutorId: number;
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  /** @nullable */
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface SessionReviewState {
+  eligible: boolean;
+  review: SessionReview | null;
+}
+
+export interface CreateSessionReviewBody {
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  /** @maxLength 2000 */
+  comment?: string;
+}
+
 export type GetTutorAvailableSlotsParams = {
 /**
  * YYYY-MM-DD
