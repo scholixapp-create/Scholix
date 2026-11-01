@@ -8,11 +8,11 @@ import { requireAdmin, requireAuth, type AuthRequest } from "../lib/authMiddlewa
 import { createNotification } from "../lib/notify";
 import { verificationInfoRequestedEmailHtml } from "../lib/email";
 import { config } from "../lib/config";
+import { prepareUploadsDirectory } from "../lib/uploadStorage";
 
 const router = Router();
 
-const uploadsDir = path.resolve(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+const uploadsDir = prepareUploadsDirectory();
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
