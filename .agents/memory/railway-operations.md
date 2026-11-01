@@ -20,3 +20,9 @@ Preserve the existing sleeping flag explicitly when updating these Railway servi
 **Why:** Updating only health checks and watch patterns was rejected with a requirement that sleeping remain enabled; passing the already-enabled sleeping flag explicitly allowed the update.
 
 **How to apply:** Read current settings first, retain `sleepApplication: true` where already enabled, and do not interpret this tool validation error as permission to change service capacity or billing.
+
+Keep the tutor-document volume mounted at the legacy API uploads directory unless a deliberate file migration is planned.
+
+**Why:** The mount location was chosen to keep both the previously deployed API and the new mount-aware API compatible during rollout. A different mount location would leave the old API writing ephemeral files between deployment steps. The owner explicitly accepted possible re-uploads for the initial volume attachment, not for every future release.
+
+**How to apply:** Inspect the actual Railway mount before changing it. Preserve existing bytes and private admin-authorized delivery; changing a path or attaching a fresh volume does not migrate files. Do not delete or replace the volume as part of ordinary code deployment.
