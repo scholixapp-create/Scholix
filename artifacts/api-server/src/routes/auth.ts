@@ -6,7 +6,13 @@ import bcrypt from "bcrypt";
 import { LoginBody, SignupBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/authMiddleware";
 import { generateOtp, issueAccessToken } from "../lib/authTokens";
-import { sendEmail, passwordResetEmailHtml, otpEmailHtml, accountDeletionConfirmEmailHtml } from "../lib/email";
+import {
+  sendEmail,
+  passwordResetEmailHtml,
+  otpEmailHtml,
+  accountDeletionConfirmEmailHtml,
+  accountDeletionAdminEmailHtml,
+} from "../lib/email";
 import { config } from "../lib/config";
 import { passwordResetLink } from "../lib/passwordResetLink";
 import { logger } from "../lib/logger";
@@ -542,7 +548,12 @@ router.post("/auth/request-deletion", requireAuth, async (req, res) => {
     await sendEmail({
       to: adminEmail,
       subject: "Account deletion request: Scholix",
-      html: `<p>User <strong>${user.firstName} ${user.lastName}</strong> (${user.email}) has requested account deletion.</p>${reason ? `<p>Reason: ${reason}</p>` : ""}`,
+      html: accountDeletionAdminEmailHtml({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        ...(reason ? { reason } : {}),
+      }),
     });
   }
 

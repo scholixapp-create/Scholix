@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db, reportsTable, usersTable, sessionsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/authMiddleware";
-import { sendEmail } from "../lib/email";
+import { adminReportEmailHtml, sendEmail } from "../lib/email";
 
 const router = Router();
 
@@ -42,15 +42,14 @@ router.post("/reports", requireAuth, async (req, res) => {
     await sendEmail({
       to: adminEmail,
       subject: `New ${categoryLabel} report: Scholix`,
-      html: `
-        <p><strong>New report submitted on Scholix</strong></p>
-        <p><strong>Category:</strong> ${categoryLabel}</p>
-        <p><strong>Reporter:</strong> ${user.firstName} ${user.lastName} (${user.email})</p>
-        ${reportedUserId ? `<p><strong>Reported user ID:</strong> ${reportedUserId}</p>` : ""}
-        ${sessionId ? `<p><strong>Session ID:</strong> ${sessionId}</p>` : ""}
-        <p><strong>Description:</strong><br/>${message.trim()}</p>
-        <p>Log in to the Scholix admin panel to review this report.</p>
-      `,
+      html: adminReportEmailHtml({
+        category: categoryLabel,
+        reporterName: `${user.firstName} ${user.lastName}`,
+        reporterEmail: user.email,
+        ...(reportedUserId ? { reportedUserId: Number(reportedUserId) } : {}),
+        ...(sessionId ? { sessionId: Number(sessionId) } : {}),
+        description: message.trim(),
+      }),
     });
   }
 

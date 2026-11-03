@@ -320,6 +320,35 @@ export interface SessionWithInvoice {
   invoice: Invoice;
 }
 
+export interface ParentInvoiceSummary {
+  id: number;
+  invoiceNumber: string;
+  sessionId: number;
+  totalAmount: number;
+  generatedAt: string;
+  tutorName: string;
+  studentName: string;
+  subject: string;
+  scheduledAt: string;
+  durationMinutes: number;
+}
+
+export interface TutorInvoiceSummary {
+  id: number;
+  invoiceNumber: string;
+  sessionId: number;
+  totalAmount: number;
+  platformCommission: number;
+  tutorEarnings: number;
+  commissionRate: number;
+  commissionTier: string;
+  generatedAt: string;
+  studentName: string;
+  subject: string;
+  scheduledAt: string;
+  durationMinutes: number;
+}
+
 export type PaymentStatus = typeof PaymentStatus[keyof typeof PaymentStatus];
 
 
@@ -450,6 +479,11 @@ export const ListSessionsStatus = {
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;
+
+export type ListInvoicesParams = {
+parentId?: number;
+tutorId?: number;
+};
 
 export type ListPaymentsParams = {
 sessionId?: number;

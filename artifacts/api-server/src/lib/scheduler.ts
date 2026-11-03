@@ -1,6 +1,7 @@
 import { db, sessionsTable, tutorsTable, studentsTable, usersTable } from "@workspace/db";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { createNotification } from "./notify";
+import { sessionReminderEmailHtml } from "./email";
 import { logger } from "./logger";
 
 function formatDate(d: Date): string {
@@ -33,12 +34,15 @@ export async function sendSessionReminders(): Promise<void> {
         subject: sessionsTable.subject,
         durationMinutes: sessionsTable.durationMinutes,
         tutorUserId: tutorsTable.userId,
+        tutorFirstName: usersTable.firstName,
+        tutorLastName: usersTable.lastName,
         studentUserId: studentsTable.userId,
         studentFirstName: studentsTable.firstName,
         studentLastName: studentsTable.lastName,
       })
       .from(sessionsTable)
       .innerJoin(tutorsTable, eq(sessionsTable.tutorId, tutorsTable.id))
+      .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
       .innerJoin(studentsTable, eq(sessionsTable.studentId, studentsTable.id))
       .where(
         and(
@@ -63,19 +67,15 @@ export async function sendSessionReminders(): Promise<void> {
         title: "Session tomorrow",
         message: `Reminder: you have a ${session.subject} session with ${session.studentFirstName} ${session.studentLastName} tomorrow at ${timeStr}.`,
         emailSubject: `Reminder: ${session.subject} session tomorrow`,
-        emailHtml: `
-          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
-            <h2 style="color:#1e3a5f;margin-bottom:8px">Session Reminder</h2>
-            <p style="color:#374151;margin-bottom:16px">
-              You have an upcoming session scheduled for <strong>${dateStr}</strong> at <strong>${timeStr}</strong>.
-            </p>
-            <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
-              <tr><td style="padding:8px 0;color:#6b7280;font-size:14px">Student</td><td style="padding:8px 0;font-size:14px;font-weight:600">${session.studentFirstName} ${session.studentLastName}</td></tr>
-              <tr><td style="padding:8px 0;color:#6b7280;font-size:14px">Subject</td><td style="padding:8px 0;font-size:14px;font-weight:600">${session.subject}</td></tr>
-              <tr><td style="padding:8px 0;color:#6b7280;font-size:14px">Duration</td><td style="padding:8px 0;font-size:14px;font-weight:600">${session.durationMinutes} minutes</td></tr>
-            </table>
-            <p style="color:#6b7280;font-size:13px">Scholix Tutoring Platform</p>
-          </div>`,
+        emailHtml: sessionReminderEmailHtml({
+          recipientName: session.tutorFirstName,
+          tutorName: `${session.tutorFirstName} ${session.tutorLastName}`,
+          studentName: `${session.studentFirstName} ${session.studentLastName}`,
+          subject: session.subject,
+          date: dateStr,
+          time: timeStr,
+          duration: session.durationMinutes,
+        }),
       });
 
       if (session.studentUserId != null) {
@@ -85,15 +85,15 @@ export async function sendSessionReminders(): Promise<void> {
           title: "Session tomorrow",
           message: `Reminder: you have a ${session.subject} session tomorrow at ${timeStr}. Don't forget to prepare!`,
           emailSubject: `Reminder: ${session.subject} session tomorrow`,
-          emailHtml: `
-            <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
-              <h2 style="color:#1e3a5f;margin-bottom:8px">Session Reminder</h2>
-              <p style="color:#374151;margin-bottom:16px">
-                You have an upcoming <strong>${session.subject}</strong> session scheduled for <strong>${dateStr}</strong> at <strong>${timeStr}</strong>.
-              </p>
-              <p style="color:#374151;margin-bottom:24px">Make sure you're ready to go. Have your notes and materials prepared ahead of time!</p>
-              <p style="color:#6b7280;font-size:13px">Scholix Tutoring Platform</p>
-            </div>`,
+          emailHtml: sessionReminderEmailHtml({
+            recipientName: session.studentFirstName,
+            tutorName: `${session.tutorFirstName} ${session.tutorLastName}`,
+            studentName: `${session.studentFirstName} ${session.studentLastName}`,
+            subject: session.subject,
+            date: dateStr,
+            time: timeStr,
+            duration: session.durationMinutes,
+          }),
         });
       }
 

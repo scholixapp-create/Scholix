@@ -669,6 +669,58 @@ export const CancelSessionResponse = zod.object({
 
 
 /**
+ * Parent and tutor IDs are accepted for compatibility but must match the authenticated account. Omitting them returns the current account's invoices.
+ * @summary List invoices belonging to the authenticated parent or tutor
+ */
+export const ListInvoicesQueryParams = zod.object({
+  "parentId": zod.coerce.number().int().optional(),
+  "tutorId": zod.coerce.number().int().optional()
+})
+
+export const ListInvoicesResponseItem = zod.union([zod.object({
+  "id": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "sessionId": zod.number().int(),
+  "totalAmount": zod.number(),
+  "generatedAt": zod.string(),
+  "tutorName": zod.string(),
+  "studentName": zod.string(),
+  "subject": zod.string(),
+  "scheduledAt": zod.string(),
+  "durationMinutes": zod.number().int()
+}),zod.object({
+  "id": zod.number().int(),
+  "invoiceNumber": zod.string(),
+  "sessionId": zod.number().int(),
+  "totalAmount": zod.number(),
+  "platformCommission": zod.number(),
+  "tutorEarnings": zod.number(),
+  "commissionRate": zod.number(),
+  "commissionTier": zod.string(),
+  "generatedAt": zod.string(),
+  "studentName": zod.string(),
+  "subject": zod.string(),
+  "scheduledAt": zod.string(),
+  "durationMinutes": zod.number().int()
+})])
+export const ListInvoicesResponse = zod.array(ListInvoicesResponseItem)
+
+
+/**
+ * @summary Download an invoice PDF owned by the authenticated account
+ */
+export const downloadInvoicePdfPathInvoiceIdMax = 2147483647;
+
+
+
+export const DownloadInvoicePdfParams = zod.object({
+  "invoiceId": zod.coerce.number().int().min(1).max(downloadInvoicePdfPathInvoiceIdMax)
+})
+
+export const DownloadInvoicePdfResponse = zod.unknown()
+
+
+/**
  * @summary Simulate a payment for a session
  */
 export const SimulatePaymentBody = zod.object({

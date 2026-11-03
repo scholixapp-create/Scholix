@@ -127,18 +127,44 @@ export async function sendEmail(payload: EmailPayload): Promise<SendEmailResult>
   }
 }
 
-function emailWrapper(headerColor: string, headerText: string, body: string) {
+const EMAIL_PALETTE = {
+  cream: "#faf7f0",
+  navy: "#0f2747",
+  turquoise: "#0e8b6b",
+  gold: "#d4a850",
+  ink: "#25364a",
+  muted: "#607086",
+  border: "#e6e0d5",
+  white: "#ffffff",
+} as const;
+
+function emailWrapper(headerText: string, body: string) {
+  const title = escapeHtml(headerText);
   return `
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px;margin:0 auto;padding:32px 20px;background:#f1f5f9">
-      <div style="background:${headerColor};border-radius:14px;padding:28px 24px;margin-bottom:20px;text-align:center">
-        <h1 style="color:#fff;margin:0;font-size:20px;font-weight:700;letter-spacing:-0.3px">${headerText}</h1>
-      </div>
-      <div style="background:#fff;border-radius:14px;padding:28px 24px;border:1px solid #e2e8f0">
-        ${body}
-      </div>
-      <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:20px;margin-bottom:0">
-        © Scholix Tutoring Platform · You're receiving this because you have email notifications enabled.
-      </p>
+    <div style="margin:0;padding:24px 12px;background:${EMAIL_PALETTE.cream};font-family:Arial,Helvetica,sans-serif;color:${EMAIL_PALETTE.ink}">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;margin:0 auto;border-collapse:separate;border-spacing:0">
+        <tr>
+          <td align="center" style="padding:22px 20px 20px;background:${EMAIL_PALETTE.navy};border-radius:14px 14px 0 0">
+            <p style="margin:0 0 8px;color:${EMAIL_PALETTE.white};font-size:22px;font-weight:700;letter-spacing:.2px">
+              <span style="color:${EMAIL_PALETTE.gold}">★</span> Scholix
+            </p>
+            <h1 style="margin:0;color:${EMAIL_PALETTE.white};font-size:18px;line-height:1.35;font-weight:700">${title}</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="height:4px;background:${EMAIL_PALETTE.turquoise};font-size:0;line-height:0">&nbsp;</td>
+        </tr>
+        <tr>
+          <td style="padding:24px;background:${EMAIL_PALETTE.white};border:1px solid ${EMAIL_PALETTE.border};border-top:0;border-radius:0 0 14px 14px">
+            <div style="font-size:15px;line-height:1.6;color:${EMAIL_PALETTE.ink}">${body}</div>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:16px 10px 0;color:${EMAIL_PALETTE.muted};font-size:12px;line-height:1.5">
+            Scholix automated email · Sign in to your account for details.
+          </td>
+        </tr>
+      </table>
     </div>
   `;
 }
@@ -147,9 +173,9 @@ function detailsTable(rows: { label: string; value: string; accent?: boolean }[]
   return `
     <table style="width:100%;border-collapse:collapse;margin:16px 0">
       ${rows.map((r, i) => `
-        <tr style="${i > 0 ? "border-top:1px solid #f1f5f9" : ""}">
-          <td style="padding:9px 0;color:#64748b;font-size:14px">${r.label}</td>
-          <td style="padding:9px 0;font-weight:600;color:${r.accent ? "#2563eb" : "#0f172a"};text-align:right;font-size:14px">${r.value}</td>
+        <tr style="${i > 0 ? `border-top:1px solid ${EMAIL_PALETTE.cream}` : ""}">
+          <td style="padding:9px 0;color:${EMAIL_PALETTE.muted};font-size:14px">${escapeHtml(r.label)}</td>
+          <td style="padding:9px 0;font-weight:600;color:${r.accent ? EMAIL_PALETTE.turquoise : EMAIL_PALETTE.navy};text-align:right;font-size:14px">${escapeHtml(r.value)}</td>
         </tr>
       `).join("")}
     </table>
@@ -172,19 +198,19 @@ export function verificationInfoRequestedEmailHtml(opts: {
 }) {
   const recipientName = escapeHtml(opts.recipientName);
   const notes = opts.notes?.trim()
-    ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin:16px 0;color:#334155;font-size:14px;line-height:1.5;white-space:pre-wrap">${escapeHtml(opts.notes.trim())}</div>`
+    ? `<div style="background:${EMAIL_PALETTE.cream};border:1px solid ${EMAIL_PALETTE.border};border-radius:8px;padding:14px;margin:16px 0;color:${EMAIL_PALETTE.ink};font-size:14px;line-height:1.5;white-space:pre-wrap">${escapeHtml(opts.notes.trim())}</div>`
     : "";
   const actionUrl = escapeHtml(opts.actionUrl);
   const body = `
-    <p style="color:#374151;margin-top:0;margin-bottom:4px">Hi <strong>${recipientName}</strong>,</p>
-    <p style="color:#64748b;margin-top:0;margin-bottom:0">Our verification team needs some more information before we can complete your tutor application.</p>
+    <p style="color:${EMAIL_PALETTE.ink};margin-top:0;margin-bottom:4px">Hi <strong>${recipientName}</strong>,</p>
+    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:0">Our verification team needs some more information before we can complete your tutor application.</p>
     ${notes}
     <p style="margin:20px 0 0">
-      <a href="${actionUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:600">Update your application</a>
+      <a href="${actionUrl}" style="display:inline-block;background:${EMAIL_PALETTE.turquoise};color:#fff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:600">Update your application</a>
     </p>
-    <p style="color:#64748b;font-size:13px;margin:16px 0 0">You can also sign in to Scholix and open your verification page.</p>
+    <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin:16px 0 0">You can also sign in to Scholix and open your verification page.</p>
   `;
-  return emailWrapper("#2563eb", "More information required", body);
+  return emailWrapper("More information required", body);
 }
 
 export function sessionBookedEmailHtml(opts: {
@@ -196,9 +222,10 @@ export function sessionBookedEmailHtml(opts: {
   duration: number;
   amount: number;
 }) {
+  const recipientName = escapeHtml(opts.recipientName);
   const body = `
-    <p style="color:#374151;margin-top:0;margin-bottom:4px">Hi <strong>${opts.recipientName}</strong>,</p>
-    <p style="color:#64748b;margin-top:0;margin-bottom:0">A tutoring session has been confirmed.</p>
+    <p style="color:${EMAIL_PALETTE.ink};margin-top:0;margin-bottom:4px">Hi <strong>${recipientName}</strong>,</p>
+    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:0">A tutoring session has been confirmed.</p>
     ${detailsTable([
       { label: "Student", value: opts.studentName },
       { label: "Tutor", value: opts.tutorName },
@@ -207,9 +234,9 @@ export function sessionBookedEmailHtml(opts: {
       { label: "Duration", value: `${opts.duration} min` },
       { label: "Amount", value: `$${opts.amount.toFixed(2)}`, accent: true },
     ])}
-    <p style="color:#64748b;font-size:13px;margin-bottom:0">Log in to Scholix to view your session details.</p>
+    <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin-bottom:0">Log in to Scholix to view your session details.</p>
   `;
-  return emailWrapper("#2563eb", "📚 Session Booked", body);
+  return emailWrapper("Session booked", body);
 }
 
 export function sessionReminderEmailHtml(opts: {
@@ -221,9 +248,10 @@ export function sessionReminderEmailHtml(opts: {
   time: string;
   duration: number;
 }) {
+  const recipientName = escapeHtml(opts.recipientName);
   const body = `
-    <p style="color:#374151;margin-top:0;margin-bottom:4px">Hi <strong>${opts.recipientName}</strong>,</p>
-    <p style="color:#64748b;margin-top:0;margin-bottom:0">You have a session coming up <strong>tomorrow</strong>.</p>
+    <p style="color:${EMAIL_PALETTE.ink};margin-top:0;margin-bottom:4px">Hi <strong>${recipientName}</strong>,</p>
+    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:0">You have a session coming up <strong>tomorrow</strong>.</p>
     ${detailsTable([
       { label: "Student", value: opts.studentName },
       { label: "Tutor", value: opts.tutorName },
@@ -232,9 +260,9 @@ export function sessionReminderEmailHtml(opts: {
       { label: "Time", value: opts.time },
       { label: "Duration", value: `${opts.duration} min` },
     ])}
-    <p style="color:#64748b;font-size:13px;margin-bottom:0">Make sure you're prepared and ready to go!</p>
+    <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin-bottom:0">Make sure you're prepared and ready to go!</p>
   `;
-  return emailWrapper("#7c3aed", "🔔 Session Tomorrow", body);
+  return emailWrapper("Session tomorrow", body);
 }
 
 export function sessionCompletedEmailHtml(opts: {
@@ -254,14 +282,15 @@ export function sessionCompletedEmailHtml(opts: {
     : [{ label: "Total amount", value: `$${opts.totalAmount.toFixed(2)}`, accent: true }];
 
   const freeTag = opts.isCommissionFree
-    ? `<div style="background:#d1fae5;border:1px solid #a7f3d0;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#065f46;font-weight:500">
-        ✨ Platform fee waived. You keep 100% of this session.
+    ? `<div style="background:${EMAIL_PALETTE.cream};border:1px solid ${EMAIL_PALETTE.gold};border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:${EMAIL_PALETTE.navy};font-weight:500">
+        Platform fee waived. You keep 100% of this session.
       </div>`
     : "";
 
+  const recipientName = escapeHtml(opts.recipientName);
   const body = `
-    <p style="color:#374151;margin-top:0;margin-bottom:4px">Hi <strong>${opts.recipientName}</strong>,</p>
-    <p style="color:#64748b;margin-top:0;margin-bottom:12px">Your session has been completed successfully.</p>
+    <p style="color:${EMAIL_PALETTE.ink};margin-top:0;margin-bottom:4px">Hi <strong>${recipientName}</strong>,</p>
+    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:12px">Your session has been completed successfully.</p>
     ${freeTag}
     ${detailsTable([
       { label: "Student", value: opts.studentName },
@@ -271,9 +300,9 @@ export function sessionCompletedEmailHtml(opts: {
       { label: "Duration", value: `${opts.duration} min` },
       ...earningsRow,
     ])}
-    <p style="color:#64748b;font-size:13px;margin-bottom:0">Your invoice is available in your Scholix account.</p>
+    <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin-bottom:0">Your invoice is available in your Scholix account.</p>
   `;
-  return emailWrapper("#059669", "✅ Session Completed", body);
+  return emailWrapper("Session completed", body);
 }
 
 export function paymentConfirmedEmailHtml(opts: {
@@ -283,58 +312,109 @@ export function paymentConfirmedEmailHtml(opts: {
   date: string;
   amount: number;
 }) {
+  const recipientName = escapeHtml(opts.recipientName);
   const body = `
-    <p style="color:#374151;margin-top:0;margin-bottom:4px">Hi <strong>${opts.recipientName}</strong>,</p>
-    <p style="color:#64748b;margin-top:0;margin-bottom:0">Your payment has been confirmed and your session is locked in!</p>
+    <p style="color:${EMAIL_PALETTE.ink};margin-top:0;margin-bottom:0">Hi <strong>${recipientName}</strong>,</p>
+    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:0">Your payment has been confirmed and your session is locked in!</p>
     ${detailsTable([
       { label: "Tutor", value: opts.tutorName },
       { label: "Subject", value: opts.subject },
       { label: "Session date", value: opts.date },
       { label: "Amount paid", value: `$${opts.amount.toFixed(2)}`, accent: true },
     ])}
-    <p style="color:#64748b;font-size:13px;margin-bottom:0">See you at the session! Log in to Scholix to view details.</p>
+    <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin-bottom:0">See you at the session! Log in to Scholix to view details.</p>
   `;
-  return emailWrapper("#059669", "✅ Payment Confirmed", body);
+  return emailWrapper("Payment confirmed", body);
 }
 
 export function passwordResetEmailHtml(opts: { firstName: string; resetLink: string }) {
+  const firstName = escapeHtml(opts.firstName);
+  const resetLink = escapeHtml(opts.resetLink);
   const body = `
-    <p style="color:#374151;margin-top:0;margin-bottom:4px">Hi <strong>${opts.firstName}</strong>,</p>
-    <p style="color:#64748b;margin-top:0;margin-bottom:20px">We received a request to reset your Scholix password. Click the button below to choose a new password.</p>
+    <p style="color:${EMAIL_PALETTE.ink};margin-top:0;margin-bottom:4px">Hi <strong>${firstName}</strong>,</p>
+    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:20px">We received a request to reset your Scholix password. Click the button below to choose a new password.</p>
     <div style="text-align:center;margin:24px 0">
-      <a href="${opts.resetLink}" style="background:#2563eb;color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:600;font-size:15px;display:inline-block">
+      <a href="${resetLink}" style="background:${EMAIL_PALETTE.turquoise};color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:600;font-size:15px;display:inline-block">
         Reset my password
       </a>
     </div>
-    <p style="color:#94a3b8;font-size:13px;margin-top:20px;margin-bottom:0">This link expires in <strong>30 minutes</strong>. If you didn't request a password reset, you can safely ignore this email. Your password won't change.</p>
+    <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin-top:20px;margin-bottom:0">This link expires in <strong>30 minutes</strong>. If you didn't request a password reset, you can safely ignore this email. Your password won't change.</p>
   `;
-  return emailWrapper("#2563eb", "🔐 Reset your password", body);
+  return emailWrapper("Reset your password", body);
 }
 
 export function otpEmailHtml(opts: { firstName: string; otp: string }) {
+  const firstName = escapeHtml(opts.firstName);
+  const otp = escapeHtml(opts.otp);
   const body = `
-    <p style="color:#374151;margin-top:0;margin-bottom:4px">Hi <strong>${opts.firstName}</strong>,</p>
-    <p style="color:#64748b;margin-top:0;margin-bottom:20px">Use the code below to complete your sign-in to Scholix. It expires in <strong>10 minutes</strong>.</p>
+    <p style="color:${EMAIL_PALETTE.ink};margin-top:0;margin-bottom:4px">Hi <strong>${firstName}</strong>,</p>
+    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:20px">Use the code below to complete your sign-in to Scholix. It expires in <strong>10 minutes</strong>.</p>
     <div style="text-align:center;margin:24px 0">
-      <div style="display:inline-block;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:14px;padding:20px 40px">
-        <p style="margin:0;font-size:36px;font-weight:700;letter-spacing:10px;color:#0f172a;font-family:monospace">${opts.otp}</p>
+      <div style="display:inline-block;background:${EMAIL_PALETTE.cream};border:1px solid ${EMAIL_PALETTE.gold};border-radius:14px;padding:20px 40px">
+        <p style="margin:0;font-size:36px;font-weight:700;letter-spacing:10px;color:${EMAIL_PALETTE.navy};font-family:monospace">${otp}</p>
       </div>
     </div>
-    <p style="color:#94a3b8;font-size:13px;margin-top:20px;margin-bottom:0">Never share this code with anyone. Scholix staff will never ask for it.</p>
+    <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin-top:20px;margin-bottom:0">Never share this code with anyone. Scholix staff will never ask for it.</p>
   `;
-  return emailWrapper("#1d4ed8", "🔑 Your sign-in code", body);
+  return emailWrapper("Your sign-in code", body);
 }
 
 export function accountDeletionConfirmEmailHtml(opts: { firstName: string }) {
+  const firstName = escapeHtml(opts.firstName);
   const body = `
-    <p style="color:#374151;margin-top:0;margin-bottom:4px">Hi <strong>${opts.firstName}</strong>,</p>
-    <p style="color:#64748b;margin-top:0;margin-bottom:12px">We've received your request to delete your Scholix account. Here's what happens next:</p>
-    <ul style="color:#64748b;font-size:14px;padding-left:20px;margin:0 0 16px">
+    <p style="color:${EMAIL_PALETTE.ink};margin-top:0;margin-bottom:4px">Hi <strong>${firstName}</strong>,</p>
+    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:12px">We've received your request to delete your Scholix account. Here's what happens next:</p>
+    <ul style="color:${EMAIL_PALETTE.muted};font-size:14px;padding-left:20px;margin:0 0 16px">
       <li style="margin-bottom:8px">Our team will review your request within 2 business days</li>
       <li style="margin-bottom:8px">Financial records (invoices, payments) are kept for 7 years as required by Australian law</li>
       <li style="margin-bottom:8px">You'll receive a confirmation email once your account has been removed</li>
     </ul>
-    <p style="color:#94a3b8;font-size:13px;margin-bottom:0">If you submitted this by mistake, please contact us at <a href="mailto:support@scholix.app" style="color:#2563eb">support@scholix.app</a> as soon as possible.</p>
+    <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin-bottom:0">If you submitted this by mistake, please contact us at <a href="mailto:support@scholix.app" style="color:${EMAIL_PALETTE.turquoise}">support@scholix.app</a> as soon as possible.</p>
   `;
-  return emailWrapper("#dc2626", "⚠️ Deletion Request Received", body);
+  return emailWrapper("Deletion request received", body);
+}
+
+export function accountDeletionAdminEmailHtml(opts: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  reason?: string;
+}) {
+  const reason = opts.reason?.trim()
+    ? `<div style="margin-top:18px"><p style="margin:0 0 6px;font-size:13px;font-weight:700;color:${EMAIL_PALETTE.navy}">Reason</p><div style="padding:12px;background:${EMAIL_PALETTE.cream};border:1px solid ${EMAIL_PALETTE.border};border-radius:8px;white-space:pre-wrap">${escapeHtml(opts.reason.trim())}</div></div>`
+    : "";
+  const body = `
+    <p style="margin-top:0;color:${EMAIL_PALETTE.ink}">An account deletion request was submitted.</p>
+    ${detailsTable([
+      { label: "Name", value: `${opts.firstName} ${opts.lastName}` },
+      { label: "Email", value: opts.email },
+    ])}
+    ${reason}
+  `;
+  return emailWrapper("Account deletion request", body);
+}
+
+export function adminReportEmailHtml(opts: {
+  category: string;
+  reporterName: string;
+  reporterEmail: string;
+  reportedUserId?: number;
+  sessionId?: number;
+  description: string;
+}) {
+  const description = escapeHtml(opts.description);
+  const body = `
+    <p style="margin-top:0;color:${EMAIL_PALETTE.ink}">A new report was submitted on Scholix.</p>
+    ${detailsTable([
+      { label: "Category", value: opts.category },
+      { label: "Reporter", value: opts.reporterName },
+      { label: "Reporter email", value: opts.reporterEmail },
+      ...(opts.reportedUserId === undefined ? [] : [{ label: "Reported user ID", value: String(opts.reportedUserId) }]),
+      ...(opts.sessionId === undefined ? [] : [{ label: "Session ID", value: String(opts.sessionId) }]),
+    ])}
+    <p style="margin:18px 0 6px;color:${EMAIL_PALETTE.navy};font-weight:700">Description</p>
+    <div style="padding:12px;background:${EMAIL_PALETTE.cream};border:1px solid ${EMAIL_PALETTE.border};border-radius:8px;white-space:pre-wrap;color:${EMAIL_PALETTE.ink}">${description}</div>
+    <p style="margin-bottom:0;color:${EMAIL_PALETTE.muted};font-size:13px">Log in to the Scholix admin panel to review this report.</p>
+  `;
+  return emailWrapper("New report submitted", body);
 }
