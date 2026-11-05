@@ -6,6 +6,14 @@ import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authM
 
 const router = Router();
 
+async function isPublicTutor(tutorId: number): Promise<boolean> {
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0) return false;
+  const [row] = await db.select({ id: tutorsTable.id }).from(tutorsTable)
+    .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
+    .where(and(eq(tutorsTable.id, tutorId), eq(usersTable.isActive, true), eq(tutorsTable.isApproved, true))).limit(1);
+  return !!row;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseDurations(raw: string | null | undefined): number[] | null {
@@ -79,7 +87,7 @@ router.get("/tutors", async (_req, res) => {
     .select()
     .from(tutorsTable)
     .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
-    .where(eq(tutorsTable.isApproved, true));
+    .where(and(eq(tutorsTable.isApproved, true), eq(usersTable.isActive, true)));
 
   const result = await Promise.all(
     tutors.map(async (r) => {
@@ -92,6 +100,9 @@ router.get("/tutors", async (_req, res) => {
 
 router.get("/tutors/:tutorId", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
+  if (!await isPublicTutor(tutorId)) {
+    res.status(404).json({ error: "Tutor is unavailable" }); return;
+  }
   const [row] = await db
     .select()
     .from(tutorsTable)
@@ -160,6 +171,9 @@ router.put("/tutors/:tutorId/profile", async (req, res) => {
 // GET /tutors/:tutorId/availability — returns weekly recurring windows
 router.get("/tutors/:tutorId/availability", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
+  if (!await isPublicTutor(tutorId)) {
+    res.status(404).json({ error: "Tutor is unavailable" }); return;
+  }
   const windows = await db
     .select()
     .from(availabilityTable)
@@ -215,6 +229,9 @@ const AEST_OFFSET_MS = 10 * 60 * 60 * 1000; // UTC+10
 
 router.get("/tutors/:tutorId/available-slots", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
+  if (!await isPublicTutor(tutorId)) {
+    res.status(404).json({ error: "Tutor is unavailable" }); return;
+  }
   const date = req.query.date as string;
   const duration = parseInt(req.query.duration as string, 10);
   const parentId = req.query.parentId ? parseInt(req.query.parentId as string, 10) : null;

@@ -83,6 +83,7 @@ export const ApproveParentParams = zod.object({
 })
 
 export const ApproveParentResponse = zod.object({
+  "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),
@@ -230,6 +231,7 @@ export const LoginBody = zod.object({
 })
 
 export const LoginResponse = zod.object({
+  "reapplication": zod.boolean().optional(),
   "requiresOtp": zod.literal(true),
   "pendingUserId": zod.number().int(),
   "email": zod.string(),
@@ -239,7 +241,7 @@ export const LoginResponse = zod.object({
 
 
 /**
- * @summary Register a new user
+ * @summary Register a new user or request approval to reactivate an inactive account
  */
 export const SignupBody = zod.object({
   "email": zod.string(),
@@ -250,11 +252,26 @@ export const SignupBody = zod.object({
 })
 
 export const SignupResponse = zod.object({
+  "reapplication": zod.boolean().optional(),
   "requiresOtp": zod.literal(true),
   "pendingUserId": zod.number().int(),
   "email": zod.string(),
   "devOtp": zod.string().optional(),
   "emailFailed": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Verify email for an inactive account reapplication without issuing a token
+ */
+export const VerifyReapplicationBody = zod.object({
+  "pendingUserId": zod.number().int(),
+  "otp": zod.string()
+})
+
+export const VerifyReapplicationResponse = zod.object({
+  "pendingApproval": zod.boolean(),
+  "message": zod.string()
 })
 
 
@@ -879,6 +896,7 @@ export const AdminListUsersQueryParams = zod.object({
 })
 
 export const AdminListUsersResponseItem = zod.object({
+  "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),
@@ -902,6 +920,7 @@ export const GetAdminUserParams = zod.object({
 })
 
 export const GetAdminUserResponse = zod.object({
+  "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),
@@ -938,6 +957,7 @@ export const UpdateAdminUserStatusBody = zod.object({
 })
 
 export const UpdateAdminUserStatusResponse = zod.object({
+  "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),

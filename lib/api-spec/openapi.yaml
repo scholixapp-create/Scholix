@@ -221,7 +221,7 @@ paths:
     post:
       operationId: signup
       tags: [auth]
-      summary: Register a new user
+      summary: Register a new user or request approval to reactivate an inactive account
       requestBody:
         required: true
         content:
@@ -230,7 +230,7 @@ paths:
               $ref: "#/components/schemas/SignupBody"
       responses:
         "201":
-          description: Account created; OTP verification is required
+          description: New account or existing-account reapplication; email OTP verification is required
           content:
             application/json:
               schema:
@@ -241,6 +241,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/reapply/verify:
+    post:
+      operationId: verifyReapplication
+      tags: [auth]
+      summary: Verify email for an inactive account reapplication without issuing a token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpBody"
+      responses:
+        "200":
+          description: Reapplication submitted for admin approval; account remains inactive
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pendingApproval, message]
+                properties:
+                  pendingApproval:
+                    type: boolean
+                  message:
+                    type: string
+        "400":
+          description: Invalid user ID or code format
+        "401":
+          description: Invalid or expired code
+        "409":
+          description: Account is active or request was already submitted
+        "429":
+          description: Too many verification attempts
 
   /auth/verify-otp:
     post:
@@ -1116,6 +1149,8 @@ components:
     OtpChallengeResponse:
       type: object
       properties:
+        reapplication:
+          type: boolean
         requiresOtp:
           type: boolean
           const: true
@@ -1179,6 +1214,10 @@ components:
     AdminUser:
       type: object
       properties:
+        reapplicationRequestedAt:
+          type: string
+          format: date-time
+          nullable: true
         id:
           type: integer
         email:

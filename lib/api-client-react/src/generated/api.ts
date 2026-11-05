@@ -72,7 +72,8 @@ import type {
   UpdateTutorProfileBody,
   UpsertRelationshipBody,
   User,
-  VerifyOtpBody
+  VerifyOtpBody,
+  VerifyReapplication200
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1132,7 +1133,7 @@ export const getSignupUrl = () => {
 }
 
 /**
- * @summary Register a new user
+ * @summary Register a new user or request approval to reactivate an inactive account
  */
 export const signup = async (signupBody: SignupBody, options?: Parameters<typeof customFetch>[1]): Promise<OtpChallengeResponse> => {
 
@@ -1198,7 +1199,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SignupMutationVariables = {data: BodyType<SignupBody>}
 
     /**
- * @summary Register a new user
+ * @summary Register a new user or request approval to reactivate an inactive account
  */
 export const useSignup = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof signup>>, TError,SignupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1209,6 +1210,94 @@ export const useSignup = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getSignupMutationOptions(options), queryClient);
+    }
+
+export const getVerifyReapplicationUrl = () => {
+
+
+
+
+  return `/api/auth/reapply/verify`
+}
+
+/**
+ * @summary Verify email for an inactive account reapplication without issuing a token
+ */
+export const verifyReapplication = async (verifyOtpBody: VerifyOtpBody, options?: Parameters<typeof customFetch>[1]): Promise<VerifyReapplication200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<VerifyReapplication200>(getVerifyReapplicationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(verifyOtpBody)
+  }
+);}
+
+
+
+
+
+export const getVerifyReapplicationMutationKey = () => ['verifyReapplication'] as const;
+
+export const getVerifyReapplicationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyReapplication>>, TError,VerifyReapplicationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyReapplication>>, TError,VerifyReapplicationMutationVariables, TContext> => {
+
+const mutationKey = getVerifyReapplicationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyReapplication>>, VerifyReapplicationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyReapplication(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyReapplicationMutationResult = NonNullable<Awaited<ReturnType<typeof verifyReapplication>>>
+    export type VerifyReapplicationMutationBody = BodyType<VerifyOtpBody>
+    export type VerifyReapplicationMutationError = ErrorType<void>
+    export type VerifyReapplicationMutationVariables = {data: BodyType<VerifyOtpBody>}
+
+    /**
+ * @summary Verify email for an inactive account reapplication without issuing a token
+ */
+export const useVerifyReapplication = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyReapplication>>, TError,VerifyReapplicationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof verifyReapplication>>,
+        TError,
+        VerifyReapplicationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyReapplicationMutationOptions(options), queryClient);
     }
 
 export const getVerifyOtpUrl = () => {

@@ -7,6 +7,7 @@ import { sessionBookedEmailHtml, sessionCompletedEmailHtml } from "../lib/email"
 import { format } from "date-fns";
 import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
 import { canBookForStudent, canActOnSession } from "../lib/sessionAccess";
+import { lockBookableTutor } from "../lib/bookableTutor";
 import { config } from "../lib/config";
 
 const router = Router();
@@ -356,7 +357,9 @@ router.post("/sessions", requireAuth, async (req, res) => {
   }
 
   // Session created as pending_payment — confirmed only after payment
-  const [session] = await db
+  const session = await db.transaction(async (tx) => {
+    if (!await lockBookableTutor(tx, tutor.id)) return undefined;
+    const [created] = await tx
     .insert(sessionsTable)
     .values({
       tutorId: parsed.data.tutorId,
@@ -369,6 +372,11 @@ router.post("/sessions", requireAuth, async (req, res) => {
       totalAmount,
     })
     .returning();
+    return created;
+  });
+  if (!session) {
+    res.status(403).json({ error: "This tutor is inactive or is no longer approved for bookings" }); return;
+  }
 
   const sessionJson = await sessionToJson(session);
 

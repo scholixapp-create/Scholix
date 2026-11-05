@@ -66,7 +66,7 @@ test("OTP verification checks expiry and one-time use before token issuance", as
 
 test("admin middleware verifies the token, loads the current user, and checks the database role", async () => {
   const source = await readFile(path.join(sourceRoot, "lib", "authMiddleware.ts"), "utf8");
-  assert.match(source, /verifyAccessToken\(req\.headers\.authorization\)/);
+  assert.match(source, /verifyAccessTokenDetails\(req\.headers\.authorization\)/);
   assert.match(source, /\.where\(eq\(usersTable\.id,\s*userId\)\)/);
   assert.match(source, /!user\.isActive/);
   assert.match(source, /isAdminRole\(user\.role\)/);
@@ -134,7 +134,7 @@ test("authentication and token issuance paths reject inactive accounts", async (
   const middlewareSource = await readFile(path.join(sourceRoot, "lib", "authMiddleware.ts"), "utf8");
   assert.match(source, /if \(!user\.isActive\)[\s\S]*?This account is inactive/);
   assert.match(source, /\.for\("update"\)[\s\S]*?if \(!user \|\| !user\.isActive\)/);
-  assert.match(middlewareSource, /if \(!user \|\| !user\.isActive\)/);
+  assert.match(middlewareSource, /if \(!user \|\| !user\.isActive \|\| user\.authVersion !== claims\.authVersion\)/);
 });
 
 test("authenticated route families use shared middleware or the shared token verifier", async () => {

@@ -348,12 +348,12 @@ export function passwordResetEmailHtml(opts: { firstName: string; resetLink: str
   return emailWrapper("Reset your password", body);
 }
 
-export function otpEmailHtml(opts: { firstName: string; otp: string }) {
+export function otpEmailHtml(opts: { firstName: string; otp: string; reapplication?: boolean }) {
   const firstName = escapeHtml(opts.firstName);
   const otp = escapeHtml(opts.otp);
   const body = `
     <p style="color:${EMAIL_PALETTE.ink};margin-top:0;margin-bottom:4px">Hi <strong>${firstName}</strong>,</p>
-    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:20px">Use the code below to complete your sign-in to Scholix. It expires in <strong>10 minutes</strong>.</p>
+    <p style="color:${EMAIL_PALETTE.muted};margin-top:0;margin-bottom:20px">${opts.reapplication ? "Use this code to verify your account reapplication. This does not reactivate your account; an administrator must approve it." : "Use the code below to complete your sign-in to Scholix."} It expires in <strong>10 minutes</strong>.</p>
     <div style="text-align:center;margin:24px 0">
       <div style="display:inline-block;background:${EMAIL_PALETTE.cream};border:1px solid ${EMAIL_PALETTE.gold};border-radius:14px;padding:20px 40px">
         <p style="margin:0;font-size:36px;font-weight:700;letter-spacing:10px;color:${EMAIL_PALETTE.navy};font-family:monospace">${otp}</p>
@@ -361,7 +361,7 @@ export function otpEmailHtml(opts: { firstName: string; otp: string }) {
     </div>
     <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin-top:20px;margin-bottom:0">Never share this code with anyone. Scholix staff will never ask for it.</p>
   `;
-  return emailWrapper("Your sign-in code", body);
+  return emailWrapper(opts.reapplication ? "Verify your reapplication" : "Your sign-in code", body);
 }
 
 export function accountDeletionConfirmEmailHtml(opts: { firstName: string }) {

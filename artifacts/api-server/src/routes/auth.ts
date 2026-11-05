@@ -16,8 +16,10 @@ import {
 import { config } from "../lib/config";
 import { passwordResetLink } from "../lib/passwordResetLink";
 import { logger } from "../lib/logger";
+import { beginReapplication, reapplicationRouter } from "../lib/reapplications";
 
 const router = Router();
+router.use(reapplicationRouter);
 
 // Legacy SHA-256 hash — used only as fallback for existing accounts
 function legacyHashPassword(password: string): string {
@@ -193,7 +195,7 @@ router.post("/auth/verify-otp", async (req, res) => {
     return {
       kind: "verified" as const,
       user,
-      token: await issueAccessToken(user.id),
+      token: await issueAccessToken(user.id, undefined, user.authVersion),
     };
   });
 
@@ -324,12 +326,16 @@ router.post("/auth/signup", async (req, res) => {
   }
 
   const existing = await db
-    .select({ id: usersTable.id })
+    .select()
     .from(usersTable)
     .where(eq(usersTable.email, email.toLowerCase()))
     .limit(1);
 
   if (existing.length > 0) {
+    if (!existing[0].isActive) {
+      await beginReapplication(req, res, existing[0], password, role);
+      return;
+    }
     res.status(409).json({ error: "Email already in use" });
     return;
   }

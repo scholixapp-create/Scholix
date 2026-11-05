@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, pgEnum, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, pgEnum, boolean, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -12,6 +12,7 @@ export const usersTable = pgTable("users", {
   lastName: text("last_name").notNull(),
   role: userRoleEnum("role").notNull(),
   isActive: boolean("is_active").notNull().default(true),
+  authVersion: integer("auth_version").notNull().default(0),
   // Existing accounts are grandfathered in; signup explicitly sets false for new parents.
   parentApproved: boolean("parent_approved").notNull().default(true),
   phone: text("phone"),

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable, adminUserActionsTable } from "@workspace/db";
+import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable, adminUserActionsTable, accountReapplicationsTable } from "@workspace/db";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import {
   AdminListUsersQueryParams,
@@ -45,6 +45,7 @@ const adminUserSelection = {
   createdAt: usersTable.createdAt,
   isActive: usersTable.isActive,
   parentApproved: usersTable.parentApproved,
+  reapplicationRequestedAt: sql<Date | null>`(SELECT ${accountReapplicationsTable.verifiedAt} FROM ${accountReapplicationsTable} WHERE ${accountReapplicationsTable.userId} = ${usersTable.id})`,
   tutorVerificationStatus: sql<string | null>`(
     SELECT ${tutorsTable.verificationStatus}
     FROM ${tutorsTable}
@@ -77,6 +78,7 @@ type AdminUserRow = {
   createdAt: Date;
   isActive: boolean;
   parentApproved: boolean;
+  reapplicationRequestedAt: Date | null;
   tutorVerificationStatus: string | null;
   tutorApproved: boolean | null;
   studentIdentityVerified: boolean | null;
@@ -92,6 +94,7 @@ function toAdminUser(row: AdminUserRow) {
     createdAt: row.createdAt,
     isActive: row.isActive,
     parentApproved: row.parentApproved,
+    reapplicationRequestedAt: row.reapplicationRequestedAt,
     verificationStatus: row.tutorVerificationStatus,
     tutorApproved: row.tutorApproved,
     studentIdentityVerified: row.studentIdentityVerified,

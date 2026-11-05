@@ -23,12 +23,14 @@ export function generateOtp(): string {
 export async function issueAccessToken(
   userId: number,
   secret: string | undefined = process.env["SESSION_SECRET"],
+  authVersion = 0,
 ): Promise<string> {
   if (!Number.isSafeInteger(userId) || userId <= 0) {
     throw new Error("A positive integer user ID is required to issue an authentication token");
   }
 
-  return new SignJWT({})
+  if (!Number.isSafeInteger(authVersion) || authVersion < 0) throw new Error("Invalid authentication version");
+  return new SignJWT({ ver: authVersion })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject(String(userId))
     .setIssuedAt()
@@ -42,6 +44,13 @@ export async function verifyAccessToken(
   authorization: string | undefined,
   secret: string | undefined = process.env["SESSION_SECRET"],
 ): Promise<number | null> {
+  return (await verifyAccessTokenDetails(authorization, secret))?.userId ?? null;
+}
+
+export async function verifyAccessTokenDetails(
+  authorization: string | undefined,
+  secret: string | undefined = process.env["SESSION_SECRET"],
+): Promise<{ userId: number; authVersion: number } | null> {
   if (!authorization?.startsWith("Bearer ")) return null;
   const token = authorization.slice("Bearer ".length).trim();
   if (!token || /\s/.test(token)) return null;
@@ -75,7 +84,9 @@ export async function verifyAccessToken(
       return null;
     }
 
-    return Number(payload.sub);
+    const authVersion = payload.ver === undefined ? 0 : payload.ver;
+    if (!Number.isSafeInteger(authVersion) || (authVersion as number) < 0) return null;
+    return { userId: Number(payload.sub), authVersion: authVersion as number };
   } catch {
     return null;
   }

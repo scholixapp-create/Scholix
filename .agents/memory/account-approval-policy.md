@@ -14,3 +14,21 @@ Tutor education and qualification changes require admin approval before replacin
 **Why:** The user requires qualification approval but also expects already verified tutors to access their verification documents and edit qualifications without becoming pending again.
 
 **How to apply:** Treat qualification proposals as a separate review lifecycle from initial tutor identity and Working With Children Check approval.
+
+Inactive parent and tutor accounts may reapply using the same email and existing role, retaining their identity and all business history. Email verification submits a request; it does not sign them in or reactivate them. A requested replacement password takes effect only after admin approval. Public reapplication cannot restore an administrator or change an account's role.
+
+**Why:** The user wants deactivated accounts to be able to sign up again or reapply, without allowing self-service signup to undo an administrator's deactivation or create duplicate business identities.
+
+**How to apply:** Keep reapplication separate from normal sign-in and new-account signup. Only the existing admin-controlled reactivation process can restore access.
+
+Previously revoked authentication tokens must remain revoked after account reactivation.
+
+**Why:** Checking only active status would revive an otherwise unexpired token when a deactivated account is approved again.
+
+**How to apply:** Enforce a database-backed revocation generation in every shared bearer-token validation path and advance it on status changes.
+
+Deactivated tutors cannot receive new bookings or payment confirmations, but existing bookings and financial history must remain intact.
+
+**Why:** The user explicitly asked to prevent bookings with deactivated tutors.
+
+**How to apply:** Hide inactive tutors from public discovery and availability, and enforce current account status at the final booking/payment write, including concurrent deactivation.

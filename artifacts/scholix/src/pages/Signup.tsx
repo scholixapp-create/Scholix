@@ -2,12 +2,19 @@ import { useState, useEffect } from "react";
 import { BrandMark } from "@/components/Brand";
 import { Link, useLocation, useSearch } from "wouter";
 import { postAuthDestination, resolveSafeRedirect, withRedirect } from "@/lib/navigation";
-import { useSignup } from "@workspace/api-client-react";
+import { useSignup, useVerifyReapplication } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
-import { AlertCircle, Phone, Users, ShieldCheck, RefreshCw, ArrowLeft } from "lucide-react";
+import { AlertCircle, Phone, Users, ShieldCheck, RefreshCw, ArrowLeft, Clock, Home } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 type Role = "tutor" | "parent";
+
+function apiErrorMessage(err: unknown): string {
+  const e = err as { data?: { error?: unknown }; response?: { data?: { error?: unknown } }; message?: string } | null;
+  if (typeof e?.data?.error === "string") return e.data.error;
+  if (typeof e?.response?.data?.error === "string") return e.response.data.error;
+  return e?.message ?? "";
+}
 
 function getPasswordStrength(pwd: string): { score: number; label: string; color: string } {
   if (!pwd) return { score: 0, label: "", color: "" };
@@ -46,6 +53,9 @@ export default function Signup() {
   const search = useSearch();
   const { login } = useAuth();
   const signupMutation = useSignup();
+  const verifyReapplication = useVerifyReapplication();
+  const [isReapplication, setIsReapplication] = useState(false);
+  const [reapplyDone, setReapplyDone] = useState<string | null>(null);
   const redirectParam = new URLSearchParams(search).get("redirect");
   const [role, setRole] = useState<Role>(resolveSafeRedirect(redirectParam) ? "parent" : "tutor");
   const [step, setStep] = useState<"details" | "otp">("details");
@@ -93,6 +103,19 @@ export default function Signup() {
       setOtpError("Enter the six-digit code sent to your email.");
       return;
     }
+    if (isReapplication) {
+      verifyReapplication.mutate(
+        { data: { pendingUserId, otp } },
+        {
+          onSuccess: (res) => {
+            setReapplyDone(res.message || "Your reapplication has been submitted for review.");
+            setPassword("");
+          },
+          onError: (err) => setOtpError(apiErrorMessage(err) || "That code is invalid or expired. Request a new one and try again."),
+        },
+      );
+      return;
+    }
     setOtpLoading(true);
     try {
       const response = await fetch("/api/auth/verify-otp", {
@@ -116,6 +139,24 @@ export default function Signup() {
   const handleResendOtp = async () => {
     if (!pendingUserId || resending) return;
     setOtpError("");
+    if (isReapplication) {
+      setResending(true);
+      signupMutation.mutate(
+        { data: { firstName, lastName, email, password, role, phone, termsAccepted } as any },
+        {
+          onSuccess: (data) => {
+            setPendingUserId(data.pendingUserId);
+            setPendingEmail(data.email);
+            setDevOtp(data.devOtp ?? null);
+            setEmailFailed(!!data.emailFailed);
+            setOtp(data.devOtp ?? "");
+          },
+          onError: (err) => setOtpError(apiErrorMessage(err) || "Could not send a new code."),
+          onSettled: () => setResending(false),
+        },
+      );
+      return;
+    }
     setResending(true);
     try {
       const response = await fetch("/api/auth/resend-otp", {
@@ -157,6 +198,7 @@ export default function Signup() {
       { data: { firstName, lastName, email, password, role, phone, termsAccepted } as any },
       {
         onSuccess: (data) => {
+          setIsReapplication(!!data.reapplication);
           setPendingUserId(data.pendingUserId);
           setPendingEmail(data.email);
           setDevOtp(data.devOtp ?? null);
@@ -165,7 +207,7 @@ export default function Signup() {
           setStep("otp");
         },
         onError: (err: any) => {
-          const msg = err?.response?.data?.error ?? err?.message ?? "";
+          const msg = apiErrorMessage(err);
           if (msg.includes("mobile") || msg.includes("phone")) {
             setPhoneError(msg);
           } else {
@@ -175,6 +217,35 @@ export default function Signup() {
       }
     );
   };
+
+  if (step === "otp" && reapplyDone) {
+    return (
+      <>
+        <TestModeBanner />
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="w-full max-w-sm">
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
+                <Clock size={24} className="text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">Reapplication submitted</h1>
+              <p className="text-sm text-muted-foreground mt-1" data-testid="text-reapply-message">{reapplyDone}</p>
+            </div>
+            <div className="bg-card border border-card-border rounded-xl p-6 shadow-sm space-y-3 text-sm text-muted-foreground">
+              <p>Your email is verified and your request is with the Scholix team. Your account stays inactive and you are not signed in until an administrator approves it.</p>
+              <p>The password you just chose will only take effect after approval. Until then, your previous details and history are preserved unchanged.</p>
+              <Link href="/" className="mt-2 flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold hover:opacity-90" data-testid="link-reapply-home">
+                <Home size={14} /> Back to home
+              </Link>
+              <Link href="/login" className="flex items-center justify-center gap-2 text-muted-foreground hover:text-foreground" data-testid="link-reapply-login">
+                <ArrowLeft size={14} /> Go to sign in
+              </Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   if (step === "otp") {
     return (
@@ -186,11 +257,16 @@ export default function Signup() {
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary mb-4">
                 <ShieldCheck size={24} className="text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-foreground">Verify your email</h1>
+              <h1 className="text-2xl font-bold text-foreground">{isReapplication ? "Confirm your reapplication" : "Verify your email"}</h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Enter the six-digit code sent to {pendingEmail}.
               </p>
-              {role === "parent" && (
+              {isReapplication && (
+                <p className="text-xs text-muted-foreground mt-2" data-testid="text-reapply-otp">
+                  This email belongs to an inactive account. Verifying sends a reactivation request to the Scholix team. You will stay signed out until it is approved.
+                </p>
+              )}
+              {!isReapplication && role === "parent" && (
                 <p className="text-xs text-muted-foreground mt-2" data-testid="text-parent-approval-otp">
                   After verifying, your parent account will be reviewed by the Scholix team before you can book tutors.
                 </p>
@@ -231,10 +307,10 @@ export default function Signup() {
                 />
                 <button
                   type="submit"
-                  disabled={otpLoading || otp.length !== 6}
+                  disabled={otpLoading || verifyReapplication.isPending || otp.length !== 6}
                   className="w-full py-2.5 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60"
                 >
-                  {otpLoading ? "Verifying..." : "Verify and continue"}
+                  {otpLoading || verifyReapplication.isPending ? "Verifying..." : isReapplication ? "Submit reapplication" : "Verify and continue"}
                 </button>
               </form>
               <button
@@ -446,6 +522,9 @@ export default function Signup() {
                 New parent accounts are reviewed by the Scholix team. You can verify your email and sign in straight away, and booking opens once your account is approved.
               </p>
             )}
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3" data-testid="text-reapply-note">
+              Had a Scholix tutor or parent account that was deactivated? Sign up again with the same email and role to request reactivation. Your existing name, history and role are kept, and your new password applies only once an administrator approves.
+            </p>
             <button
               type="submit"
               disabled={signupMutation.isPending || !termsAccepted}

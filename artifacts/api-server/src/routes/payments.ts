@@ -7,6 +7,7 @@ import { paymentConfirmedEmailHtml, sessionBookedEmailHtml } from "../lib/email"
 import { format } from "date-fns";
 import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 import { canBookForStudent } from "../lib/sessionAccess";
+import { lockBookableTutor } from "../lib/bookableTutor";
 
 const router = Router();
 
@@ -74,11 +75,17 @@ router.post("/payments/simulate", requireAuth, async (req, res) => {
     res.status(409).json({ error: "This session is not awaiting payment confirmation" }); return;
   }
 
-  const confirmed = await db
+  const confirmed = await db.transaction(async (tx) => {
+    if (!await lockBookableTutor(tx, session.tutorId)) return null;
+    return tx
     .update(sessionsTable)
     .set({ isPaid: true, status: "scheduled" })
     .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.status, "pending_payment"), eq(sessionsTable.isPaid, false)))
     .returning({ id: sessionsTable.id });
+  });
+  if (!confirmed) {
+    res.status(403).json({ error: "This tutor is inactive or is no longer approved. Payment cannot be confirmed." }); return;
+  }
   if (!confirmed.length) {
     res.status(409).json({ error: "This session has already been updated" }); return;
   }

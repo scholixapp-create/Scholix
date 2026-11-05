@@ -43,6 +43,7 @@ export default function AdminUsers() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmIsActive, setConfirmIsActive] = useState<boolean | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [deleteError, setDeleteError] = useState("");
@@ -61,6 +62,9 @@ export default function AdminUsers() {
       onSuccess: async (updatedUser) => {
         setStatusError("");
         setConfirmOpen(false);
+        setConfirmIsActive(null);
+        setSelectedUserId(null);
+        queryClient.setQueryData(getGetAdminUserQueryKey(updatedUser.id), updatedUser.isActive ? { ...updatedUser, reapplicationRequestedAt: null } : updatedUser);
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }),
           queryClient.invalidateQueries({ queryKey: getGetAdminUserQueryKey(updatedUser.id) }),
@@ -126,6 +130,7 @@ export default function AdminUsers() {
 
   const selectedUser = detail.data;
   const isSelf = selectedUser?.id === currentUser?.id;
+  const pendingReapply = !!selectedUser && !selectedUser.isActive && !!selectedUser.reapplicationRequestedAt;
   const role = selectedUser ? roleConfig[selectedUser.role] ?? roleConfig.student : null;
 
   return (
@@ -201,6 +206,11 @@ export default function AdminUsers() {
                       {listedUser.tutorApproved === null ? "" : listedUser.tutorApproved ? " · approved" : " · not approved"}
                     </span>
                   )}
+                  {listedUser.reapplicationRequestedAt && !listedUser.isActive && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold" data-testid={`status-reapplication-${listedUser.id}`}>
+                      Reapplied {format(parseISO(listedUser.reapplicationRequestedAt), "MMM d, yyyy")}
+                    </span>
+                  )}
                   {listedUser.role === "parent" && listedUser.parentApproved === false && (
                     <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold" data-testid={`status-parent-pending-${listedUser.id}`}>
                       Pending approval
@@ -229,6 +239,7 @@ export default function AdminUsers() {
           if (!open) {
             setSelectedUserId(null);
             setConfirmOpen(false);
+            setConfirmIsActive(null);
             setDeleteConfirmOpen(false);
             setStatusError("");
             setDeleteError("");
@@ -268,6 +279,14 @@ export default function AdminUsers() {
                   <dd className={`text-right font-medium ${selectedUser.isActive ? "text-emerald-700" : "text-destructive"}`}>
                     {selectedUser.isActive ? "Active" : "Inactive"}
                   </dd>
+                  {pendingReapply && selectedUser.reapplicationRequestedAt && (
+                    <>
+                      <dt className="text-muted-foreground">Reapplication</dt>
+                      <dd className="text-right font-medium text-amber-700" data-testid="text-reapplication-date">
+                        Requested {format(parseISO(selectedUser.reapplicationRequestedAt), "MMM d, yyyy, h:mm a")}
+                      </dd>
+                    </>
+                  )}
                   {selectedUser.role === "tutor" && (
                     <>
                       <dt className="text-muted-foreground">Tutor verification</dt>
@@ -295,6 +314,11 @@ export default function AdminUsers() {
                 </dl>
               </div>
 
+              {pendingReapply && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" data-testid="text-reapplication-explainer">
+                  This user verified their email and is awaiting reactivation. Approving reactivates the account, applies the password they chose when reapplying, and keeps their existing role, details and history.
+                </div>
+              )}
               {selectedUser.role === "parent" && selectedUser.parentApproved === false && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
                   <p className="text-sm text-amber-900">This parent cannot book or use protected features until approved.</p>
@@ -324,6 +348,7 @@ export default function AdminUsers() {
                     type="button"
                     onClick={() => {
                       setStatusError("");
+                      setConfirmIsActive(!selectedUser.isActive);
                       setConfirmOpen(true);
                     }}
                     className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${
@@ -333,7 +358,7 @@ export default function AdminUsers() {
                     }`}
                     disabled={statusMutation.isPending || deleteMutation.isPending}
                   >
-                    {selectedUser.isActive ? "Deactivate account" : "Reactivate account"}
+                    {selectedUser.isActive ? "Deactivate account" : pendingReapply ? "Approve reapplication" : "Reactivate account manually"}
                   </button>
                   <button
                     type="button"
@@ -358,20 +383,25 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog open={confirmOpen} onOpenChange={(open) => {
+        setConfirmOpen(open);
+        if (!open) setConfirmIsActive(null);
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {selectedUser?.isActive ? "Deactivate this account?" : "Reactivate this account?"}
+              {confirmIsActive === false ? "Deactivate this account?" : pendingReapply ? "Approve reapplication?" : "Reactivate this account manually?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               Confirm the account by email and role:
               <span className="mt-2 block font-semibold text-foreground break-all">
                 {selectedUser?.email} · {role?.label}
               </span>
-              {selectedUser?.isActive
+              {confirmIsActive === false
                 ? " Deactivation immediately blocks sign-in and protected access."
-                : " The user will be able to sign in again."}
+                : pendingReapply
+                  ? " The account will be reactivated with its original role and history, and the password submitted with the reapplication will take effect."
+                  : " The user will be able to sign in again with their existing password."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -380,15 +410,15 @@ export default function AdminUsers() {
               disabled={!selectedUser || statusMutation.isPending}
               onClick={(event) => {
                 event.preventDefault();
-                if (!selectedUser) return;
+                if (!selectedUser || confirmIsActive === null) return;
                 statusMutation.mutate({
                   userId: selectedUser.id,
-                  data: { isActive: !selectedUser.isActive },
+                  data: { isActive: confirmIsActive },
                 });
               }}
               className={selectedUser?.isActive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
             >
-              {statusMutation.isPending ? "Saving..." : "Confirm"}
+              {statusMutation.isPending ? "Saving..." : selectedUser?.isActive ? "Confirm" : pendingReapply ? "Approve reapplication" : "Reactivate account manually"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

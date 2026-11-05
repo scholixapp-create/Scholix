@@ -9,11 +9,23 @@ import {
   generateOtp,
   issueAccessToken,
   verifyAccessToken,
+  verifyAccessTokenDetails,
 } from "./authTokens";
 import { isAdminRole } from "./authPolicy";
 
 const testSecret = "test-only-secret-with-at-least-32-bytes";
 const testKey = new TextEncoder().encode(testSecret);
+
+test("tokens carry a signed authentication version and legacy tokens default to zero", async () => {
+  const token = await issueAccessToken(42, testSecret, 7);
+  assert.deepEqual(await verifyAccessTokenDetails(`Bearer ${token}`, testSecret), { userId: 42, authVersion: 7 });
+  const legacy = await buildToken("42");
+  assert.deepEqual(await verifyAccessTokenDetails(`Bearer ${legacy}`, testSecret), { userId: 42, authVersion: 0 });
+  for (const ver of [-1, 1.2, null, "2"]) {
+    assert.equal(await verifyAccessTokenDetails(`Bearer ${await buildToken("42", { ver })}`, testSecret), null);
+  }
+  await assert.rejects(issueAccessToken(42, testSecret, -1));
+});
 
 async function buildToken(
   subject: string,

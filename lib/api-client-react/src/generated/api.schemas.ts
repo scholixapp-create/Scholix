@@ -66,6 +66,7 @@ export interface AuthResponse {
 }
 
 export interface OtpChallengeResponse {
+  reapplication?: boolean;
   requiresOtp: true;
   pendingUserId: number;
   email: string;
@@ -99,6 +100,8 @@ export const AdminUserRole = {
 } as const;
 
 export interface AdminUser {
+  /** @nullable */
+  reapplicationRequestedAt?: string | null;
   id: number;
   email: string;
   firstName: string;
@@ -529,6 +532,11 @@ export interface CreateSessionReviewBody {
   /** @maxLength 2000 */
   comment?: string;
 }
+
+export type VerifyReapplication200 = {
+  pendingApproval: boolean;
+  message: string;
+};
 
 export type GetTutorAvailableSlotsParams = {
 /**
