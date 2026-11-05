@@ -190,6 +190,11 @@ export default function Signup() {
               <p className="text-sm text-muted-foreground mt-1">
                 Enter the six-digit code sent to {pendingEmail}.
               </p>
+              {role === "parent" && (
+                <p className="text-xs text-muted-foreground mt-2" data-testid="text-parent-approval-otp">
+                  After verifying, your parent account will be reviewed by the Scholix team before you can book tutors.
+                </p>
+              )}
             </div>
             <div className="bg-card border border-card-border rounded-xl p-6 shadow-sm">
               {emailFailed && (
@@ -436,6 +441,11 @@ export default function Signup() {
               </span>
             </label>
 
+            {role === "parent" && (
+              <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3" data-testid="text-parent-approval-note">
+                New parent accounts are reviewed by the Scholix team. You can verify your email and sign in straight away, and booking opens once your account is approved.
+              </p>
+            )}
             <button
               type="submit"
               disabled={signupMutation.isPending || !termsAccepted}

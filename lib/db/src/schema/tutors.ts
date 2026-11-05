@@ -14,6 +14,11 @@ export const tutorsTable = pgTable("tutors", {
   wwccNumber: text("wwcc_number"),
   wwccExpiry: text("wwcc_expiry"),
   educationDetails: text("education_details"),
+  pendingEducationDetails: text("pending_education_details"),
+  educationReviewStatus: text("education_review_status").notNull().default("none"),
+  educationReviewNotes: text("education_review_notes"),
+  educationSubmittedAt: timestamp("education_submitted_at", { precision: 3 }),
+  promotionActions: text("promotion_actions").array().notNull().default([]),
   firstStudentId: integer("first_student_id"),
   abn: text("abn"),
   // Allowed session durations offered by the tutor, stored as JSON array e.g. "[60,90]"

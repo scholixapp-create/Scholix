@@ -1,11 +1,28 @@
 import { useAuth } from "@/context/AuthContext";
-import { useListSessions, useGetSessionSummary } from "@workspace/api-client-react";
+import { useListSessions, useGetSessionSummary, useGetSessionReview, getGetSessionReviewQueryKey, type Session } from "@workspace/api-client-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SessionReviewDialog from "@/components/SessionReviewDialog";
 import StatusBadge from "@/components/StatusBadge";
 import { Calendar, GraduationCap, Bell, ChevronRight, Star, AlertCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
+
+function TutorReviewButton({ session, onOpen }: { session: Session; onOpen: () => void }) {
+  const state = useGetSessionReview(session.id, { query: { queryKey: getGetSessionReviewQueryKey(session.id), retry: false } });
+  const reviewed = !!state.data?.review;
+  const tutor = session.tutorName ?? "tutor";
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:border-brand-teal hover:text-brand-teal transition-colors"
+      aria-label={reviewed ? `View your review of ${tutor}` : `Review ${tutor}`}
+      data-testid={`button-review-session-${session.id}`}
+    >
+      <Star size={13} className={reviewed ? "fill-amber-400 text-amber-400" : ""} /> {reviewed ? "Your review" : "Review tutor"}
+    </button>
+  );
+}
 
 export default function ParentDashboard() {
   const { user } = useAuth();
@@ -23,6 +40,15 @@ export default function ParentDashboard() {
       .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()),
     [sessions.data],
   );
+  // One review entry per tutor: the most recent completed session represents the pair.
+  const reviewTargetIds = useMemo(() => {
+    const seen = new Set<number>();
+    const ids = new Set<number>();
+    for (const s of completed) {
+      if (!seen.has(s.tutorId)) { seen.add(s.tutorId); ids.add(s.id); }
+    }
+    return ids;
+  }, [completed]);
   const [showAllCompleted, setShowAllCompleted] = useState(false);
   const visibleCompleted = showAllCompleted ? completed : completed.slice(0, 3);
 
@@ -176,7 +202,7 @@ export default function ParentDashboard() {
         ) : completed.length === 0 ? (
           <div className="bg-card border border-card-border rounded-xl p-6 text-center">
             <Star size={24} className="text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Completed sessions will appear here for you to review.</p>
+            <p className="text-sm text-muted-foreground">Completed sessions will appear here. You can leave one review per tutor.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -187,15 +213,11 @@ export default function ParentDashboard() {
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">with {session.tutorName}</p>
                   <p className="text-xs text-muted-foreground mt-1">{format(parseISO(session.scheduledAt), "EEE, MMM d")}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { setDeepLinkError(""); setReviewSessionId(session.id); }}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:border-brand-teal hover:text-brand-teal transition-colors"
-                  aria-label={`Review ${session.subject} with ${session.tutorName ?? "tutor"}`}
-                  data-testid={`button-review-session-${session.id}`}
-                >
-                  <Star size={13} /> Review
-                </button>
+                {reviewTargetIds.has(session.id) ? (
+                  <TutorReviewButton session={session} onOpen={() => { setDeepLinkError(""); setReviewSessionId(session.id); }} />
+                ) : (
+                  <span className="shrink-0 text-[11px] text-muted-foreground" data-testid={`text-review-covered-${session.id}`}>One review per tutor</span>
+                )}
               </div>
             ))}
             {completed.length > 3 && (

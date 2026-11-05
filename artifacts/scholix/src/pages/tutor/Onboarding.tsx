@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { Shield, Upload, CheckCircle, Clock, FileText, AlertCircle, Sparkles, Trophy, Building2, ExternalLink, ClipboardCheck, Phone, MapPin } from "lucide-react";
+import { Shield, Upload, CheckCircle, Clock, FileText, AlertCircle, Sparkles, Trophy, Building2, ExternalLink, ClipboardCheck, Phone, MapPin, BadgeCheck } from "lucide-react";
+import QualificationsEditor from "@/components/QualificationsEditor";
 
 interface TutorMe {
   verificationStatus: string;
@@ -82,6 +83,58 @@ function FileDropZone({
   );
 }
 
+function VerifiedOverview({ tutorMe, onDashboard }: { tutorMe: TutorMe; onDashboard: () => void }) {
+  const docs = tutorMe.documents ?? [];
+  return (
+    <div className="min-h-[100dvh] bg-background flex items-start justify-center p-4 pt-10">
+      <div className="w-full max-w-md space-y-4" data-testid="screen-verified-overview">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
+            <BadgeCheck size={22} className="text-accent" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">Verification & documents</h1>
+          <p className="text-sm text-muted-foreground mt-1">Your account is verified. Nothing here needs resubmitting.</p>
+        </div>
+
+        <section className="bg-card border border-card-border rounded-2xl p-5" aria-labelledby="verif-status-heading">
+          <h2 id="verif-status-heading" className="text-sm font-semibold text-foreground flex items-center gap-2"><Shield size={14} className="text-primary" /> Verification status</h2>
+          <dl className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Status</dt>
+            <dd className="text-right font-semibold text-accent" data-testid="text-verification-status">Verified</dd>
+            {tutorMe.wwccNumber && (<><dt className="text-muted-foreground">WWCC number</dt><dd className="text-right font-mono">{tutorMe.wwccNumber}</dd></>)}
+            {tutorMe.wwccExpiry && (<><dt className="text-muted-foreground">WWCC expiry</dt><dd className="text-right">{tutorMe.wwccExpiry}</dd></>)}
+            {tutorMe.abn && (<><dt className="text-muted-foreground">ABN</dt><dd className="text-right font-mono">{tutorMe.abn}</dd></>)}
+          </dl>
+        </section>
+
+        <section className="bg-card border border-card-border rounded-2xl p-5" aria-labelledby="docs-heading">
+          <h2 id="docs-heading" className="text-sm font-semibold text-foreground flex items-center gap-2"><FileText size={14} className="text-primary" /> Submitted documents</h2>
+          {docs.length === 0 ? (
+            <p className="text-sm text-muted-foreground mt-2">No documents on file.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {docs.map((d) => (
+                <li key={d.id} className="flex items-center gap-2 text-sm" data-testid={`text-document-${d.id}`}>
+                  <FileText size={13} className="text-muted-foreground shrink-0" />
+                  <span className="truncate flex-1">{d.originalName}</span>
+                  <span className="text-[11px] text-muted-foreground capitalize">{d.docType.replace(/_/g, " ")}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-[11px] text-muted-foreground mt-3">If your WWCC changes, contact the Scholix team so your record can be updated.</p>
+        </section>
+
+        <QualificationsEditor />
+
+        <button onClick={onDashboard} className="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90" data-testid="button-go-dashboard">
+          Go to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function TutorOnboarding() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -107,7 +160,6 @@ export default function TutorOnboarding() {
   useEffect(() => {
     apiGet("/api/tutors/me").then((data: TutorMe) => {
       setTutorMe(data);
-      if (data.verificationStatus === "verified") navigate("/tutor/dashboard");
       if (data.wwccNumber) setWwccNumber(data.wwccNumber);
       if (data.wwccExpiry) setWwccExpiry(data.wwccExpiry);
       if (data.educationDetails) setEducationDetails(data.educationDetails);
@@ -188,6 +240,10 @@ export default function TutorOnboarding() {
       setStep("form");
     }
   };
+
+  if (step === "form" && tutorMe && (tutorMe.verificationStatus === "verified" || tutorMe.verificationStatus === "approved")) {
+    return <VerifiedOverview tutorMe={tutorMe} onDashboard={() => navigate("/tutor/dashboard")} />;
+  }
 
   if (step === "submitted") {
     return (

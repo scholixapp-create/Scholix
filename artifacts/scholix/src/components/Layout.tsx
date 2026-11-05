@@ -85,12 +85,11 @@ function getAdminNav(): NavItem[] {
 }
 
 function getNav(role: string): NavItem[] {
-  const home: NavItem = { href: "/", label: "Scholix home", icon: <BookOpen size={18} /> };
   switch (role) {
-    case "tutor": return [home, ...getTutorNav()];
-    case "parent": return [home, ...getParentNav()];
-    case "student": return [home, ...getStudentNav()];
-    case "admin": return [home, ...getAdminNav()];
+    case "tutor": return getTutorNav();
+    case "parent": return getParentNav();
+    case "student": return getStudentNav();
+    case "admin": return getAdminNav();
     default: return [];
   }
 }

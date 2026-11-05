@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable } from "@workspace/db";
+import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable, adminUserActionsTable } from "@workspace/db";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import {
   AdminListUsersQueryParams,
@@ -44,6 +44,7 @@ const adminUserSelection = {
   role: usersTable.role,
   createdAt: usersTable.createdAt,
   isActive: usersTable.isActive,
+  parentApproved: usersTable.parentApproved,
   tutorVerificationStatus: sql<string | null>`(
     SELECT ${tutorsTable.verificationStatus}
     FROM ${tutorsTable}
@@ -75,6 +76,7 @@ type AdminUserRow = {
   role: "tutor" | "parent" | "student" | "admin";
   createdAt: Date;
   isActive: boolean;
+  parentApproved: boolean;
   tutorVerificationStatus: string | null;
   tutorApproved: boolean | null;
   studentIdentityVerified: boolean | null;
@@ -89,11 +91,32 @@ function toAdminUser(row: AdminUserRow) {
     role: row.role,
     createdAt: row.createdAt,
     isActive: row.isActive,
+    parentApproved: row.parentApproved,
     verificationStatus: row.tutorVerificationStatus,
     tutorApproved: row.tutorApproved,
     studentIdentityVerified: row.studentIdentityVerified,
   };
 }
+
+router.post("/admin/users/:userId/approve-parent", async (req, res): Promise<void> => {
+  const userId = Number(req.params.userId);
+  if (!Number.isInteger(userId) || userId <= 0 || userId > 2147483647) {
+    res.status(400).json({ error: "Invalid user ID" }); return;
+  }
+  const approved = await db.transaction(async (tx) => {
+    const [target] = await tx.select().from(usersTable)
+      .where(eq(usersTable.id, userId)).limit(1).for("update");
+    if (!target || target.role !== "parent" || !target.isActive || target.parentApproved) return false;
+    await tx.update(usersTable).set({ parentApproved: true }).where(eq(usersTable.id, userId));
+    await tx.insert(adminUserActionsTable).values({
+      actorUserId: (req as unknown as AuthRequest).user.id,
+      targetUserId: target.id, targetEmail: target.email, action: "parent_approved",
+    });
+    return true;
+  });
+  if (!approved) { res.status(409).json({ error: "Only an active parent awaiting approval can be approved" }); return; }
+  res.json(await findAdminUser(userId));
+});
 
 router.get("/admin/users", async (req, res): Promise<void> => {
   const parsed = AdminListUsersQueryParams.safeParse(req.query);

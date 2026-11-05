@@ -19,9 +19,11 @@ function respondToError(error: unknown, res: Response) {
 router.get("/tutors/:tutorId/reviews", async (req, res) => {
   try {
     const tutorId = reviewResourceId(req.params.tutorId);
-    const reviews = await db.select().from(reviewsTable)
-      .where(eq(reviewsTable.tutorId, tutorId)).orderBy(reviewsTable.createdAt);
-    res.json(reviews.map(serializeReview));
+    // Preserve legacy rows; count/show the first review from each parent only.
+    const reviews = await db.selectDistinctOn([reviewsTable.authorId]).from(reviewsTable)
+      .where(eq(reviewsTable.tutorId, tutorId))
+      .orderBy(reviewsTable.authorId, reviewsTable.createdAt, reviewsTable.id);
+    res.json(reviews.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map(serializeReview));
   } catch (error) {
     respondToError(error, res);
   }

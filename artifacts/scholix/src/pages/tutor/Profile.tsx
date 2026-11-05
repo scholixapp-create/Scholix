@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useListTutors, useUpdateTutorProfile } from "@workspace/api-client-react";
+import { useUpdateTutorProfile, getListTutorsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getListTutorsQueryKey } from "@workspace/api-client-react";
+import { useTutorMe, TUTOR_ME_QUERY_KEY } from "@/hooks/useTutorMe";
+import QualificationsEditor from "@/components/QualificationsEditor";
 import { Link } from "wouter";
 import { ChevronRight, CheckCircle, ExternalLink, User, BookOpen, Clock } from "lucide-react";
 
 export default function TutorProfile() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const tutors = useListTutors();
-  const tutorProfile = tutors.data?.find((t) => t.userId === user?.id);
+  const tutorMe = useTutorMe();
+  const tutorProfile = tutorMe.data;
   const tutorId = tutorProfile?.id;
   const updateProfile = useUpdateTutorProfile();
 
@@ -33,7 +34,10 @@ export default function TutorProfile() {
         tutorId,
         data: { bio },
       });
-      await qc.invalidateQueries({ queryKey: getListTutorsQueryKey() });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: TUTOR_ME_QUERY_KEY }),
+        qc.invalidateQueries({ queryKey: getListTutorsQueryKey() }),
+      ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
@@ -62,7 +66,7 @@ export default function TutorProfile() {
           <div className="flex-1 min-w-0">
             <p className="text-base font-bold text-foreground">{user?.firstName} {user?.lastName}</p>
             <p className="text-sm text-muted-foreground mt-0.5">{user?.email}</p>
-            {tutorProfile && (
+            {tutorProfile?.hourlyRate != null && (
               <p className="text-sm text-muted-foreground mt-0.5">${tutorProfile.hourlyRate}/hr</p>
             )}
           </div>
@@ -75,6 +79,7 @@ export default function TutorProfile() {
               <p className="text-xs text-muted-foreground truncate flex-1">{profileUrl}</p>
               <a
                 href={profileUrl}
+                aria-label="Open public profile in a new tab"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="shrink-0 text-primary hover:text-primary/80 transition-colors"
@@ -94,6 +99,7 @@ export default function TutorProfile() {
         </div>
         <div className="p-5">
           <textarea
+            aria-label="About me"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             placeholder="e.g. I'm a passionate maths and science tutor with 5 years of experience helping VCE students achieve their goals…"
@@ -122,9 +128,34 @@ export default function TutorProfile() {
         </div>
       </div>
 
+      {tutorMe.isError && (
+        <div role="alert" className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center justify-between gap-2">
+          We could not load your tutor profile.
+          <button type="button" onClick={() => tutorMe.refetch()} className="text-xs font-semibold underline">Try again</button>
+        </div>
+      )}
+
+      <div className="mb-4">
+        <QualificationsEditor />
+      </div>
+
       {/* Quick links */}
       <div className="space-y-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-2">Settings</p>
+        <Link
+          href="/tutor/onboarding"
+          data-testid="link-tutor-verification"
+          className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border hover:border-primary/40 transition-colors group"
+        >
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <CheckCircle size={16} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Verification & documents</p>
+            <p className="text-xs text-muted-foreground mt-0.5">View your verification status and submitted documents</p>
+          </div>
+          <ChevronRight size={15} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+        </Link>
         <Link
           href="/tutor/availability"
           className="flex items-center gap-3 p-4 rounded-xl bg-card border border-card-border hover:border-primary/40 transition-colors group"

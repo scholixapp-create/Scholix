@@ -25,6 +25,104 @@ tags:
     description: Admin operations
 
 paths:
+  /tutors/me/education:
+    get:
+      operationId: getMyEducation
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Read own approved and proposed qualifications
+      responses:
+        "200":
+          description: Own qualifications
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TutorEducation" }
+        "403": { description: Tutor account required }
+    put:
+      operationId: submitEducation
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Submit qualifications for admin approval without changing published details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EducationProposal" }
+      responses:
+        "200":
+          description: Pending qualification update
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TutorEducation" }
+        "400": { description: Invalid qualifications }
+        "403": { description: Tutor account required }
+  /admin/tutors/{tutorId}/education:
+    post:
+      operationId: decideEducation
+      security: [{ bearerAuth: [] }]
+      tags: [admin]
+      summary: Approve or reject the exact pending qualification proposal
+      parameters:
+        - { name: tutorId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EducationDecision" }
+      responses:
+        "200":
+          description: Qualification decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TutorEducation" }
+        "403": { description: Admin required }
+        "409": { description: Proposal changed or is no longer pending }
+  /admin/users/{userId}/approve-parent:
+    post:
+      operationId: approveParent
+      security: [{ bearerAuth: [] }]
+      tags: [admin]
+      summary: Approve a pending active parent account
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Approved parent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminUser" }
+        "403": { description: Admin required }
+        "409": { description: Not an active pending parent }
+  /tutors/me/promotion:
+    get:
+      operationId: getMyPromotion
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Read own promotion checklist
+      responses:
+        "200":
+          description: Promotion checklist
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TutorPromotion" }
+    put:
+      operationId: updateMyPromotion
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Persist a self-reported promotion action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PromotionActionUpdate" }
+      responses:
+        "200":
+          description: Updated checklist
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TutorPromotion" }
+        "400": { description: Invalid action }
+        "403": { description: Tutor required }
   /tutors/{tutorId}/reviews:
     get:
       operationId: listTutorReviews
@@ -62,7 +160,7 @@ paths:
       operationId: createSessionReview
       security: [{ bearerAuth: [] }]
       tags: [sessions]
-      summary: Submit one review for a completed session belonging to the authenticated parent
+      summary: Submit one review per parent and tutor after a completed owned session
       parameters:
         - { name: sessionId, in: path, required: true, schema: { type: integer, minimum: 1, maximum: 2147483647 } }
       requestBody:
@@ -580,6 +678,7 @@ paths:
                   $ref: "#/components/schemas/Session"
     post:
       operationId: createSession
+      security: [{ bearerAuth: [] }]
       tags: [sessions]
       summary: Create a new session
       requestBody:
@@ -618,6 +717,7 @@ paths:
   /sessions/{sessionId}/complete:
     post:
       operationId: completeSession
+      security: [{ bearerAuth: [] }]
       tags: [sessions]
       summary: Mark a session as complete and generate invoice
       parameters:
@@ -637,6 +737,7 @@ paths:
   /sessions/{sessionId}/cancel:
     post:
       operationId: cancelSession
+      security: [{ bearerAuth: [] }]
       tags: [sessions]
       summary: Cancel a session
       parameters:
@@ -751,6 +852,7 @@ paths:
   /payments/simulate:
     post:
       operationId: simulatePayment
+      security: [{ bearerAuth: [] }]
       tags: [payments]
       summary: Simulate a payment for a session
       requestBody:
@@ -770,6 +872,7 @@ paths:
   /payments:
     get:
       operationId: listPayments
+      security: [{ bearerAuth: [] }]
       tags: [payments]
       summary: List payments
       parameters:
@@ -1067,6 +1170,8 @@ components:
         role:
           type: string
           enum: [tutor, parent, student, admin]
+        parentApproved:
+          type: boolean
         createdAt:
           type: string
       required: [id, email, firstName, lastName, role, createdAt]
@@ -1089,6 +1194,8 @@ components:
           type: string
           format: date-time
         isActive:
+          type: boolean
+        parentApproved:
           type: boolean
         verificationStatus:
           type: [string, "null"]
@@ -1567,6 +1674,45 @@ components:
         comment: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
 
+    TutorEducation:
+      type: object
+      required: [tutorId, educationDetails, pendingEducationDetails, educationReviewStatus, educationReviewNotes, educationSubmittedAt]
+      properties:
+        tutorId: { type: integer }
+        educationDetails: { type: [string, "null"] }
+        pendingEducationDetails: { type: [string, "null"] }
+        educationReviewStatus: { type: string, enum: [none, pending, approved, rejected] }
+        educationReviewNotes: { type: [string, "null"] }
+        educationSubmittedAt: { type: [string, "null"], format: date-time }
+    EducationProposal:
+      type: object
+      additionalProperties: false
+      required: [educationDetails]
+      properties:
+        educationDetails: { type: string, minLength: 1, maxLength: 5000 }
+    EducationDecision:
+      type: object
+      additionalProperties: false
+      required: [action, expectedSubmittedAt]
+      properties:
+        action: { type: string, enum: [approve, reject] }
+        expectedSubmittedAt: { type: string, format: date-time }
+        notes: { type: string, maxLength: 2000 }
+    TutorPromotion:
+      type: object
+      required: [tutorId, completedActions]
+      properties:
+        tutorId: { type: integer }
+        completedActions:
+          type: array
+          items: { type: string, enum: [share_profile, invite_family, social_intro] }
+    PromotionActionUpdate:
+      type: object
+      additionalProperties: false
+      required: [action, completed]
+      properties:
+        action: { type: string, enum: [share_profile, invite_family, social_intro] }
+        completed: { type: boolean }
     SessionReviewState:
       type: object
       required: [eligible, review]

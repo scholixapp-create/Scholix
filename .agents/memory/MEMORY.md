@@ -13,3 +13,4 @@
 - [Protected document previews](protected-document-previews.md) — an authorized PDF response can still leave a blank browser tab; provide visible status and a download fallback.
 - [Scholix brand direction](brand-direction.md) — approved palette, user-supplied imagery, and homepage priorities for branding work.
 - [Review integrity](review-integrity.md) — serialized review writes avoid a new migration; future writers must share the lock or plan a history-preserving constraint.
+- [Approval policy](account-approval-policy.md) — new parents need manual approval; tutor qualification proposals must not revoke existing tutor verification.

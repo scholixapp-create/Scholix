@@ -78,7 +78,7 @@ export default function SessionReviewDialog({ session, onClose }: { session: Ses
           const status = errorStatus(err);
           setConfirming(false);
           if (status === 409) {
-            setSubmitError("A review for this session already exists. Showing your saved review.");
+            setSubmitError("You have already reviewed this tutor. Showing your saved review.");
             queryClient.invalidateQueries({ queryKey: reviewKey });
           } else if (status === 403 || status === 404) {
             setSubmitError("This session is not available for review.");
@@ -133,7 +133,7 @@ export default function SessionReviewDialog({ session, onClose }: { session: Ses
         ) : review ? (
           <div className="space-y-3" data-testid="status-review-saved">
             <div className="flex items-center gap-2 text-sm font-semibold text-brand-teal">
-              <CheckCircle2 size={16} /> {justSaved ? "Thanks, your review is saved" : "Your review"}
+              <CheckCircle2 size={16} /> {justSaved ? "Thanks, your review is saved" : "Your review of this tutor"}
             </div>
             <Stars value={review.rating} />
             {review.comment ? (
@@ -141,7 +141,7 @@ export default function SessionReviewDialog({ session, onClose }: { session: Ses
             ) : (
               <p className="text-sm text-muted-foreground">No comment added.</p>
             )}
-            <p className="text-xs text-muted-foreground">Reviews cannot be edited once submitted.</p>
+            <p className="text-xs text-muted-foreground">Families leave one review per tutor, covering all sessions. Reviews cannot be edited once submitted.</p>
           </div>
         ) : !state.data?.eligible ? (
           <div className="flex items-start gap-2 p-3 rounded-lg bg-muted text-sm text-muted-foreground" data-testid="status-review-ineligible">
@@ -150,7 +150,7 @@ export default function SessionReviewDialog({ session, onClose }: { session: Ses
           </div>
         ) : confirming ? (
           <div className="space-y-4" data-testid="status-review-confirm">
-            <p className="text-sm text-foreground">Submit this review? It will appear on the tutor's public profile and cannot be changed.</p>
+            <p className="text-sm text-foreground">Submit this review? You can leave one review per tutor. It will appear on the tutor's public profile and cannot be changed.</p>
             <Stars value={rating} />
             {comment.trim() && <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">{comment.trim()}</p>}
             <div className="flex gap-2 justify-end">

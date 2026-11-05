@@ -3,6 +3,7 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { verifyAccessToken } from "./authTokens";
 import { isAdminRole } from "./authPolicy";
+import { canUseProtectedResources, isPendingParent } from "./parentApproval";
 
 export type AuthRequest = Request & { user: typeof usersTable.$inferSelect };
 
@@ -11,11 +12,11 @@ export async function getUserIdFromBearer(authHeader: string | undefined): Promi
   if (!userId) return null;
 
   const [user] = await db
-    .select({ isActive: usersTable.isActive })
+    .select({ isActive: usersTable.isActive, role: usersTable.role, parentApproved: usersTable.parentApproved })
     .from(usersTable)
     .where(eq(usersTable.id, userId))
     .limit(1);
-  return user?.isActive ? userId : null;
+  return user?.isActive && !isPendingParent(user) ? userId : null;
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
@@ -51,6 +52,13 @@ async function authenticateRequest(
     }
     if (adminOnly && !isAdminRole(user.role)) {
       res.status(403).json({ error: "Admin access required" });
+      return;
+    }
+    if (!canUseProtectedResources(user, req.path)) {
+      res.status(403).json({
+        error: "Your parent account is awaiting admin approval",
+        code: "PARENT_APPROVAL_REQUIRED",
+      });
       return;
     }
 

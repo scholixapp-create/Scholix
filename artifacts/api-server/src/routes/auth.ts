@@ -50,6 +50,7 @@ function normaliseAuPhone(raw: string): string | null {
 function userToJson(user: typeof usersTable.$inferSelect) {
   return {
     id: user.id,
+    parentApproved: user.parentApproved,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
@@ -341,6 +342,7 @@ router.post("/auth/signup", async (req, res) => {
       firstName,
       lastName,
       role,
+      parentApproved: role !== "parent",
       phone: normalisedPhone,
     })
     .returning();

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { openProtectedDocument } from "@/lib/protectedDocument";
 import { useParams, Link } from "wouter";
+import EducationReviewPanel, { type EducationFields } from "@/components/admin/EducationReviewPanel";
 import { ArrowLeft, GraduationCap, FileText, Download, CheckCircle, XCircle, MessageSquare, Clock, Shield, BookOpen } from "lucide-react";
 
 function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
 
-interface TutorWithDocs {
+interface TutorWithDocs extends EducationFields {
   id: number;
   userId: number;
   firstName: string;
@@ -19,7 +20,6 @@ interface TutorWithDocs {
   isApproved: boolean;
   wwccNumber?: string;
   wwccExpiry?: string;
-  educationDetails?: string;
   abn?: string;
   documents?: { id: number; docType: string; uploadedAt: string; originalName?: string }[];
 }
@@ -48,6 +48,14 @@ export default function TutorReview() {
   const [rejectNotes, setRejectNotes] = useState("");
   const [infoNotes, setInfoNotes] = useState("");
   const [error, setError] = useState("");
+
+  const refreshTutor = async () => {
+    const refreshed = await fetch("/api/admin/tutors/all", {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    const found = (refreshed as TutorWithDocs[]).find((t) => t.id === parseInt(id, 10));
+    if (found) setTutor(found);
+  };
 
   useEffect(() => {
     fetch("/api/admin/tutors/all", {
@@ -223,6 +231,10 @@ export default function TutorReview() {
           </div>
         </div>
       )}
+
+      <div className="mb-4">
+        <EducationReviewPanel tutor={tutor} onDecided={refreshTutor} />
+      </div>
 
       {/* Documents */}
       {tutor.documents && tutor.documents.length > 0 && (

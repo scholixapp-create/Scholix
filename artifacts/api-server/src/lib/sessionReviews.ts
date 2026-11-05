@@ -1,6 +1,6 @@
 import { CreateSessionReviewBody } from "@workspace/api-zod";
 
-export type ReviewActor = { id: number; role: string };
+export type ReviewActor = { id: number; role: string; parentApproved?: boolean };
 export type ReviewSession = { id: number; tutorId: number; parentId: number | null; status: string };
 export type ReviewRecord = {
   id: number;
@@ -14,13 +14,16 @@ export type ReviewRecord = {
 export type ReviewInsert = Omit<ReviewRecord, "id" | "createdAt">;
 
 export interface ReviewTransaction {
+  lockAuthor(authorId: number): Promise<void>;
   getSessionForUpdate(id: number): Promise<ReviewSession | undefined>;
   findReview(sessionId: number): Promise<ReviewRecord | undefined>;
+  findTutorReview(authorId: number, tutorId: number): Promise<ReviewRecord | undefined>;
   insertReview(value: ReviewInsert): Promise<ReviewRecord>;
 }
 export interface ReviewStore {
   getSession(id: number): Promise<ReviewSession | undefined>;
   findReview(sessionId: number): Promise<ReviewRecord | undefined>;
+  findTutorReview(authorId: number, tutorId: number): Promise<ReviewRecord | undefined>;
   transaction<T>(work: (tx: ReviewTransaction) => Promise<T>): Promise<T>;
 }
 
@@ -40,6 +43,7 @@ export function reviewResourceId(raw: unknown): number {
 function requireParent(actor: ReviewActor | undefined): asserts actor is ReviewActor {
   if (!actor) throw new ReviewError("Authentication required", 401);
   if (actor.role !== "parent") throw new ReviewError("Only parents can review their children's sessions", 403);
+  if (actor.parentApproved === false) throw new ReviewError("Your parent account is awaiting admin approval", 403);
 }
 
 function requireOwnedSession(session: ReviewSession | undefined, parentId: number): asserts session is ReviewSession {
@@ -50,7 +54,7 @@ export async function getParentReview(store: ReviewStore, actor: ReviewActor | u
   requireParent(actor);
   const session = await store.getSession(sessionId);
   requireOwnedSession(session, actor.id);
-  const review = await store.findReview(sessionId);
+  const review = await store.findTutorReview(actor.id, session.tutorId) ?? await store.findReview(sessionId);
   return { eligible: session.status === "completed" && !review, review: review ?? null };
 }
 
@@ -64,12 +68,15 @@ export async function submitParentReview(
   }
 
   return store.transaction(async (tx) => {
-    // Every submission locks the same session row before checking/inserting a review.
-    // The lock lasts until commit, so two concurrent requests cannot both insert.
+    // Lock the author first: two different sessions with the same tutor must also serialize.
+    await tx.lockAuthor(actor.id);
     const session = await tx.getSessionForUpdate(sessionId);
     requireOwnedSession(session, actor.id);
     if (session.status !== "completed") throw new ReviewError("Only completed sessions can be reviewed", 409);
     if (await tx.findReview(sessionId)) throw new ReviewError("Review already submitted for this session", 409);
+    if (await tx.findTutorReview(actor.id, session.tutorId)) {
+      throw new ReviewError("You have already reviewed this tutor", 409);
+    }
     return tx.insertReview({
       sessionId: session.id,
       tutorId: session.tutorId,

@@ -276,6 +276,7 @@ export function sessionCompletedEmailHtml(opts: {
   tutorEarnings?: number;
   commissionTier?: string;
   isCommissionFree?: boolean;
+  reviewUrl?: string;
 }) {
   const earningsRow = opts.tutorEarnings !== undefined
     ? [{ label: "Your earnings", value: `$${opts.tutorEarnings.toFixed(2)}`, accent: true }]
@@ -301,6 +302,10 @@ export function sessionCompletedEmailHtml(opts: {
       ...earningsRow,
     ])}
     <p style="color:${EMAIL_PALETTE.muted};font-size:13px;margin-bottom:0">Your invoice is available in your Scholix account.</p>
+    ${opts.reviewUrl ? `
+      <p style="color:${EMAIL_PALETTE.ink};font-size:14px;margin-top:20px">How was your experience with this tutor? You can leave one review per tutor.</p>
+      <p style="margin:16px 0"><a href="${escapeHtml(opts.reviewUrl)}" style="display:inline-block;background:${EMAIL_PALETTE.turquoise};color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">Leave a review</a></p>
+    ` : ""}
   `;
   return emailWrapper("Session completed", body);
 }

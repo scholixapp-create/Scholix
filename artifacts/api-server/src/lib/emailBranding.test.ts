@@ -47,7 +47,7 @@ test("all email templates use the Scholix palette and shared wordmark", () => {
     assert.match(html, /#0f2747/);
     assert.match(html, /#0e8b6b/);
     assert.match(html, /#d4a850/);
-    assert.match(html, /★ Scholix/);
+    assert.match(html, /★<\/span> Scholix/);
     assert.doesNotMatch(html, /#2563eb|#1d4ed8|#7c3aed|#1e3a5f/);
   }
 });

@@ -3,12 +3,13 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db, tutorsTable, tutorDocumentsTable, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { requireAdmin, requireAuth, type AuthRequest } from "../lib/authMiddleware";
 import { createNotification } from "../lib/notify";
 import { verificationInfoRequestedEmailHtml } from "../lib/email";
 import { config } from "../lib/config";
 import { prepareUploadsDirectory } from "../lib/uploadStorage";
+import { educationProposal, EducationError } from "../lib/tutorEducation";
 
 const router = Router();
 
@@ -68,6 +69,10 @@ router.get("/tutors/me", requireAuth, async (req, res) => {
     wwccNumber: row.tutors.wwccNumber,
     wwccExpiry: row.tutors.wwccExpiry,
     educationDetails: row.tutors.educationDetails,
+    pendingEducationDetails: row.tutors.pendingEducationDetails,
+    educationReviewStatus: row.tutors.educationReviewStatus,
+    educationReviewNotes: row.tutors.educationReviewNotes,
+    educationSubmittedAt: row.tutors.educationSubmittedAt?.toISOString() ?? null,
     abn: row.tutors.abn ?? null,
     documents: docs.map((d) => ({
       id: d.id,
@@ -85,17 +90,30 @@ router.put("/tutors/me/details", requireAuth, async (req, res) => {
   const { wwccNumber, wwccExpiry, educationDetails, abn, teachingMode, travelBufferMinutes } = req.body as Record<string, unknown>;
 
   const [tutor] = await db
-    .select({ id: tutorsTable.id })
+    .select()
     .from(tutorsTable)
     .where(eq(tutorsTable.userId, userId))
     .limit(1);
 
   if (!tutor) { res.status(404).json({ error: "Tutor not found" }); return; }
 
-  const updates: Record<string, string | number | undefined> = {
+  if ((req as AuthRequest).user.role !== "tutor") {
+    res.status(403).json({ error: "Tutor access required" }); return;
+  }
+  if (educationDetails !== undefined && (
+    typeof educationDetails !== "string" || educationDetails.length > 5000
+  )) {
+    res.status(400).json({ error: "Qualifications must be text of at most 5,000 characters" }); return;
+  }
+  if (tutor.isApproved && (
+    (wwccNumber !== undefined && wwccNumber !== tutor.wwccNumber) ||
+    (wwccExpiry !== undefined && wwccExpiry !== tutor.wwccExpiry)
+  )) {
+    res.status(409).json({ error: "Contact support to update an approved Working With Children Check" }); return;
+  }
+  const updates: Partial<typeof tutorsTable.$inferInsert> = {
     wwccNumber: wwccNumber as string | undefined,
     wwccExpiry: wwccExpiry as string | undefined,
-    educationDetails: educationDetails as string | undefined,
   };
   if (abn !== undefined) updates.abn = abn as string;
   if (typeof teachingMode === "string" && ["online", "in_person", "both"].includes(teachingMode)) {
@@ -105,7 +123,26 @@ router.put("/tutors/me/details", requireAuth, async (req, res) => {
     updates.travelBufferMinutes = travelBufferMinutes;
   }
 
-  await db.update(tutorsTable).set(updates).where(eq(tutorsTable.id, tutor.id));
+  try {
+    await db.transaction(async (tx) => {
+    const [current] = await tx.select().from(tutorsTable)
+      .where(eq(tutorsTable.id, tutor.id)).limit(1).for("update");
+    if (!current) throw new EducationError("Tutor not found", 404);
+    if (current.isApproved && (
+      (wwccNumber !== undefined && wwccNumber !== current.wwccNumber) ||
+      (wwccExpiry !== undefined && wwccExpiry !== current.wwccExpiry)
+    )) throw new EducationError("Contact support to update an approved Working With Children Check", 409);
+    // Legacy onboarding must use the same staged path as the new qualification editor.
+    const proposal = typeof educationDetails === "string" && educationDetails.trim()
+      ? educationProposal(educationDetails, current.educationSubmittedAt) : {};
+    if (Object.values(updates).some((v) => v !== undefined) || Object.keys(proposal).length) {
+      await tx.update(tutorsTable).set({ ...updates, ...proposal }).where(eq(tutorsTable.id, tutor.id));
+    }
+    });
+  } catch (error) {
+    if (!(error instanceof EducationError)) throw error;
+    res.status(error.status).json({ error: error.message }); return;
+  }
 
   res.json({ success: true });
 });
@@ -148,17 +185,26 @@ router.post("/tutors/me/submit-verification", requireAuth, async (req, res) => {
   const userId = (req as AuthRequest).user.id;
 
   const [tutor] = await db
-    .select({ id: tutorsTable.id })
+    .select({ id: tutorsTable.id, isApproved: tutorsTable.isApproved })
     .from(tutorsTable)
     .where(eq(tutorsTable.userId, userId))
     .limit(1);
 
   if (!tutor) { res.status(404).json({ error: "Tutor not found" }); return; }
 
-  await db
+  if (tutor.isApproved) {
+    res.status(409).json({ error: "Already approved. Submit qualification updates from My Profile without restarting verification." });
+    return;
+  }
+
+  const submitted = await db
     .update(tutorsTable)
     .set({ verificationStatus: "pending", isApproved: false })
-    .where(eq(tutorsTable.id, tutor.id));
+    .where(and(eq(tutorsTable.id, tutor.id), eq(tutorsTable.isApproved, false)))
+    .returning({ id: tutorsTable.id });
+  if (!submitted.length) {
+    res.status(409).json({ error: "Your account was already approved. Refresh to see the current status." }); return;
+  }
 
   res.json({ success: true, verificationStatus: "pending", isApproved: false });
 });
@@ -205,6 +251,10 @@ router.get("/admin/tutors/all", requireAdmin, async (_req, res) => {
         wwccNumber: row.tutors.wwccNumber,
         wwccExpiry: row.tutors.wwccExpiry,
         educationDetails: row.tutors.educationDetails,
+        pendingEducationDetails: row.tutors.pendingEducationDetails,
+        educationReviewStatus: row.tutors.educationReviewStatus,
+        educationReviewNotes: row.tutors.educationReviewNotes,
+        educationSubmittedAt: row.tutors.educationSubmittedAt?.toISOString() ?? null,
         abn: row.tutors.abn ?? null,
         // Audit trail
         wwccVerifiedBy: row.tutors.wwccVerifiedBy ?? null,

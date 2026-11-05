@@ -1,27 +1,22 @@
 import { useAuth } from "@/context/AuthContext";
 import { useTutorInvoices } from "@/hooks/useTutorInvoices";
-import { useListSessions, useGetSessionSummary, useListTutors, useGetTutorAvailability } from "@workspace/api-client-react";
+import { useListSessions, useGetSessionSummary, useGetTutorAvailability } from "@workspace/api-client-react";
+import { useTutorMe, isTutorVerified } from "@/hooks/useTutorMe";
+import GetMoreStudents from "@/components/tutor/GetMoreStudents";
+import TutorReviewsSection from "@/components/tutor/TutorReviewsSection";
 import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
 import {
   Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen,
-  Shield, AlertCircle, XCircle, Bell, TrendingUp, UserPlus, Layers, ArrowUp, Wallet,
+  Shield, AlertCircle, AlertTriangle, XCircle, Bell, TrendingUp, Layers, ArrowUp, Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
 
-interface TutorVerification {
-  verificationStatus: string;
-  wwccNumber?: string | null;
-}
-
-function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
-
 function VerificationBanner({ status, hasWwcc }: { status: string; hasWwcc: boolean }) {
-  if (status === "approved") return null;
+  if (isTutorVerified(status)) return null;
 
   if (status === "rejected") return (
-    <div className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+    <div role="status" className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-destructive/10 border border-destructive/20">
       <XCircle size={18} className="text-destructive shrink-0 mt-0.5" />
       <div className="flex-1">
         <p className="text-sm font-semibold text-destructive">Verification rejected</p>
@@ -33,8 +28,34 @@ function VerificationBanner({ status, hasWwcc }: { status: string; hasWwcc: bool
     </div>
   );
 
+  if (status === "expired") return (
+    <div role="status" className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
+      <AlertTriangle size={18} className="text-red-600 shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-red-800">Your WWCC has expired</p>
+        <p className="text-xs text-red-700 mt-0.5">Renew your Working With Children Check and update it to keep accepting bookings.</p>
+      </div>
+      <Link href="/tutor/onboarding" className="shrink-0 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:opacity-90 transition-opacity">
+        Update WWCC
+      </Link>
+    </div>
+  );
+
+  if (status === "info_requested") return (
+    <div role="status" className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+      <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-amber-800">More information requested</p>
+        <p className="text-xs text-amber-700 mt-0.5">Our team needs more details to finish verifying you. Check your email for the request.</p>
+      </div>
+      <Link href="/tutor/onboarding" className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:opacity-90 transition-opacity">
+        Update details
+      </Link>
+    </div>
+  );
+
   if (!hasWwcc) return (
-    <div className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+    <div role="status" className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
       <Shield size={18} className="text-amber-600 shrink-0 mt-0.5" />
       <div className="flex-1">
         <p className="text-sm font-semibold text-amber-800">Complete your verification</p>
@@ -47,11 +68,11 @@ function VerificationBanner({ status, hasWwcc }: { status: string; hasWwcc: bool
   );
 
   return (
-    <div className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200">
+    <div role="status" className="mb-5 flex items-start gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200">
       <AlertCircle size={18} className="text-blue-600 shrink-0 mt-0.5" />
       <div className="flex-1">
         <p className="text-sm font-semibold text-blue-800">Your account is pending verification</p>
-        <p className="text-xs text-blue-700 mt-0.5">Our team is reviewing your documents. You'll be notified once approved (1–2 business days).</p>
+        <p className="text-xs text-blue-700 mt-0.5">Our team is reviewing your documents. You'll be notified once approved (1 to 2 business days).</p>
       </div>
     </div>
   );
@@ -84,7 +105,9 @@ function GrowEarningsSection({
   hourlyRate,
   profileComplete,
   hasAvailability,
+  tutorId,
 }: {
+  tutorId: number;
   completedSessions: number;
   hourlyRate: number;
   profileComplete: boolean;
@@ -139,39 +162,8 @@ function GrowEarningsSection({
           </p>
         </div>
 
-        {/* 1 — Get More Students */}
-        <div className="bg-card border border-card-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <UserPlus size={14} className="text-primary" />
-            </div>
-            <p className="text-sm font-semibold text-foreground">Get More Students</p>
-          </div>
-          <div className="space-y-2">
-            {[
-              { done: profileComplete, text: "Complete your profile with a bio and subjects" },
-              { done: hasAvailability, text: "Set your weekly availability" },
-              { done: false, text: "Share your Scholix profile link with students" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <div className={`w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
-                  item.done ? "bg-accent border-accent" : "border-muted-foreground/40"
-                }`}>
-                  {item.done && <span className="text-white text-[8px] font-bold">✓</span>}
-                </div>
-                <p className={`text-xs leading-relaxed ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                  {item.text}
-                </p>
-              </div>
-            ))}
-          </div>
-          <Link
-            href="/tutor/profile"
-            className="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-primary hover:underline"
-          >
-            Update profile <ChevronRight size={11} />
-          </Link>
-        </div>
+        {/* 1 - Get More Students */}
+        <GetMoreStudents tutorId={tutorId} profileComplete={profileComplete} hasAvailability={hasAvailability} />
 
         {/* 2 — Commission Progress */}
         <div className="bg-card border border-card-border rounded-xl p-4">
@@ -308,9 +300,9 @@ function GrowEarningsSection({
 export default function TutorDashboard() {
   const { user } = useAuth();
   const invoices = useTutorInvoices(user?.id);
-  const [verif, setVerif] = useState<TutorVerification | null>(null);
-  const tutors = useListTutors();
-  const tutorProfile = tutors.data?.find((t) => t.userId === user?.id);
+  const tutorMe = useTutorMe({ refetchInterval: 60_000 });
+  const tutorProfile = tutorMe.data;
+  const verif = tutorProfile;
   const tutorId = tutorProfile?.id;
   const hourlyRate = tutorProfile?.hourlyRate;
 
@@ -319,18 +311,6 @@ export default function TutorDashboard() {
   });
   const hasAvailability = (availability.data?.length ?? 0) > 0;
   const profileComplete = !!(tutorProfile?.bio?.trim() && (tutorProfile?.subjects?.length ?? 0) > 0);
-
-  useEffect(() => {
-    const fetchVerif = () => {
-      fetch("/api/tutors/me", { headers: { Authorization: `Bearer ${getToken()}` } })
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => { if (data) setVerif(data); })
-        .catch(() => {});
-    };
-    fetchVerif();
-    const interval = setInterval(fetchVerif, 60_000);
-    return () => clearInterval(interval);
-  }, []);
 
   const sessions = useListSessions(tutorId ? { tutorId } : undefined, {
     query: { enabled: !!tutorId } as any,
@@ -472,8 +452,11 @@ export default function TutorDashboard() {
       </div>
 
       {/* Grow Your Earnings */}
-      {hourlyRate != null && (
+      {tutorId != null && <TutorReviewsSection tutorId={tutorId} />}
+
+      {hourlyRate != null && tutorId != null && (
         <GrowEarningsSection
+          tutorId={tutorId}
           completedSessions={completedSessions}
           hourlyRate={hourlyRate}
           profileComplete={profileComplete}
@@ -487,7 +470,6 @@ export default function TutorDashboard() {
         <div className="space-y-2">
           <PlaceholderCard icon={BarChart2} title="Progress Dashboard" desc="Track student improvement over time" />
           <PlaceholderCard icon={Zap} title="AI Tools" desc="AI-powered lesson planning and feedback" />
-          <PlaceholderCard icon={Star} title="Ratings & Reviews" desc="See what parents and students say" />
           <PlaceholderCard icon={BookOpen} title="Homework Tracking" desc="Assign and monitor homework" />
         </div>
       </div>

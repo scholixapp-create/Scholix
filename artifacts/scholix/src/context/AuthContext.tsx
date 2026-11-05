@@ -8,6 +8,7 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   role: UserRole;
+  parentApproved?: boolean;
   createdAt: string;
 }
 
@@ -17,6 +18,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (user: AuthUser, token: string) => void;
   logout: () => void;
+  updateUser: (user: AuthUser) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -86,8 +88,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("scholix_user");
   };
 
+  const updateUser = (next: AuthUser) => {
+    setUser(next);
+    localStorage.setItem("scholix_user", JSON.stringify(next));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

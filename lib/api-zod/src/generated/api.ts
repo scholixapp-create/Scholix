@@ -9,6 +9,118 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Read own approved and proposed qualifications
+ */
+export const GetMyEducationResponse = zod.object({
+  "tutorId": zod.number().int(),
+  "educationDetails": zod.string().nullable(),
+  "pendingEducationDetails": zod.string().nullable(),
+  "educationReviewStatus": zod.enum(['none', 'pending', 'approved', 'rejected']),
+  "educationReviewNotes": zod.string().nullable(),
+  "educationSubmittedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Submit qualifications for admin approval without changing published details
+ */
+export const submitEducationBodyEducationDetailsMax = 5000;
+
+
+
+export const SubmitEducationBody = zod.object({
+  "educationDetails": zod.string().min(1).max(submitEducationBodyEducationDetailsMax)
+})
+
+export const SubmitEducationResponse = zod.object({
+  "tutorId": zod.number().int(),
+  "educationDetails": zod.string().nullable(),
+  "pendingEducationDetails": zod.string().nullable(),
+  "educationReviewStatus": zod.enum(['none', 'pending', 'approved', 'rejected']),
+  "educationReviewNotes": zod.string().nullable(),
+  "educationSubmittedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Approve or reject the exact pending qualification proposal
+ */
+
+
+
+export const DecideEducationParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1)
+})
+
+export const decideEducationBodyNotesMax = 2000;
+
+
+
+export const DecideEducationBody = zod.object({
+  "action": zod.enum(['approve', 'reject']),
+  "expectedSubmittedAt": zod.coerce.date(),
+  "notes": zod.string().max(decideEducationBodyNotesMax).optional()
+})
+
+export const DecideEducationResponse = zod.object({
+  "tutorId": zod.number().int(),
+  "educationDetails": zod.string().nullable(),
+  "pendingEducationDetails": zod.string().nullable(),
+  "educationReviewStatus": zod.enum(['none', 'pending', 'approved', 'rejected']),
+  "educationReviewNotes": zod.string().nullable(),
+  "educationSubmittedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Approve a pending active parent account
+ */
+
+
+
+export const ApproveParentParams = zod.object({
+  "userId": zod.coerce.number().int().min(1)
+})
+
+export const ApproveParentResponse = zod.object({
+  "id": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "role": zod.enum(['tutor', 'parent', 'student', 'admin']),
+  "createdAt": zod.coerce.date(),
+  "isActive": zod.boolean(),
+  "parentApproved": zod.boolean().optional(),
+  "verificationStatus": zod.string().nullable(),
+  "tutorApproved": zod.boolean().nullable(),
+  "studentIdentityVerified": zod.boolean().nullable()
+})
+
+
+/**
+ * @summary Read own promotion checklist
+ */
+export const GetMyPromotionResponse = zod.object({
+  "tutorId": zod.number().int(),
+  "completedActions": zod.array(zod.enum(['share_profile', 'invite_family', 'social_intro']))
+})
+
+
+/**
+ * @summary Persist a self-reported promotion action
+ */
+export const UpdateMyPromotionBody = zod.object({
+  "action": zod.enum(['share_profile', 'invite_family', 'social_intro']),
+  "completed": zod.boolean()
+})
+
+export const UpdateMyPromotionResponse = zod.object({
+  "tutorId": zod.number().int(),
+  "completedActions": zod.array(zod.enum(['share_profile', 'invite_family', 'social_intro']))
+})
+
+
+/**
  * @summary List public reviews for a tutor
  */
 export const listTutorReviewsPathTutorIdMax = 2147483647;
@@ -65,7 +177,7 @@ export const GetSessionReviewResponse = zod.object({
 
 
 /**
- * @summary Submit one review for a completed session belonging to the authenticated parent
+ * @summary Submit one review per parent and tutor after a completed owned session
  */
 export const createSessionReviewPathSessionIdMax = 2147483647;
 
@@ -161,6 +273,7 @@ export const VerifyOtpResponse = zod.object({
   "firstName": zod.string(),
   "lastName": zod.string(),
   "role": zod.enum(['tutor', 'parent', 'student', 'admin']),
+  "parentApproved": zod.boolean().optional(),
   "createdAt": zod.string()
 }),
   "token": zod.string()
@@ -190,6 +303,7 @@ export const GetMeResponse = zod.object({
   "firstName": zod.string(),
   "lastName": zod.string(),
   "role": zod.enum(['tutor', 'parent', 'student', 'admin']),
+  "parentApproved": zod.boolean().optional(),
   "createdAt": zod.string()
 })
 
@@ -772,6 +886,7 @@ export const AdminListUsersResponseItem = zod.object({
   "role": zod.enum(['tutor', 'parent', 'student', 'admin']),
   "createdAt": zod.coerce.date(),
   "isActive": zod.boolean(),
+  "parentApproved": zod.boolean().optional(),
   "verificationStatus": zod.string().nullable(),
   "tutorApproved": zod.boolean().nullable(),
   "studentIdentityVerified": zod.boolean().nullable()
@@ -794,6 +909,7 @@ export const GetAdminUserResponse = zod.object({
   "role": zod.enum(['tutor', 'parent', 'student', 'admin']),
   "createdAt": zod.coerce.date(),
   "isActive": zod.boolean(),
+  "parentApproved": zod.boolean().optional(),
   "verificationStatus": zod.string().nullable(),
   "tutorApproved": zod.boolean().nullable(),
   "studentIdentityVerified": zod.boolean().nullable()
@@ -829,6 +945,7 @@ export const UpdateAdminUserStatusResponse = zod.object({
   "role": zod.enum(['tutor', 'parent', 'student', 'admin']),
   "createdAt": zod.coerce.date(),
   "isActive": zod.boolean(),
+  "parentApproved": zod.boolean().optional(),
   "verificationStatus": zod.string().nullable(),
   "tutorApproved": zod.boolean().nullable(),
   "studentIdentityVerified": zod.boolean().nullable()

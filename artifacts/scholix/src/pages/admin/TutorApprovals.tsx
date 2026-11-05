@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import EducationReviewPanel, { hasPendingEducation, type EducationFields } from "@/components/admin/EducationReviewPanel";
 import { GraduationCap, CheckCircle, XCircle, Clock, FileText, Download, Eye, Shield, AlertTriangle, ChevronDown } from "lucide-react";
 
-interface TutorWithDocs {
+interface TutorWithDocs extends EducationFields {
   id: number;
   userId: number;
   firstName: string;
@@ -15,7 +16,6 @@ interface TutorWithDocs {
   verificationStatus: string;
   wwccNumber: string | null;
   wwccExpiry: string | null;
-  educationDetails: string | null;
   abn: string | null;
   // Audit trail
   wwccVerifiedByName: string | null;
@@ -26,7 +26,7 @@ interface TutorWithDocs {
   documents: { id: number; docType: string; originalName: string; uploadedAt: string }[];
 }
 
-type StatusFilter = "all" | "pending" | "verified" | "rejected" | "expired";
+type StatusFilter = "all" | "pending" | "verified" | "rejected" | "expired" | "qualifications";
 
 function getToken() {
   return localStorage.getItem("scholix_token") ?? "";
@@ -122,14 +122,16 @@ export default function AdminTutorApprovals() {
     }
   };
 
-  const FILTER_TABS: StatusFilter[] = ["all", "pending", "verified", "rejected", "expired"];
+  const FILTER_TABS: StatusFilter[] = ["all", "pending", "qualifications", "verified", "rejected", "expired"];
 
   const filtered = tutors.filter((t) => {
     if (filter === "all") return true;
+    if (filter === "qualifications") return hasPendingEducation(t);
     return normaliseStatus(t.verificationStatus) === filter;
   });
 
   const pendingCount = tutors.filter((t) => normaliseStatus(t.verificationStatus) === "pending").length;
+  const educationCount = tutors.filter(hasPendingEducation).length;
   const expiredCount = tutors.filter((t) => normaliseStatus(t.verificationStatus) === "expired").length;
 
   return (
@@ -140,6 +142,11 @@ export default function AdminTutorApprovals() {
           {pendingCount > 0 && (
             <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">
               {pendingCount} pending
+            </span>
+          )}
+          {educationCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
+              {educationCount} qualification {educationCount === 1 ? "update" : "updates"}
             </span>
           )}
           {expiredCount > 0 && (
@@ -154,7 +161,7 @@ export default function AdminTutorApprovals() {
       {/* Filter tabs */}
       <div className="flex gap-1 mb-4 p-1 bg-muted rounded-xl overflow-x-auto">
         {FILTER_TABS.map((f) => {
-          const count = f === "all" ? tutors.length : tutors.filter((t) => normaliseStatus(t.verificationStatus) === f).length;
+          const count = f === "all" ? tutors.length : f === "qualifications" ? tutors.filter(hasPendingEducation).length : tutors.filter((t) => normaliseStatus(t.verificationStatus) === f).length;
           return (
             <button
               key={f}
@@ -163,7 +170,7 @@ export default function AdminTutorApprovals() {
                 filter === f ? "bg-card shadow-xs text-foreground" : "text-muted-foreground"
               }`}
             >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === "qualifications" ? "Qualification updates" : f.charAt(0).toUpperCase() + f.slice(1)}
               <span className="ml-1 text-[10px] opacity-60">({count})</span>
             </button>
           );
@@ -202,6 +209,11 @@ export default function AdminTutorApprovals() {
                         {tutor.firstName} {tutor.lastName}
                       </Link>
                       <StatusBadge status={tutor.verificationStatus} />
+                      {hasPendingEducation(tutor) && (
+                        <Link href={`/admin/tutors/${tutor.id}/review`} className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-semibold hover:underline" data-testid={`link-education-pending-${tutor.id}`}>
+                          Qualification update pending
+                        </Link>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">{tutor.email}</p>
                     <div className="flex items-center gap-3 mt-1">
@@ -213,6 +225,8 @@ export default function AdminTutorApprovals() {
                   </div>
                   <button
                     onClick={() => setExpanded(isExpanded ? null : tutor.id)}
+                    aria-label={isExpanded ? "Hide tutor details" : "Show tutor details"}
+                    aria-expanded={isExpanded}
                     className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
                   >
                     <Eye size={15} />
@@ -259,6 +273,8 @@ export default function AdminTutorApprovals() {
                         <p className="text-xs text-muted-foreground leading-relaxed">{tutor.educationDetails}</p>
                       </div>
                     )}
+
+                    <EducationReviewPanel tutor={tutor} onDecided={fetchTutors} />
 
                     {/* Audit trail */}
                     {tutor.wwccVerifiedAt && (

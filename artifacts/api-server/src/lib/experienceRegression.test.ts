@@ -123,7 +123,8 @@ test("every sidebar destination has a route and the homepage no longer redirects
   for (const [, destination] of layout.matchAll(/href: "(\/[^"]*)"/g)) {
     assert.ok(routes.has(destination), `Missing sidebar route: ${destination}`);
   }
-  assert.match(layout, /href: "\/", label: "Scholix home"/);
+  assert.doesNotMatch(layout, /href: "\/", label: "Scholix home"/);
+  assert.match(layout, /href="\/"[^>]*aria-label="Scholix home"/);
   assert.doesNotMatch(home.split("export default function Home()")[1], /navigate\(/);
   assert.doesNotMatch(home, /200\+|1,240|98%|4\.9★|My income has doubled/);
 });

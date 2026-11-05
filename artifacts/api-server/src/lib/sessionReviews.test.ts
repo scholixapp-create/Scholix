@@ -14,20 +14,22 @@ function fixture(overrides: Partial<ReviewSession> = {}, initial?: ReviewRecord)
   let tail = Promise.resolve();
   const ownedSession = { ...session, ...overrides };
   const store: ReviewStore = {
-    getSession: async () => ownedSession,
-    findReview: async () => review,
+    getSession: async (id) => ({ ...ownedSession, id }),
+    findReview: async (id) => review?.sessionId === id ? review : undefined,
+    findTutorReview: async (authorId, tutorId) => review?.authorId === authorId && review.tutorId === tutorId ? review : undefined,
     transaction: async (work) => {
       let release: (() => void) | undefined;
       let pending: ReviewRecord | undefined;
       try {
         const result = await work({
-          getSessionForUpdate: async () => {
+          lockAuthor: async () => {
             const previous = tail;
             tail = new Promise<void>((resolve) => { release = resolve; });
             await previous;
-            return ownedSession;
           },
-          findReview: async () => review,
+          getSessionForUpdate: async (id) => ({ ...ownedSession, id }),
+          findReview: async (id) => review?.sessionId === id ? review : undefined,
+          findTutorReview: async (authorId, tutorId) => review?.authorId === authorId && review.tutorId === tutorId ? review : undefined,
           insertReview: async (value) => {
             pending = { ...value, id: 1, createdAt: new Date("2026-01-01T00:00:00Z") };
             return pending;
@@ -139,6 +141,30 @@ test("resource IDs reject partial, unsafe and noncanonical numbers", () => {
     assert.throws(() => reviewResourceId(id), errorWithStatus(400));
   }
   assert.equal(reviewResourceId("47"), 47);
+});
+
+test("a pending parent cannot read eligibility or submit a review", async () => {
+  const pending = { ...parent, parentApproved: false };
+  await assert.rejects(getParentReview(fixture().store, pending, 47), errorWithStatus(403));
+  await assert.rejects(submitParentReview(fixture().store, pending, 47, { rating: 5 }), errorWithStatus(403));
+});
+
+test("a review on an earlier lesson is returned for the same parent's later lesson", async () => {
+  const { store } = fixture();
+  const first = await submitParentReview(store, parent, 47, { rating: 4 });
+  assert.deepEqual(await getParentReview(store, parent, 48), { eligible: false, review: first });
+  await assert.rejects(submitParentReview(store, parent, 48, { rating: 5 }), errorWithStatus(409));
+});
+
+test("concurrent reviews for DIFFERENT lessons with the same tutor produce one review", async () => {
+  const { store } = fixture();
+  const results = await Promise.allSettled([
+    submitParentReview(store, parent, 47, { rating: 5 }),
+    submitParentReview(store, parent, 48, { rating: 1 }),
+  ]);
+  assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+  const failure = results.find((r) => r.status === "rejected");
+  assert.ok(failure?.status === "rejected" && errorWithStatus(409)(failure.reason));
 });
 
 test("HTTP review endpoints use shared auth and storage uses a transaction-held session row lock", () => {

@@ -5,6 +5,8 @@ import { SimulatePaymentBody, ListPaymentsQueryParams } from "@workspace/api-zod
 import { createNotification } from "../lib/notify";
 import { paymentConfirmedEmailHtml, sessionBookedEmailHtml } from "../lib/email";
 import { format } from "date-fns";
+import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
+import { canBookForStudent } from "../lib/sessionAccess";
 
 const router = Router();
 
@@ -44,7 +46,7 @@ async function getTierCommission(tutorId: number, studentId: number, totalAmount
   return { commissionRate: rate, platformCommission: totalAmount * rate, tutorEarnings: totalAmount * (1 - rate), tier, isCommissionFree: false };
 }
 
-router.post("/payments/simulate", async (req, res) => {
+router.post("/payments/simulate", requireAuth, async (req, res) => {
   const parsed = SimulatePaymentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
@@ -63,11 +65,23 @@ router.post("/payments/simulate", async (req, res) => {
     res.status(404).json({ error: "Session not found" });
     return;
   }
+  const [owner] = await db.select({ parentId: studentsTable.parentId }).from(studentsTable)
+    .where(eq(studentsTable.id, session.studentId)).limit(1);
+  if (!owner || !canBookForStudent((req as AuthRequest).user, owner.parentId)) {
+    res.status(403).json({ error: "Only the approved parent for this session can confirm payment" }); return;
+  }
+  if (session.status !== "pending_payment" || session.isPaid) {
+    res.status(409).json({ error: "This session is not awaiting payment confirmation" }); return;
+  }
 
-  await db
+  const confirmed = await db
     .update(sessionsTable)
     .set({ isPaid: true, status: "scheduled" })
-    .where(eq(sessionsTable.id, sessionId));
+    .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.status, "pending_payment"), eq(sessionsTable.isPaid, false)))
+    .returning({ id: sessionsTable.id });
+  if (!confirmed.length) {
+    res.status(409).json({ error: "This session has already been updated" }); return;
+  }
 
   const [payment] = await db
     .insert(paymentsTable)
@@ -229,16 +243,26 @@ router.post("/payments/simulate", async (req, res) => {
   });
 });
 
-router.get("/payments", async (req, res) => {
+router.get("/payments", requireAuth, async (req, res) => {
   const params = ListPaymentsQueryParams.safeParse(req.query);
-  const sessionId = params.success ? params.data.sessionId : undefined;
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid payment filters" }); return;
+  }
+  const sessionId = params.data.sessionId;
+  const actor = (req as AuthRequest).user;
+  const ownership = actor.role === "admin" ? undefined
+    : actor.role === "parent" ? eq(studentsTable.parentId, actor.id)
+    : actor.role === "tutor" ? eq(tutorsTable.userId, actor.id)
+    : eq(studentsTable.userId, actor.id);
 
-  const payments = sessionId
-    ? await db.select().from(paymentsTable).where(eq(paymentsTable.sessionId, sessionId))
-    : await db.select().from(paymentsTable);
+  const rows = await db.select({ payment: paymentsTable }).from(paymentsTable)
+    .innerJoin(sessionsTable, eq(paymentsTable.sessionId, sessionsTable.id))
+    .innerJoin(studentsTable, eq(sessionsTable.studentId, studentsTable.id))
+    .innerJoin(tutorsTable, eq(sessionsTable.tutorId, tutorsTable.id))
+    .where(and(ownership, sessionId === undefined ? undefined : eq(paymentsTable.sessionId, sessionId)));
 
   res.json(
-    payments.map((p) => ({
+    rows.map(({ payment: p }) => ({
       id: p.id,
       sessionId: p.sessionId,
       amount: p.amount,

@@ -56,6 +56,7 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
+  parentApproved?: boolean;
   createdAt: string;
 }
 
@@ -105,6 +106,7 @@ export interface AdminUser {
   role: AdminUserRole;
   createdAt: string;
   isActive: boolean;
+  parentApproved?: boolean;
   /** @nullable */
   verificationStatus: string | null;
   /** @nullable */
@@ -437,6 +439,80 @@ export interface SessionReview {
   /** @nullable */
   comment: string | null;
   createdAt: string;
+}
+
+export type TutorEducationEducationReviewStatus = typeof TutorEducationEducationReviewStatus[keyof typeof TutorEducationEducationReviewStatus];
+
+
+export const TutorEducationEducationReviewStatus = {
+  none: 'none',
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface TutorEducation {
+  tutorId: number;
+  /** @nullable */
+  educationDetails: string | null;
+  /** @nullable */
+  pendingEducationDetails: string | null;
+  educationReviewStatus: TutorEducationEducationReviewStatus;
+  /** @nullable */
+  educationReviewNotes: string | null;
+  /** @nullable */
+  educationSubmittedAt: string | null;
+}
+
+export interface EducationProposal {
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  educationDetails: string;
+}
+
+export type EducationDecisionAction = typeof EducationDecisionAction[keyof typeof EducationDecisionAction];
+
+
+export const EducationDecisionAction = {
+  approve: 'approve',
+  reject: 'reject',
+} as const;
+
+export interface EducationDecision {
+  action: EducationDecisionAction;
+  expectedSubmittedAt: string;
+  /** @maxLength 2000 */
+  notes?: string;
+}
+
+export type TutorPromotionCompletedActionsItem = typeof TutorPromotionCompletedActionsItem[keyof typeof TutorPromotionCompletedActionsItem];
+
+
+export const TutorPromotionCompletedActionsItem = {
+  share_profile: 'share_profile',
+  invite_family: 'invite_family',
+  social_intro: 'social_intro',
+} as const;
+
+export interface TutorPromotion {
+  tutorId: number;
+  completedActions: TutorPromotionCompletedActionsItem[];
+}
+
+export type PromotionActionUpdateAction = typeof PromotionActionUpdateAction[keyof typeof PromotionActionUpdateAction];
+
+
+export const PromotionActionUpdateAction = {
+  share_profile: 'share_profile',
+  invite_family: 'invite_family',
+  social_intro: 'social_intro',
+} as const;
+
+export interface PromotionActionUpdate {
+  action: PromotionActionUpdateAction;
+  completed: boolean;
 }
 
 export interface SessionReviewState {

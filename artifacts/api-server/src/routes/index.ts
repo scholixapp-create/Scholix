@@ -14,11 +14,13 @@ import settingsRouter from "./settings";
 import reviewsRouter from "./reviews";
 import reportsRouter from "./reports";
 import academyRouter from "./academy";
+import tutorUpdatesRouter from "./tutorUpdates";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(tutorUpdatesRouter);
 router.use(verificationRouter);
 router.use(tutorsRouter);
 router.use(studentsRouter);

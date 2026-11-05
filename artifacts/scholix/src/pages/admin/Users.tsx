@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getGetAdminUserQueryKey,
   useAdminListUsers,
+  useApproveParent,
   useDeleteAdminUser,
   useGetAdminUser,
   useUpdateAdminUserStatus,
@@ -71,6 +72,29 @@ export default function AdminUsers() {
           typeof apiError.data?.error === "string"
             ? apiError.data.error
             : apiError.message ?? "Could not update this account. Please try again.",
+        );
+      },
+    },
+  });
+
+  const [approveError, setApproveError] = useState("");
+  const [approveSuccess, setApproveSuccess] = useState("");
+  const approveMutation = useApproveParent({
+    mutation: {
+      onSuccess: async (updatedUser) => {
+        setApproveError("");
+        setApproveSuccess("Parent account approved.");
+        queryClient.setQueryData(getGetAdminUserQueryKey(updatedUser.id), updatedUser);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }),
+          queryClient.invalidateQueries({ queryKey: getGetAdminUserQueryKey(updatedUser.id) }),
+        ]);
+      },
+      onError: (error) => {
+        const apiError = error as { data?: { error?: unknown } };
+        setApproveSuccess("");
+        setApproveError(
+          typeof apiError.data?.error === "string" ? apiError.data.error : "Could not approve this parent. Please try again.",
         );
       },
     },
@@ -177,6 +201,11 @@ export default function AdminUsers() {
                       {listedUser.tutorApproved === null ? "" : listedUser.tutorApproved ? " · approved" : " · not approved"}
                     </span>
                   )}
+                  {listedUser.role === "parent" && listedUser.parentApproved === false && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold" data-testid={`status-parent-pending-${listedUser.id}`}>
+                      Pending approval
+                    </span>
+                  )}
                   {listedUser.studentIdentityVerified !== null && (
                     <span className="text-[10px] text-muted-foreground">
                       Identity: {listedUser.studentIdentityVerified ? "verified" : "not verified"}
@@ -203,6 +232,8 @@ export default function AdminUsers() {
             setDeleteConfirmOpen(false);
             setStatusError("");
             setDeleteError("");
+            setApproveError("");
+            setApproveSuccess("");
           }
         }}
       >
@@ -247,6 +278,14 @@ export default function AdminUsers() {
                       </dd>
                     </>
                   )}
+                  {selectedUser.role === "parent" && (
+                    <>
+                      <dt className="text-muted-foreground">Parent approval</dt>
+                      <dd className={`text-right font-medium ${selectedUser.parentApproved === false ? "text-amber-700" : "text-emerald-700"}`} data-testid="text-parent-approval">
+                        {selectedUser.parentApproved === false ? "Pending approval" : "Approved"}
+                      </dd>
+                    </>
+                  )}
                   {selectedUser.studentIdentityVerified !== null && (
                     <>
                       <dt className="text-muted-foreground">Student identity</dt>
@@ -256,6 +295,27 @@ export default function AdminUsers() {
                 </dl>
               </div>
 
+              {selectedUser.role === "parent" && selectedUser.parentApproved === false && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                  <p className="text-sm text-amber-900">This parent cannot book or use protected features until approved.</p>
+                  <button
+                    type="button"
+                    onClick={() => { setApproveError(""); setApproveSuccess(""); approveMutation.mutate({ userId: selectedUser.id }); }}
+                    disabled={approveMutation.isPending || !selectedUser.isActive}
+                    className="w-full rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+                    data-testid="button-approve-parent"
+                  >
+                    {approveMutation.isPending ? "Approving..." : "Approve parent account"}
+                  </button>
+                  {!selectedUser.isActive && <p className="text-xs text-amber-800">Reactivate the account before approving.</p>}
+                </div>
+              )}
+              {approveError && (
+                <p className="flex items-center gap-2 text-sm text-destructive" role="alert">
+                  <AlertCircle size={15} /> {approveError}
+                </p>
+              )}
+              {approveSuccess && <p className="text-sm text-emerald-700" role="status">{approveSuccess}</p>}
               {isSelf ? (
                 <p className="text-sm text-muted-foreground">You cannot change or delete your own account.</p>
               ) : (

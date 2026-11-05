@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth, UserRole } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
+import ParentPendingApproval from "@/components/ParentPendingApproval";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
@@ -82,6 +83,10 @@ function RequireAuth({ children, role }: { children: React.ReactNode; role?: Use
     if (!allowed.includes(user.role)) {
       return <Redirect to="/" />;
     }
+  }
+
+  if (user.role === "parent" && user.parentApproved === false) {
+    return <ParentPendingApproval />;
   }
 
   return <>{children}</>;

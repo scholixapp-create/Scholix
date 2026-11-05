@@ -1,11 +1,13 @@
 import { Router } from "express";
-import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, tutorRelationshipsTable } from "@workspace/db";
+import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, tutorRelationshipsTable, reviewsTable } from "@workspace/db";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
 import { sessionBookedEmailHtml, sessionCompletedEmailHtml } from "../lib/email";
 import { format } from "date-fns";
 import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
+import { canBookForStudent, canActOnSession } from "../lib/sessionAccess";
+import { config } from "../lib/config";
 
 const router = Router();
 
@@ -273,11 +275,17 @@ router.get("/sessions", requireAuth, async (req, res) => {
   res.json(result);
 });
 
-router.post("/sessions", async (req, res) => {
+router.post("/sessions", requireAuth, async (req, res) => {
   const parsed = CreateSessionBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
     return;
+  }
+  const actor = (req as AuthRequest).user;
+  const [student] = await db.select({ parentId: studentsTable.parentId }).from(studentsTable)
+    .where(eq(studentsTable.id, parsed.data.studentId)).limit(1);
+  if (!student || !canBookForStudent(actor, student.parentId)) {
+    res.status(403).json({ error: "Only an approved parent can book for their own student" }); return;
   }
 
   const [tutor] = await db
@@ -290,10 +298,12 @@ router.post("/sessions", async (req, res) => {
     res.status(404).json({ error: "Tutor not found" });
     return;
   }
-
   if (tutor.verificationStatus === "expired") {
     res.status(403).json({ error: "This tutor's WWCC verification has expired. New bookings are not available until they renew." });
     return;
+  }
+  if (!tutor.isApproved || tutor.verificationStatus !== "verified") {
+    res.status(403).json({ error: "This tutor is not approved for new bookings" }); return;
   }
 
   const totalAmount = (tutor.hourlyRate * parsed.data.durationMinutes) / 60;
@@ -419,8 +429,8 @@ router.get("/sessions/:sessionId", requireAuth, async (req, res) => {
   res.json(await sessionToJson(session));
 });
 
-router.post("/sessions/:sessionId/complete", async (req, res) => {
-  const sessionId = parseInt(req.params.sessionId, 10);
+router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
+  const sessionId = parseInt(req.params.sessionId as string, 10);
   const [session] = await db
     .select()
     .from(sessionsTable)
@@ -431,12 +441,25 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
     res.status(404).json({ error: "Session not found" });
     return;
   }
+  const [parties] = await db.select({
+    tutorUserId: tutorsTable.userId, parentId: studentsTable.parentId,
+  }).from(tutorsTable).innerJoin(studentsTable, eq(studentsTable.id, session.studentId))
+    .where(eq(tutorsTable.id, session.tutorId)).limit(1);
+  if (!parties || !canActOnSession((req as AuthRequest).user, parties, "complete")) {
+    res.status(403).json({ error: "Only this tutor or an admin can complete this session" }); return;
+  }
+  if (session.status !== "scheduled") {
+    res.status(409).json({ error: "Only scheduled sessions can be completed" }); return;
+  }
 
   const [updated] = await db
     .update(sessionsTable)
     .set({ status: "completed" })
-    .where(eq(sessionsTable.id, sessionId))
+    .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.status, "scheduled")))
     .returning();
+  if (!updated) {
+    res.status(409).json({ error: "This session has already been updated" }); return;
+  }
 
   const commResult = await calculateCommission(
     updated.tutorId,
@@ -529,13 +552,18 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
 
   // Notify parent — session completed + rate tutor action
   if (student?.parentId) {
+    const [existingReview] = await db.select({ id: reviewsTable.id }).from(reviewsTable)
+      .where(and(eq(reviewsTable.authorId, student.parentId), eq(reviewsTable.tutorId, session.tutorId))).limit(1);
+    const reviewPath = `/parent/dashboard?reviewSession=${session.id}`;
     await createNotification({
       userId: student.parentId,
-      type: "action_rate_session",
-      title: "Rate your tutor",
-      message: `${studentName}'s ${session.subject} session with ${tutorName} is done. How did it go?`,
-      actionUrl: `/parent/dashboard?reviewSession=${session.id}`,
-      actionLabel: "Leave a review",
+      type: existingReview ? "session_completed" : "action_rate_session",
+      title: existingReview ? "Session completed" : "Rate your tutor",
+      message: existingReview
+        ? `${studentName}'s ${session.subject} session with ${tutorName} is done.`
+        : `${studentName}'s ${session.subject} session with ${tutorName} is done. How did it go?`,
+      actionUrl: existingReview ? "/parent/dashboard" : reviewPath,
+      actionLabel: existingReview ? "View sessions" : "Leave a review",
       emailSubject: `Session completed: ${session.subject}`,
       emailHtml: sessionCompletedEmailHtml({
         recipientName: studentName.split(" ")[0],
@@ -545,6 +573,7 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
         date: dateStr,
         duration: updated.durationMinutes,
         totalAmount: updated.totalAmount,
+        reviewUrl: existingReview ? undefined : new URL(reviewPath, config.frontendUrl).toString(),
       }),
     });
   }
@@ -569,12 +598,24 @@ router.post("/sessions/:sessionId/complete", async (req, res) => {
   });
 });
 
-router.post("/sessions/:sessionId/cancel", async (req, res) => {
-  const sessionId = parseInt(req.params.sessionId, 10);
+router.post("/sessions/:sessionId/cancel", requireAuth, async (req, res) => {
+  const sessionId = parseInt(req.params.sessionId as string, 10);
+  const [current] = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId)).limit(1);
+  if (!current) { res.status(404).json({ error: "Session not found" }); return; }
+  const [parties] = await db.select({
+    tutorUserId: tutorsTable.userId, parentId: studentsTable.parentId,
+  }).from(tutorsTable).innerJoin(studentsTable, eq(studentsTable.id, current.studentId))
+    .where(eq(tutorsTable.id, current.tutorId)).limit(1);
+  if (!parties || !canActOnSession((req as AuthRequest).user, parties, "cancel")) {
+    res.status(403).json({ error: "Session access denied" }); return;
+  }
+  if (!["pending_payment", "scheduled"].includes(current.status)) {
+    res.status(409).json({ error: "Only upcoming sessions can be cancelled" }); return;
+  }
   const [session] = await db
     .update(sessionsTable)
     .set({ status: "cancelled" })
-    .where(eq(sessionsTable.id, sessionId))
+    .where(and(eq(sessionsTable.id, sessionId), inArray(sessionsTable.status, ["pending_payment", "scheduled"])))
     .returning();
 
   if (!session) {
