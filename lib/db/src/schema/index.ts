@@ -16,6 +16,7 @@ export * from "./auth-otp-tokens";
 export * from "./tutor-compliance";
 export * from "./reports";
 export * from "./account-deletion-requests";
+export * from "./account-lifecycle-actions";
 export * from "./tutor-articles";
 export * from "./tutor-relationships";
 export * from "./admin-user-actions";

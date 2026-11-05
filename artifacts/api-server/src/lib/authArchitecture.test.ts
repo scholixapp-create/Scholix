@@ -27,6 +27,16 @@ test("API route sources contain no route-local Base64 bearer decoders", async ()
   }
 });
 
+test("tutor student listings require authentication and tutor ownership before querying children", async () => {
+  const source = await readFile(path.join(routesRoot, "tutors.ts"), "utf8");
+  const route = source.slice(source.indexOf('router.get("/tutors/:tutorId/students"'), source.indexOf('router.get("/tutors/:tutorId/relationships"'));
+  assert.match(route, /"\/tutors\/:tutorId\/students", requireAuth/);
+  assert.match(route, /user\.role !== "admin"/);
+  assert.match(route, /user\.role !== "tutor"/);
+  assert.match(route, /eq\(tutorsTable\.userId, user\.id\)/);
+  assert.ok(route.indexOf("if (!ownedTutor)") < route.indexOf("const sessionRows"));
+});
+
 test("only successful OTP verification issues a session token", async () => {
   const source = await readFile(path.join(routesRoot, "auth.ts"), "utf8");
   const verifyStart = source.indexOf('router.post("/auth/verify-otp"');

@@ -14,3 +14,4 @@
 - [Scholix brand direction](brand-direction.md) — approved palette, user-supplied imagery, and homepage priorities for branding work.
 - [Review integrity](review-integrity.md) — serialized review writes avoid a new migration; future writers must share the lock or plan a history-preserving constraint.
 - [Approval policy](account-approval-policy.md) — new parents need manual approval; tutor qualification proposals must not revoke existing tutor verification.
+- [Drizzle SQL composition](drizzle-query-composition.md) — arrays need explicit SQL typing; correlated selects must preserve outer-table qualification.

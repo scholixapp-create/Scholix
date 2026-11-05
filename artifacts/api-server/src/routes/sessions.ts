@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { lockBookableStudent } from "../lib/accountRemoval";
 import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, tutorRelationshipsTable, reviewsTable } from "@workspace/db";
 import { eq, and, ne, inArray } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
@@ -131,7 +132,7 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect) {
     .where(eq(studentsTable.id, s.studentId))
     .limit(1);
 
-  if (student) studentName = `${student.firstName} ${student.lastName}`;
+  if (student) studentName = student.archivedAt ? "Removed student" : `${student.firstName} ${student.lastName ?? ""}`.trim();
 
   return {
     id: s.id,
@@ -358,7 +359,7 @@ router.post("/sessions", requireAuth, async (req, res) => {
 
   // Session created as pending_payment — confirmed only after payment
   const session = await db.transaction(async (tx) => {
-    if (!await lockBookableTutor(tx, tutor.id)) return undefined;
+    if (!await lockBookableStudent(tx, parsed.data.studentId) || !await lockBookableTutor(tx, tutor.id)) return undefined;
     const [created] = await tx
     .insert(sessionsTable)
     .values({

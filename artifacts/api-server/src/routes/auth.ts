@@ -526,9 +526,15 @@ router.post("/auth/change-password", requireAuth, async (req, res) => {
 router.post("/auth/request-deletion", requireAuth, async (req, res) => {
   const user = (req as AuthRequest).user;
   const { reason } = req.body ?? {};
+  if (reason !== undefined && (typeof reason !== "string" || reason.length > 2000)) {
+    res.status(400).json({ error: "Reason must be text of at most 2000 characters" }); return;
+  }
 
   // Check for existing pending request
-  const [existing] = await db
+  const created = await db.transaction(async (tx) => {
+    const [current] = await tx.select().from(usersTable).where(eq(usersTable.id, user.id)).for("update");
+    if (!current?.isActive || current.archivedAt) return false;
+    const [existing] = await tx
     .select({ id: accountDeletionRequestsTable.id })
     .from(accountDeletionRequestsTable)
     .where(
@@ -539,16 +545,16 @@ router.post("/auth/request-deletion", requireAuth, async (req, res) => {
     )
     .limit(1);
 
-  if (existing) {
+    if (existing) return false;
+    await tx.insert(accountDeletionRequestsTable).values({
+      userId: user.id, reason: reason ?? null, status: "pending",
+    });
+    return true;
+  });
+  if (!created) {
     res.status(409).json({ error: "You already have a pending deletion request under review." });
     return;
   }
-
-  await db.insert(accountDeletionRequestsTable).values({
-    userId: user.id,
-    reason: reason ?? null,
-    status: "pending",
-  });
 
   // Notify admin
   const adminEmail = process.env["ADMIN_EMAIL"];

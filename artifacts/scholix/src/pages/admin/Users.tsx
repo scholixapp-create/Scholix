@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { AlertCircle, GraduationCap, Search, ShieldCheck, User, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import DeletionRequestsQueue from "@/components/admin/DeletionRequestsQueue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -142,6 +143,10 @@ export default function AdminUsers() {
         </p>
       </div>
 
+      <DeletionRequestsQueue
+        onReviewed={(userId) => queryClient.invalidateQueries({ queryKey: getGetAdminUserQueryKey(userId) })}
+      />
+
       <label className="relative block mb-4">
         <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <span className="sr-only">Search users by name or email</span>
@@ -204,6 +209,16 @@ export default function AdminUsers() {
                     <span className="text-[10px] text-muted-foreground">
                       Verification: {listedUser.verificationStatus}
                       {listedUser.tutorApproved === null ? "" : listedUser.tutorApproved ? " · approved" : " · not approved"}
+                    </span>
+                  )}
+                  {listedUser.archivedAt && (
+                    <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-semibold" data-testid={`status-archived-${listedUser.id}`}>
+                      Archived, restricted
+                    </span>
+                  )}
+                  {listedUser.deletionRequestedAt && !listedUser.archivedAt && (
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-[10px] font-semibold" data-testid={`status-deletion-requested-${listedUser.id}`}>
+                      Removal requested
                     </span>
                   )}
                   {listedUser.reapplicationRequestedAt && !listedUser.isActive && (
@@ -279,6 +294,22 @@ export default function AdminUsers() {
                   <dd className={`text-right font-medium ${selectedUser.isActive ? "text-emerald-700" : "text-destructive"}`}>
                     {selectedUser.isActive ? "Active" : "Inactive"}
                   </dd>
+                  {selectedUser.archivedAt && (
+                    <>
+                      <dt className="text-muted-foreground">Archived</dt>
+                      <dd className="text-right font-medium text-muted-foreground" data-testid="text-archived-date">
+                        Restricted since {format(parseISO(selectedUser.archivedAt), "MMM d, yyyy")}
+                      </dd>
+                    </>
+                  )}
+                  {selectedUser.deletionRequestedAt && !selectedUser.archivedAt && (
+                    <>
+                      <dt className="text-muted-foreground">Removal request</dt>
+                      <dd className="text-right font-medium text-red-700" data-testid="text-deletion-requested-date">
+                        Pending since {format(parseISO(selectedUser.deletionRequestedAt), "MMM d, yyyy")}
+                      </dd>
+                    </>
+                  )}
                   {pendingReapply && selectedUser.reapplicationRequestedAt && (
                     <>
                       <dt className="text-muted-foreground">Reapplication</dt>
@@ -340,8 +371,17 @@ export default function AdminUsers() {
                 </p>
               )}
               {approveSuccess && <p className="text-sm text-emerald-700" role="status">{approveSuccess}</p>}
+              {selectedUser.deletionRequestedAt && !selectedUser.archivedAt && (
+                <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                  This user has a pending removal request. Review it in the removal requests queue at the top of this page. The request alone does not change access.
+                </p>
+              )}
               {isSelf ? (
                 <p className="text-sm text-muted-foreground">You cannot change or delete your own account.</p>
+              ) : selectedUser.archivedAt ? (
+                <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground" data-testid="text-archived-explainer">
+                  This account was archived after an approved removal request. Its lesson, payment and compliance history is kept in restricted form, so reactivation and permanent deletion are not available.
+                </p>
               ) : (
                 <div className="space-y-2">
                   <button

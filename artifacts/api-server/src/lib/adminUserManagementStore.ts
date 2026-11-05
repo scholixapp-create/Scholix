@@ -12,7 +12,7 @@ export const adminUserStatusStore: AdminUserStatusStore = {
       },
       findUser: async (userId) => {
         const [user] = await tx
-          .select({ id: usersTable.id, role: usersTable.role, isActive: usersTable.isActive })
+          .select({ id: usersTable.id, role: usersTable.role, isActive: usersTable.isActive, archivedAt: usersTable.archivedAt })
           .from(usersTable)
           .where(eq(usersTable.id, userId))
           .limit(1).for("update");

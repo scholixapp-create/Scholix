@@ -632,6 +632,44 @@ paths:
                 $ref: "#/components/schemas/Student"
 
   /students/{studentId}:
+    patch:
+      operationId: updateStudent
+      summary: Update an owned active student profile
+      tags: [students]
+      parameters:
+        - { name: studentId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentProfileUpdate" }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Student" }
+        "403": { description: Not the owning parent or an admin }
+        "404": { description: Student not found }
+    delete:
+      operationId: removeStudent
+      summary: Remove an owned child, retaining restricted history where necessary
+      tags: [students]
+      parameters:
+        - { name: studentId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StudentRemovalConfirmation" }
+      responses:
+        "200":
+          description: Removed or archived profile and revoked linked student access
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountRemovalResult" }
+        "403": { description: Not the owning parent or an admin }
+        "409": { description: Resolve upcoming sessions before removal }
     get:
       operationId: getStudent
       tags: [students]
@@ -923,6 +961,40 @@ paths:
                 items:
                   $ref: "#/components/schemas/Payment"
 
+  /admin/deletion-requests:
+    get:
+      operationId: listDeletionRequests
+      summary: Admin deletion-request queue, pending first
+      tags: [admin]
+      responses:
+        "200":
+          description: Requests with current account identity and review outcome
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AccountDeletionRequest" }
+        "403": { description: Admin required }
+  /admin/deletion-requests/{requestId}:
+    patch:
+      operationId: reviewDeletionRequest
+      summary: Approve restricted family archival or reject a deletion request
+      tags: [admin]
+      parameters:
+        - { name: requestId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeletionRequestDecision" }
+      responses:
+        "200":
+          description: Review result, retained records and affected family counts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountRemovalResult" }
+        "403": { description: Admin required }
+        "409": { description: "Already reviewed, self action, or unresolved sessions" }
   /admin/users:
     get:
       operationId: adminListUsers
@@ -1214,6 +1286,12 @@ components:
     AdminUser:
       type: object
       properties:
+        archivedAt:
+          type: [string, "null"]
+          format: date-time
+        deletionRequestedAt:
+          type: [string, "null"]
+          format: date-time
         reapplicationRequestedAt:
           type: string
           format: date-time
@@ -1388,6 +1466,54 @@ components:
           description: "Available start times in HH:MM (24h) format"
       required: [date, duration, slots]
 
+    StudentProfileUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        firstName: { type: string, minLength: 1, maxLength: 100 }
+        lastName: { type: [string, "null"], maxLength: 100 }
+        yearLevel: { type: [string, "null"], maxLength: 30 }
+        school: { type: [string, "null"], maxLength: 200 }
+        subjects: { type: [string, "null"], maxLength: 1000 }
+        goals: { type: [string, "null"], maxLength: 2000 }
+        dateOfBirth: { type: [string, "null"], format: date }
+    StudentRemovalConfirmation:
+      type: object
+      additionalProperties: false
+      required: [confirmationName]
+      properties:
+        confirmationName: { type: string, minLength: 1, maxLength: 201 }
+    DeletionRequestDecision:
+      type: object
+      additionalProperties: false
+      required: [decision, confirmationEmail]
+      properties:
+        decision: { type: string, enum: [approve, reject] }
+        confirmationEmail: { type: string, format: email }
+        notes: { type: string, maxLength: 1000 }
+    AccountRemovalResult:
+      type: object
+      required: [message, archived, affectedStudents, affectedAccounts]
+      properties:
+        message: { type: string }
+        archived: { type: boolean }
+        affectedStudents: { type: integer }
+        affectedAccounts: { type: integer }
+    AccountDeletionRequest:
+      type: object
+      required: [id, userId, email, role, firstName, lastName, status, requestedAt]
+      properties:
+        id: { type: integer }
+        userId: { type: integer }
+        email: { type: string }
+        role: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        reason: { type: [string, "null"] }
+        status: { type: string, enum: [pending, approved, rejected] }
+        requestedAt: { type: string, format: date-time }
+        reviewedAt: { type: [string, "null"], format: date-time }
+        reviewNotes: { type: [string, "null"] }
     Student:
       type: object
       properties:

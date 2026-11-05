@@ -14,5 +14,6 @@ export const accountDeletionRequestsTable = pgTable("account_deletion_requests",
   status: deletionRequestStatusEnum("status").notNull().default("pending"),
   requestedAt: timestamp("requested_at").defaultNow().notNull(),
   reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
   reviewedBy: integer("reviewed_by").references(() => usersTable.id),
 });

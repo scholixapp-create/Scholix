@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable, adminUserActionsTable, accountReapplicationsTable } from "@workspace/db";
+import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable, adminUserActionsTable, accountReapplicationsTable, accountDeletionRequestsTable } from "@workspace/db";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import {
   AdminListUsersQueryParams,
@@ -44,27 +44,29 @@ const adminUserSelection = {
   role: usersTable.role,
   createdAt: usersTable.createdAt,
   isActive: usersTable.isActive,
+  archivedAt: usersTable.archivedAt,
+  deletionRequestedAt: sql<Date | null>`(SELECT min(adr.requested_at) FROM account_deletion_requests adr WHERE adr.user_id = "users"."id" AND adr.status = 'pending')`,
   parentApproved: usersTable.parentApproved,
-  reapplicationRequestedAt: sql<Date | null>`(SELECT ${accountReapplicationsTable.verifiedAt} FROM ${accountReapplicationsTable} WHERE ${accountReapplicationsTable.userId} = ${usersTable.id})`,
+  reapplicationRequestedAt: sql<Date | null>`(SELECT ar.verified_at FROM account_reapplications ar WHERE ar.user_id = "users"."id")`,
   tutorVerificationStatus: sql<string | null>`(
-    SELECT ${tutorsTable.verificationStatus}
-    FROM ${tutorsTable}
-    WHERE ${tutorsTable.userId} = ${usersTable.id}
-    ORDER BY ${tutorsTable.id}
+    SELECT t.verification_status
+    FROM tutors t
+    WHERE t.user_id = "users"."id"
+    ORDER BY t.id
     LIMIT 1
   )`,
   tutorApproved: sql<boolean | null>`(
-    SELECT ${tutorsTable.isApproved}
-    FROM ${tutorsTable}
-    WHERE ${tutorsTable.userId} = ${usersTable.id}
-    ORDER BY ${tutorsTable.id}
+    SELECT t.is_approved
+    FROM tutors t
+    WHERE t.user_id = "users"."id"
+    ORDER BY t.id
     LIMIT 1
   )`,
   studentIdentityVerified: sql<boolean | null>`(
-    SELECT ${studentsTable.isIdentityVerified}
-    FROM ${studentsTable}
-    WHERE ${studentsTable.userId} = ${usersTable.id}
-    ORDER BY ${studentsTable.id}
+    SELECT s.is_identity_verified
+    FROM students s
+    WHERE s.user_id = "users"."id"
+    ORDER BY s.id
     LIMIT 1
   )`,
 };
@@ -77,6 +79,8 @@ type AdminUserRow = {
   role: "tutor" | "parent" | "student" | "admin";
   createdAt: Date;
   isActive: boolean;
+  archivedAt: Date | null;
+  deletionRequestedAt: Date | null;
   parentApproved: boolean;
   reapplicationRequestedAt: Date | null;
   tutorVerificationStatus: string | null;
@@ -93,6 +97,8 @@ function toAdminUser(row: AdminUserRow) {
     role: row.role,
     createdAt: row.createdAt,
     isActive: row.isActive,
+    archivedAt: row.archivedAt,
+    deletionRequestedAt: row.deletionRequestedAt,
     parentApproved: row.parentApproved,
     reapplicationRequestedAt: row.reapplicationRequestedAt,
     verificationStatus: row.tutorVerificationStatus,

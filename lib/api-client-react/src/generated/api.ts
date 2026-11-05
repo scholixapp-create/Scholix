@@ -25,6 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AccountDeletionRequest,
+  AccountRemovalResult,
   AdminListUsersParams,
   AdminStats,
   AdminUser,
@@ -37,6 +39,7 @@ import type {
   CreateSessionBody,
   CreateSessionReviewBody,
   CreateStudentBody,
+  DeletionRequestDecision,
   EducationDecision,
   EducationProposal,
   ErrorResponse,
@@ -63,6 +66,8 @@ import type {
   SignupBody,
   SimulatePaymentBody,
   Student,
+  StudentProfileUpdate,
+  StudentRemovalConfirmation,
   SuccessResponse,
   TutorEducation,
   TutorInvoiceSummary,
@@ -2839,6 +2844,184 @@ export const useCreateStudent = <TError = ErrorType<unknown>,
       return useMutation(getCreateStudentMutationOptions(options), queryClient);
     }
 
+export const getUpdateStudentUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/students/${studentId}`
+}
+
+/**
+ * @summary Update an owned active student profile
+ */
+export const updateStudent = async (studentId: number,
+    studentProfileUpdate: StudentProfileUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Student> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Student>(getUpdateStudentUrl(studentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentProfileUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateStudentMutationKey = () => ['updateStudent'] as const;
+
+export const getUpdateStudentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStudent>>, TError,UpdateStudentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateStudent>>, TError,UpdateStudentMutationVariables, TContext> => {
+
+const mutationKey = getUpdateStudentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateStudent>>, UpdateStudentMutationVariables> = (props) => {
+          const {studentId,data} = props ?? {};
+
+          return  updateStudent(studentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateStudentMutationResult = NonNullable<Awaited<ReturnType<typeof updateStudent>>>
+    export type UpdateStudentMutationBody = BodyType<StudentProfileUpdate>
+    export type UpdateStudentMutationError = ErrorType<void>
+    export type UpdateStudentMutationVariables = {studentId: number;data: BodyType<StudentProfileUpdate>}
+
+    /**
+ * @summary Update an owned active student profile
+ */
+export const useUpdateStudent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStudent>>, TError,UpdateStudentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateStudent>>,
+        TError,
+        UpdateStudentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateStudentMutationOptions(options), queryClient);
+    }
+
+export const getRemoveStudentUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/students/${studentId}`
+}
+
+/**
+ * @summary Remove an owned child, retaining restricted history where necessary
+ */
+export const removeStudent = async (studentId: number,
+    studentRemovalConfirmation: StudentRemovalConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<AccountRemovalResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AccountRemovalResult>(getRemoveStudentUrl(studentId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(studentRemovalConfirmation)
+  }
+);}
+
+
+
+
+
+export const getRemoveStudentMutationKey = () => ['removeStudent'] as const;
+
+export const getRemoveStudentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeStudent>>, TError,RemoveStudentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeStudent>>, TError,RemoveStudentMutationVariables, TContext> => {
+
+const mutationKey = getRemoveStudentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeStudent>>, RemoveStudentMutationVariables> = (props) => {
+          const {studentId,data} = props ?? {};
+
+          return  removeStudent(studentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveStudentMutationResult = NonNullable<Awaited<ReturnType<typeof removeStudent>>>
+    export type RemoveStudentMutationBody = BodyType<StudentRemovalConfirmation>
+    export type RemoveStudentMutationError = ErrorType<void>
+    export type RemoveStudentMutationVariables = {studentId: number;data: BodyType<StudentRemovalConfirmation>}
+
+    /**
+ * @summary Remove an owned child, retaining restricted history where necessary
+ */
+export const useRemoveStudent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeStudent>>, TError,RemoveStudentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeStudent>>,
+        TError,
+        RemoveStudentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveStudentMutationOptions(options), queryClient);
+    }
+
 export const getGetStudentUrl = (studentId: number,) => {
 
 
@@ -3879,6 +4062,196 @@ export function useListPayments<TData = Awaited<ReturnType<typeof listPayments>>
 
 
 
+
+export const getListDeletionRequestsUrl = () => {
+
+
+
+
+  return `/api/admin/deletion-requests`
+}
+
+/**
+ * @summary Admin deletion-request queue, pending first
+ */
+export const listDeletionRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountDeletionRequest[]> => {
+
+  return customFetch<AccountDeletionRequest[]>(getListDeletionRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDeletionRequestsQueryKey = () => {
+    return [
+    `/api/admin/deletion-requests`
+    ] as const;
+    }
+
+
+export const getListDeletionRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listDeletionRequests>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletionRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDeletionRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDeletionRequests>>> = ({ signal }) => listDeletionRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDeletionRequests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListDeletionRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listDeletionRequests>>>
+export type ListDeletionRequestsQueryError = ErrorType<void>
+
+
+export function useListDeletionRequests<TData = Awaited<ReturnType<typeof listDeletionRequests>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletionRequests>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listDeletionRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listDeletionRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListDeletionRequests<TData = Awaited<ReturnType<typeof listDeletionRequests>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletionRequests>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listDeletionRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listDeletionRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListDeletionRequests<TData = Awaited<ReturnType<typeof listDeletionRequests>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletionRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Admin deletion-request queue, pending first
+ */
+
+export function useListDeletionRequests<TData = Awaited<ReturnType<typeof listDeletionRequests>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDeletionRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListDeletionRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewDeletionRequestUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/admin/deletion-requests/${requestId}`
+}
+
+/**
+ * @summary Approve restricted family archival or reject a deletion request
+ */
+export const reviewDeletionRequest = async (requestId: number,
+    deletionRequestDecision: DeletionRequestDecision, options?: Parameters<typeof customFetch>[1]): Promise<AccountRemovalResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AccountRemovalResult>(getReviewDeletionRequestUrl(requestId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(deletionRequestDecision)
+  }
+);}
+
+
+
+
+
+export const getReviewDeletionRequestMutationKey = () => ['reviewDeletionRequest'] as const;
+
+export const getReviewDeletionRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewDeletionRequest>>, TError,ReviewDeletionRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewDeletionRequest>>, TError,ReviewDeletionRequestMutationVariables, TContext> => {
+
+const mutationKey = getReviewDeletionRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewDeletionRequest>>, ReviewDeletionRequestMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  reviewDeletionRequest(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewDeletionRequestMutationResult = NonNullable<Awaited<ReturnType<typeof reviewDeletionRequest>>>
+    export type ReviewDeletionRequestMutationBody = BodyType<DeletionRequestDecision>
+    export type ReviewDeletionRequestMutationError = ErrorType<void>
+    export type ReviewDeletionRequestMutationVariables = {requestId: number;data: BodyType<DeletionRequestDecision>}
+
+    /**
+ * @summary Approve restricted family archival or reject a deletion request
+ */
+export const useReviewDeletionRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewDeletionRequest>>, TError,ReviewDeletionRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof reviewDeletionRequest>>,
+        TError,
+        ReviewDeletionRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewDeletionRequestMutationOptions(options), queryClient);
+    }
 
 export const getAdminListUsersUrl = (params?: AdminListUsersParams,) => {
   const normalizedParams = new URLSearchParams();

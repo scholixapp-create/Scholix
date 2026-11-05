@@ -83,6 +83,8 @@ export const ApproveParentParams = zod.object({
 })
 
 export const ApproveParentResponse = zod.object({
+  "archivedAt": zod.coerce.date().nullish(),
+  "deletionRequestedAt": zod.coerce.date().nullish(),
   "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "id": zod.number().int(),
   "email": zod.string(),
@@ -624,6 +626,77 @@ export const CreateStudentResponse = zod.object({
 
 
 /**
+ * @summary Update an owned active student profile
+ */
+export const UpdateStudentParams = zod.object({
+  "studentId": zod.coerce.number().int()
+})
+
+export const updateStudentBodyFirstNameMax = 100;
+
+export const updateStudentBodyLastNameMax = 100;
+
+export const updateStudentBodyYearLevelMax = 30;
+
+export const updateStudentBodySchoolMax = 200;
+
+export const updateStudentBodySubjectsMax = 1000;
+
+export const updateStudentBodyGoalsMax = 2000;
+
+
+
+export const UpdateStudentBody = zod.object({
+  "firstName": zod.string().min(1).max(updateStudentBodyFirstNameMax).optional(),
+  "lastName": zod.string().max(updateStudentBodyLastNameMax).nullish(),
+  "yearLevel": zod.string().max(updateStudentBodyYearLevelMax).nullish(),
+  "school": zod.string().max(updateStudentBodySchoolMax).nullish(),
+  "subjects": zod.string().max(updateStudentBodySubjectsMax).nullish(),
+  "goals": zod.string().max(updateStudentBodyGoalsMax).nullish(),
+  "dateOfBirth": zod.coerce.date().nullish()
+})
+
+export const UpdateStudentResponse = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.number().int().nullish(),
+  "firstName": zod.string(),
+  "lastName": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "yearLevel": zod.string().nullish(),
+  "school": zod.string().nullish(),
+  "subjects": zod.string().nullish(),
+  "goals": zod.string().nullish(),
+  "parentId": zod.number().int().nullish(),
+  "dateOfBirth": zod.string().nullish(),
+  "isIdentityVerified": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Remove an owned child, retaining restricted history where necessary
+ */
+export const RemoveStudentParams = zod.object({
+  "studentId": zod.coerce.number().int()
+})
+
+export const removeStudentBodyConfirmationNameMax = 201;
+
+
+
+export const RemoveStudentBody = zod.object({
+  "confirmationName": zod.string().min(1).max(removeStudentBodyConfirmationNameMax)
+})
+
+export const RemoveStudentResponse = zod.object({
+  "message": zod.string(),
+  "archived": zod.boolean(),
+  "affectedStudents": zod.number().int(),
+  "affectedAccounts": zod.number().int()
+})
+
+
+/**
  * @summary Get a student by ID
  */
 export const GetStudentParams = zod.object({
@@ -885,6 +958,50 @@ export const ListPaymentsResponse = zod.array(ListPaymentsResponseItem)
 
 
 /**
+ * @summary Admin deletion-request queue, pending first
+ */
+export const ListDeletionRequestsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "email": zod.string(),
+  "role": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "reason": zod.string().nullish(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "requestedAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewNotes": zod.string().nullish()
+})
+export const ListDeletionRequestsResponse = zod.array(ListDeletionRequestsResponseItem)
+
+
+/**
+ * @summary Approve restricted family archival or reject a deletion request
+ */
+export const ReviewDeletionRequestParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const reviewDeletionRequestBodyNotesMax = 1000;
+
+
+
+export const ReviewDeletionRequestBody = zod.object({
+  "decision": zod.enum(['approve', 'reject']),
+  "confirmationEmail": zod.string().email(),
+  "notes": zod.string().max(reviewDeletionRequestBodyNotesMax).optional()
+})
+
+export const ReviewDeletionRequestResponse = zod.object({
+  "message": zod.string(),
+  "archived": zod.boolean(),
+  "affectedStudents": zod.number().int(),
+  "affectedAccounts": zod.number().int()
+})
+
+
+/**
  * @summary Search users (admin only)
  */
 export const adminListUsersQuerySearchMax = 120;
@@ -896,6 +1013,8 @@ export const AdminListUsersQueryParams = zod.object({
 })
 
 export const AdminListUsersResponseItem = zod.object({
+  "archivedAt": zod.coerce.date().nullish(),
+  "deletionRequestedAt": zod.coerce.date().nullish(),
   "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "id": zod.number().int(),
   "email": zod.string(),
@@ -920,6 +1039,8 @@ export const GetAdminUserParams = zod.object({
 })
 
 export const GetAdminUserResponse = zod.object({
+  "archivedAt": zod.coerce.date().nullish(),
+  "deletionRequestedAt": zod.coerce.date().nullish(),
   "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "id": zod.number().int(),
   "email": zod.string(),
@@ -957,6 +1078,8 @@ export const UpdateAdminUserStatusBody = zod.object({
 })
 
 export const UpdateAdminUserStatusResponse = zod.object({
+  "archivedAt": zod.coerce.date().nullish(),
+  "deletionRequestedAt": zod.coerce.date().nullish(),
   "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "id": zod.number().int(),
   "email": zod.string(),

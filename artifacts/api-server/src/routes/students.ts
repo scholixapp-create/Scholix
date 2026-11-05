@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { db, studentsTable, tutorsTable, sessionsTable } from "@workspace/db";
-import { eq, inArray, and } from "drizzle-orm";
+import { eq, inArray, and, isNull } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 
 const router = Router();
 
-function studentToJson(s: typeof studentsTable.$inferSelect) {
+export function studentToJson(s: typeof studentsTable.$inferSelect) {
   return {
     id: s.id,
     userId: s.userId ?? null,
@@ -36,7 +36,7 @@ router.get("/students", requireAuth, async (req, res) => {
     const students = await db
       .select()
       .from(studentsTable)
-      .where(eq(studentsTable.parentId, user.id));
+      .where(and(eq(studentsTable.parentId, user.id), isNull(studentsTable.archivedAt)));
     res.json(students.map(studentToJson));
     return;
   }
@@ -59,7 +59,7 @@ router.get("/students", requireAuth, async (req, res) => {
     const students = await db
       .select()
       .from(studentsTable)
-      .where(inArray(studentsTable.id, studentIds));
+      .where(and(inArray(studentsTable.id, studentIds), isNull(studentsTable.archivedAt)));
     res.json(students.map(studentToJson));
     return;
   }
@@ -68,7 +68,7 @@ router.get("/students", requireAuth, async (req, res) => {
     const students = await db
       .select()
       .from(studentsTable)
-      .where(eq(studentsTable.userId, user.id));
+      .where(and(eq(studentsTable.userId, user.id), isNull(studentsTable.archivedAt)));
     res.json(students.map(studentToJson));
     return;
   }
@@ -95,7 +95,13 @@ router.post("/students", requireAuth, async (req, res) => {
     ? (bodyParentId ?? null)
     : user.id;
 
-  const [student] = await db
+  const student = await db.transaction(async (tx) => {
+    if (parentId) {
+      const { usersTable } = await import("@workspace/db");
+      const [parent] = await tx.select().from(usersTable).where(eq(usersTable.id, parentId)).for("update");
+      if (!parent?.isActive || parent.archivedAt || parent.role !== "parent") return null;
+    }
+    const [created] = await tx
     .insert(studentsTable)
     .values({
       firstName: firstName.trim(),
@@ -109,6 +115,9 @@ router.post("/students", requireAuth, async (req, res) => {
       parentId,
     })
     .returning();
+    return created;
+  });
+  if (!student) { res.status(409).json({ error: "The parent account is unavailable" }); return; }
 
   res.status(201).json(studentToJson(student));
 });
@@ -130,6 +139,10 @@ router.get("/students/:studentId", requireAuth, async (req, res) => {
   if (!student) {
     res.status(404).json({ error: "Student not found" });
     return;
+  }
+
+  if (student.archivedAt && user.role !== "admin") {
+    res.status(404).json({ error: "Student not found" }); return;
   }
 
   if (user.role === "admin") {
@@ -198,7 +211,7 @@ router.post("/students/:studentId/verify-identity", requireAuth, async (req, res
     return;
   }
 
-  if (user.role !== "admin" && student.parentId !== user.id) {
+  if (student.archivedAt || (user.role !== "admin" && (user.role !== "parent" || student.parentId !== user.id))) {
     res.status(403).json({ error: "Only the parent of this student can verify their identity" });
     return;
   }

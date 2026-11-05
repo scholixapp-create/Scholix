@@ -14,6 +14,7 @@ export const studentsTable = pgTable("students", {
   subjects: text("subjects"),
   goals: text("goals"),
   parentId: integer("parent_id"),
+  archivedAt: timestamp("archived_at"),
   dateOfBirth: text("date_of_birth"),
   isIdentityVerified: boolean("is_identity_verified").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),

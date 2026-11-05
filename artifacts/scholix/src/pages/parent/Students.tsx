@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useListStudents, useCreateStudent } from "@workspace/api-client-react";
+import { useListStudents, useCreateStudent, useUpdateStudent, useRemoveStudent } from "@workspace/api-client-react";
+import { Link } from "wouter";
 import { getListStudentsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import {
   GraduationCap, Plus, X, CheckCircle, AlertCircle, User,
-  TrendingUp, ChevronDown, ChevronUp, Star, Shield, BookOpen,
+  TrendingUp, ChevronDown, ChevronUp, Star, Shield, BookOpen, Pencil, Trash2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -33,6 +34,189 @@ interface ProgressEntry {
   scheduledAt: string;
   durationMinutes: number;
   createdAt: string;
+}
+
+function apiError(error: unknown, fallback: string): { status?: number; message: string } {
+  const e = error as { status?: number; data?: { error?: unknown; message?: unknown }; message?: string };
+  const msg = typeof e?.data?.error === "string" ? e.data.error : typeof e?.data?.message === "string" ? e.data.message : fallback;
+  return { status: e?.status, message: msg };
+}
+
+const inputCls = "w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors";
+
+type CardStudent = StudentCardProps["student"];
+
+function fullName(s: { firstName: string; lastName?: string | null }) {
+  return [s.firstName, s.lastName ?? ""].join(" ").trim();
+}
+
+function ModalShell({ title, subtitle, onClose, children }: { title: string; subtitle?: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-sm bg-card border border-card-border rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-border sticky top-0 bg-card z-10">
+          <div>
+            <h2 className="text-base font-bold text-foreground">{title}</h2>
+            {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <X size={16} className="text-muted-foreground" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function EditStudentModal({ student, onClose, onSaved }: { student: CardStudent; onClose: () => void; onSaved: (msg: string) => void }) {
+  const update = useUpdateStudent();
+  const [firstName, setFirstName] = useState(student.firstName);
+  const [lastName, setLastName] = useState(student.lastName ?? "");
+  const [yearLevel, setYearLevel] = useState(student.yearLevel ?? "");
+  const [school, setSchool] = useState(student.school ?? "");
+  const [subjects, setSubjects] = useState<string[]>(student.subjects ? student.subjects.split(",").map((x) => x.trim()).filter(Boolean) : []);
+  const [goals, setGoals] = useState(student.goals ?? "");
+  const [dateOfBirth, setDateOfBirth] = useState(student.dateOfBirth ? student.dateOfBirth.slice(0, 10) : "");
+  const [error, setError] = useState("");
+  const toggle = (sub: string) => setSubjects((p) => (p.includes(sub) ? p.filter((x) => x !== sub) : [...p, sub]));
+  const subjectOptions = Array.from(new Set([...SUBJECT_OPTIONS, ...subjects]));
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    update.mutate(
+      {
+        studentId: student.id,
+        data: {
+          firstName: firstName.trim(),
+          lastName: lastName.trim() || null,
+          yearLevel: yearLevel || null,
+          school: school.trim() || null,
+          subjects: subjects.length ? subjects.join(", ") : null,
+          goals: goals.trim() || null,
+          dateOfBirth: dateOfBirth || null,
+        },
+      },
+      {
+        onSuccess: (s) => onSaved(`${fullName(s)}'s profile was updated.`),
+        onError: (err) => setError(apiError(err, "Could not save changes. Please check the details and try again.").message),
+      },
+    );
+  };
+
+  return (
+    <ModalShell title="Edit student profile" subtitle="Changes apply to this profile only" onClose={onClose}>
+      <form onSubmit={submit} className="p-5 space-y-4">
+        {error && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs" role="alert">
+            <AlertCircle size={13} className="shrink-0" />{error}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="block text-xs font-medium text-foreground mb-1.5">First name</span>
+            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} required maxLength={100} className={inputCls} data-testid="input-edit-first-name" />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-medium text-foreground mb-1.5">Last name</span>
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={100} className={inputCls} data-testid="input-edit-last-name" />
+          </label>
+        </div>
+        <label className="block">
+          <span className="block text-xs font-medium text-foreground mb-1.5">Year level</span>
+          <select value={yearLevel} onChange={(e) => setYearLevel(e.target.value)} className={inputCls} data-testid="select-edit-year-level">
+            <option value="">Not set</option>
+            {Array.from(new Set([...YEAR_LEVELS, ...(yearLevel ? [yearLevel] : [])])).map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </label>
+        <div>
+          <span className="block text-xs font-medium text-foreground mb-2">Subjects</span>
+          <div className="flex flex-wrap gap-1.5">
+            {subjectOptions.map((sub) => (
+              <button key={sub} type="button" onClick={() => toggle(sub)} className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${subjects.includes(sub) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                {sub}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="block">
+          <span className="block text-xs font-medium text-foreground mb-1.5">School</span>
+          <input value={school} onChange={(e) => setSchool(e.target.value)} maxLength={200} className={inputCls} data-testid="input-edit-school" />
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-foreground mb-1.5">Learning goals</span>
+          <textarea value={goals} onChange={(e) => setGoals(e.target.value)} maxLength={2000} rows={2} className={`${inputCls} resize-none`} data-testid="input-edit-goals" />
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-foreground mb-1.5">Date of birth</span>
+          <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className={inputCls} data-testid="input-edit-dob" />
+        </label>
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
+          <button type="submit" disabled={update.isPending || !firstName.trim()} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity" data-testid="button-save-student">
+            {update.isPending ? "Saving..." : "Save changes"}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+function RemoveStudentModal({ student, onClose, onRemoved }: { student: CardStudent; onClose: () => void; onRemoved: (msg: string) => void }) {
+  const remove = useRemoveStudent();
+  const target = fullName(student);
+  const [typed, setTyped] = useState("");
+  const [error, setError] = useState<{ status?: number; message: string } | null>(null);
+  const matches = typed.trim() === target;
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!matches) return;
+    setError(null);
+    remove.mutate(
+      { studentId: student.id, data: { confirmationName: typed.trim() } },
+      {
+        onSuccess: (result) => onRemoved(result.message),
+        onError: (err) => setError(apiError(err, "Could not remove this profile. Please try again.")),
+      },
+    );
+  };
+
+  return (
+    <ModalShell title="Remove student profile" subtitle={target} onClose={onClose}>
+      <form onSubmit={submit} className="p-5 space-y-4">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3 space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
+          <p>If this student has their own linked sign-in, it will be disabled.</p>
+          <p>If the profile has lesson, invoice or payment history, it is archived and kept in restricted form for legal, financial and dispute records. A profile that was never used is deleted.</p>
+          <p>Students with upcoming booked lessons cannot be removed until those lessons are cancelled or resolved.</p>
+        </div>
+        {error && (
+          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs space-y-1.5" role="alert" data-testid="text-remove-error">
+            <p className="flex items-start gap-2"><AlertCircle size={13} className="mt-0.5 shrink-0" />{error.message}</p>
+            {error.status === 409 && (
+              <p className="pl-5">
+                Cancel or resolve the upcoming lessons first in{" "}
+                <Link href="/parent/sessions" className="font-semibold underline" data-testid="link-resolve-sessions">Sessions</Link>, then try again.
+              </p>
+            )}
+          </div>
+        )}
+        <label className="block">
+          <span className="block text-xs font-medium text-foreground mb-1.5">
+            Type <span className="font-semibold">{target}</span> to confirm
+          </span>
+          <input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" className={inputCls} data-testid="input-confirm-student-name" />
+        </label>
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
+          <button type="submit" disabled={!matches || remove.isPending} className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity" data-testid="button-confirm-remove-student">
+            {remove.isPending ? "Removing..." : "Remove profile"}
+          </button>
+        </div>
+      </form>
+    </ModalShell>
+  );
 }
 
 function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
@@ -164,8 +348,9 @@ interface StudentCardProps {
   };
 }
 
-function StudentCard({ student }: StudentCardProps) {
+function StudentCard({ student, onChanged }: StudentCardProps & { onChanged: (msg: string, studentId: number) => void }) {
   const [showProgress, setShowProgress] = useState(false);
+  const [mode, setMode] = useState<"edit" | "remove" | null>(null);
   const initials = student.lastName
     ? `${student.firstName[0]}${student.lastName[0]}`.toUpperCase()
     : student.firstName.slice(0, 2).toUpperCase();
@@ -179,6 +364,12 @@ function StudentCard({ student }: StudentCardProps) {
 
   return (
     <div className="bg-card border border-card-border rounded-xl overflow-hidden">
+      {mode === "edit" && (
+        <EditStudentModal student={student} onClose={() => setMode(null)} onSaved={(m) => { setMode(null); onChanged(m, student.id); }} />
+      )}
+      {mode === "remove" && (
+        <RemoveStudentModal student={student} onClose={() => setMode(null)} onRemoved={(m) => { setMode(null); onChanged(m, student.id); }} />
+      )}
       <div className="p-4 grid grid-cols-[auto_minmax(0,1fr)] sm:grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
         <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
           <span className="text-sm font-bold text-primary">{initials}</span>
@@ -240,6 +431,15 @@ function StudentCard({ student }: StudentCardProps) {
           <ProgressTimeline studentId={student.id} />
         </div>
       )}
+
+      <div className="px-4 py-2.5 border-t border-border flex justify-end gap-2">
+        <button type="button" onClick={() => setMode("edit")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors" data-testid={`button-edit-student-${student.id}`}>
+          <Pencil size={12} /> Edit
+        </button>
+        <button type="button" onClick={() => setMode("remove")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-destructive hover:bg-destructive/5 transition-colors" data-testid={`button-remove-student-${student.id}`}>
+          <Trash2 size={12} /> Remove
+        </button>
+      </div>
     </div>
   );
 }
@@ -472,7 +672,7 @@ function AddStudentModal({
             {dateOfBirth && verified && (
               <div className="flex items-center gap-1.5 text-accent text-[11px] font-semibold">
                 <CheckCircle size={12} />
-                Identity declared ✓
+                Identity declared
               </div>
             )}
           </div>
@@ -505,16 +705,27 @@ export default function ParentStudents() {
   const students = useListStudents();
   const [showModal, setShowModal] = useState(false);
   const [justAdded, setJustAdded] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const handleChanged = async (msg: string, studentId: number) => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: getListStudentsQueryKey() }),
+      qc.invalidateQueries({ queryKey: [`/api/students/${studentId}/progress`] }),
+      qc.invalidateQueries({ queryKey: [`/api/students/${studentId}`] }),
+    ]);
+    setNotice(msg);
+    setTimeout(() => setNotice(null), 6000);
+  };
 
   const myStudents = students.data?.filter(
-    (s) => s.parentId === user?.id || s.parentId == null
+    (s) => s.parentId === user?.id
   ) ?? [];
 
   const handleSuccess = () => {
     qc.invalidateQueries({ queryKey: getListStudentsQueryKey() });
     students.refetch().then((result) => {
       const newest = result.data
-        ?.filter((s) => s.parentId === user?.id || s.parentId == null)
+        ?.filter((s) => s.parentId === user?.id)
         .at(-1);
       if (newest) {
         const name = newest.lastName
@@ -571,6 +782,13 @@ export default function ParentStudents() {
         </div>
       )}
 
+      {notice && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-accent/10 text-accent text-sm font-medium mb-4 border border-accent/20" role="status" data-testid="text-student-notice">
+          <CheckCircle size={16} className="mt-0.5 shrink-0" />
+          {notice}
+        </div>
+      )}
+
       {students.isLoading ? (
         <div className="space-y-3">
           {[1, 2].map((i) => <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}
@@ -595,7 +813,7 @@ export default function ParentStudents() {
       ) : (
         <div className="space-y-3">
           {myStudents.map((student) => (
-            <StudentCard key={student.id} student={student as any} />
+            <StudentCard key={student.id} student={student as any} onChanged={handleChanged} />
           ))}
           <button
             onClick={() => setShowModal(true)}

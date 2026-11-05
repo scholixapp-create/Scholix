@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { lockBookableStudent } from "../lib/accountRemoval";
 import { db, paymentsTable, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { SimulatePaymentBody, ListPaymentsQueryParams } from "@workspace/api-zod";
@@ -76,7 +77,7 @@ router.post("/payments/simulate", requireAuth, async (req, res) => {
   }
 
   const confirmed = await db.transaction(async (tx) => {
-    if (!await lockBookableTutor(tx, session.tutorId)) return null;
+    if (!await lockBookableStudent(tx, session.studentId) || !await lockBookableTutor(tx, session.tutorId)) return null;
     return tx
     .update(sessionsTable)
     .set({ isPaid: true, status: "scheduled" })

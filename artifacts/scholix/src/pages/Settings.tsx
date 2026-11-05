@@ -301,19 +301,19 @@ function SecurityTab() {
             <Trash2 size={15} className="text-destructive" />
             <h2 className="text-sm font-semibold text-foreground">Delete Account</h2>
           </div>
-          <p className="text-xs text-muted-foreground">Request permanent deletion of your account and data</p>
+          <p className="text-xs text-muted-foreground">Ask our team to review removal of your account</p>
         </div>
         <div className="px-5 py-5">
           <div className="bg-destructive/5 border border-destructive/15 rounded-xl p-4 mb-4">
             <p className="text-xs text-muted-foreground leading-relaxed">
-              <strong className="text-foreground">This is a permanent action.</strong> Financial records (invoices, payments) are retained for 7 years as required by Australian law. Your account will be reviewed and deleted by our team within 2 business days.
+              <strong className="text-foreground">Requests are reviewed by an admin.</strong> Submitting a request does not change your access. If approved, your account and any linked student profiles are deactivated and archived. Records we need for legal, financial, dispute and audit purposes, such as lessons, invoices and payments, are kept in restricted form rather than erased. Accounts with upcoming booked lessons need those lessons resolved first.
             </p>
           </div>
           <button
             onClick={() => setShowDeletionModal(true)}
             className="w-full py-2.5 rounded-xl border border-destructive/40 text-destructive text-sm font-semibold hover:bg-destructive/5 transition-colors"
           >
-            Request account deletion
+            Request account removal
           </button>
         </div>
       </div>
@@ -327,7 +327,7 @@ function SecurityTab() {
                 <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
                   <Trash2 size={15} className="text-destructive" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground">Request account deletion</h3>
+                <h3 className="text-sm font-semibold text-foreground">Request account removal</h3>
               </div>
             </div>
             <div className="px-5 py-5">
@@ -336,7 +336,7 @@ function SecurityTab() {
                   <CheckCircle size={32} className="text-accent mx-auto mb-3" />
                   <p className="text-sm font-semibold text-foreground mb-1">Request submitted</p>
                   <p className="text-xs text-muted-foreground leading-relaxed mb-5">
-                    You'll receive a confirmation email. Our team will process your request within 2 business days.
+                    An admin will review your request. Your account stays active until it is approved. If approved, your family's access ends and required records are kept in restricted form.
                   </p>
                   <button onClick={() => setShowDeletionModal(false)} className="px-5 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">
                     Close

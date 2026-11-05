@@ -10,6 +10,9 @@ async function canAccessSession(
   session: typeof sessionsTable.$inferSelect
 ): Promise<boolean> {
   if (user.role === "admin") return true;
+  const [activeStudent] = await db.select({ archivedAt: studentsTable.archivedAt }).from(studentsTable)
+    .where(eq(studentsTable.id, session.studentId)).limit(1);
+  if (!activeStudent || activeStudent.archivedAt) return false;
 
   if (user.role === "tutor") {
     const [tutorRow] = await db
@@ -158,6 +161,9 @@ router.get("/students/:studentId/progress", requireAuth, async (req, res) => {
 
   // Check access to this student's progress
   if (user.role !== "admin") {
+    const [profile] = await db.select({ archivedAt: studentsTable.archivedAt }).from(studentsTable)
+      .where(eq(studentsTable.id, studentId)).limit(1);
+    if (!profile || profile.archivedAt) { res.status(404).json({ error: "Student not found" }); return; }
     if (user.role === "parent") {
       const [student] = await db
         .select({ parentId: studentsTable.parentId })

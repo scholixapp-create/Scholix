@@ -12,6 +12,7 @@ export const usersTable = pgTable("users", {
   lastName: text("last_name").notNull(),
   role: userRoleEnum("role").notNull(),
   isActive: boolean("is_active").notNull().default(true),
+  archivedAt: timestamp("archived_at"),
   authVersion: integer("auth_version").notNull().default(0),
   // Existing accounts are grandfathered in; signup explicitly sets false for new parents.
   parentApproved: boolean("parent_approved").notNull().default(true),

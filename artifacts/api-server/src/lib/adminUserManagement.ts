@@ -2,6 +2,7 @@ export type AdminUserStatusRecord = {
   id: number;
   role: string;
   isActive: boolean;
+  archivedAt?: Date | null;
 };
 
 export type AdminUserStatusAction = "deactivated" | "reactivated";
@@ -50,6 +51,9 @@ export async function changeAdminUserStatus(
     const target = await tx.findUser(targetUserId);
     if (!target) {
       throw new AdminUserStatusError("User not found", 404);
+    }
+    if (target.archivedAt) {
+      throw new AdminUserStatusError("Archived accounts cannot be reactivated. Review retained records through the deletion-request history.", 409);
     }
     if (target.isActive === isActive) {
       return target;

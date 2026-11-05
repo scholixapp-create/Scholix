@@ -101,6 +101,10 @@ export const AdminUserRole = {
 
 export interface AdminUser {
   /** @nullable */
+  archivedAt?: string | null;
+  /** @nullable */
+  deletionRequestedAt?: string | null;
+  /** @nullable */
   reapplicationRequestedAt?: string | null;
   id: number;
   email: string;
@@ -227,6 +231,97 @@ export interface AvailableSlotsResponse {
   duration: number;
   /** Available start times in HH:MM (24h) format */
   slots: string[];
+}
+
+export interface StudentProfileUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  firstName?: string;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  lastName?: string | null;
+  /**
+     * @maxLength 30
+     * @nullable
+     */
+  yearLevel?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  school?: string | null;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  subjects?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  goals?: string | null;
+  /** @nullable */
+  dateOfBirth?: string | null;
+}
+
+export interface StudentRemovalConfirmation {
+  /**
+     * @minLength 1
+     * @maxLength 201
+     */
+  confirmationName: string;
+}
+
+export type DeletionRequestDecisionDecision = typeof DeletionRequestDecisionDecision[keyof typeof DeletionRequestDecisionDecision];
+
+
+export const DeletionRequestDecisionDecision = {
+  approve: 'approve',
+  reject: 'reject',
+} as const;
+
+export interface DeletionRequestDecision {
+  decision: DeletionRequestDecisionDecision;
+  confirmationEmail: string;
+  /** @maxLength 1000 */
+  notes?: string;
+}
+
+export interface AccountRemovalResult {
+  message: string;
+  archived: boolean;
+  affectedStudents: number;
+  affectedAccounts: number;
+}
+
+export type AccountDeletionRequestStatus = typeof AccountDeletionRequestStatus[keyof typeof AccountDeletionRequestStatus];
+
+
+export const AccountDeletionRequestStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface AccountDeletionRequest {
+  id: number;
+  userId: number;
+  email: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  /** @nullable */
+  reason?: string | null;
+  status: AccountDeletionRequestStatus;
+  requestedAt: string;
+  /** @nullable */
+  reviewedAt?: string | null;
+  /** @nullable */
+  reviewNotes?: string | null;
 }
 
 export interface Student {

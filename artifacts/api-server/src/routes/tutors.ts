@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable, tutorComplianceTable, tutorRelationshipsTable } from "@workspace/db";
-import { eq, inArray, and, isNotNull } from "drizzle-orm";
+import { eq, inArray, and, isNotNull, isNull } from "drizzle-orm";
 import { UpdateTutorProfileBody, SetTutorAvailabilityBody } from "@workspace/api-zod";
 import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
 
@@ -347,8 +347,27 @@ router.get("/tutors/:tutorId/available-slots", async (req, res) => {
 
 // ── Tutor students ────────────────────────────────────────────────────────────
 
-router.get("/tutors/:tutorId/students", async (req, res) => {
-  const tutorId = parseInt(req.params.tutorId, 10);
+router.get("/tutors/:tutorId/students", requireAuth, async (req, res) => {
+  const user = (req as AuthRequest).user;
+  const tutorId = Number(req.params.tutorId);
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0) {
+    res.status(400).json({ error: "Invalid tutor ID" });
+    return;
+  }
+  if (user.role !== "admin") {
+    if (user.role !== "tutor") {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+    const [ownedTutor] = await db.select({ id: tutorsTable.id })
+      .from(tutorsTable)
+      .where(and(eq(tutorsTable.id, tutorId), eq(tutorsTable.userId, user.id)))
+      .limit(1);
+    if (!ownedTutor) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+  }
 
   const sessionRows = await db
     .select({ studentId: sessionsTable.studentId })
@@ -365,7 +384,7 @@ router.get("/tutors/:tutorId/students", async (req, res) => {
   const students = await db
     .select()
     .from(studentsTable)
-    .where(inArray(studentsTable.id, studentIds));
+    .where(and(inArray(studentsTable.id, studentIds), isNull(studentsTable.archivedAt)));
 
   res.json(
     students.map((s) => ({

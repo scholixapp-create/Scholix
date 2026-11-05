@@ -32,3 +32,15 @@ Deactivated tutors cannot receive new bookings or payment confirmations, but exi
 **Why:** The user explicitly asked to prevent bookings with deactivated tutors.
 
 **How to apply:** Hide inactive tutors from public discovery and availability, and enforce current account status at the final booking/payment write, including concurrent deactivation.
+
+Parent account removal must also address all associated student profiles and any linked student sign-ins, rather than leaving usable child accounts behind.
+
+**Why:** The user explicitly stated that deleting a parent should also delete its associated student accounts.
+
+**How to apply:** Treat removal as a family-level workflow; required business history must not be silently cascade-deleted.
+
+Account removal uses restricted archival where history must survive. Unused child profiles may be permanently removed; linked sign-in access must end in either case. Archived removal is distinct from temporary deactivation and must not be undone by public reapplication.
+
+**Why:** The user approved removal with restricted archival rather than destroying financial, lesson, dispute or audit records.
+
+**How to apply:** Explain retention before confirmation, resolve outstanding lessons before processing, and retain only necessary records with restricted access. Do not represent archival as complete erasure or promise an unimplemented retention-expiry schedule.
