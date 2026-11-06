@@ -32,3 +32,9 @@ Keep the tutor-document volume mounted at the legacy API uploads directory unles
 **Why:** The mount location was chosen to keep both the previously deployed API and the new mount-aware API compatible during rollout. A different mount location would leave the old API writing ephemeral files between deployment steps. The owner explicitly accepted possible re-uploads for the initial volume attachment, not for every future release.
 
 **How to apply:** Inspect the actual Railway mount before changing it. Preserve existing bytes and private admin-authorized delivery; changing a path or attaching a fresh volume does not migrate files. Do not delete or replace the volume as part of ordinary code deployment.
+
+Verify frontend releases using Railway's deployed commit and live feature checks, not equality with a locally built asset hash.
+
+**Why:** Vite embeds environment-specific configuration into its bundle. A healthy production build can have a different asset hash from the same commit built in Replit, so waiting for hash equality can incorrectly suggest a stalled release.
+
+**How to apply:** Confirm both services deployed the intended commit, inspect the live page for the changed feature, and check the configured API origin separately. Do not replace production configuration just to match a development build.
