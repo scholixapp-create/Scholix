@@ -14,3 +14,9 @@ Offer valid quarter-hour starts for longer lessons too, rather than restricting 
 **Why:** The user's example is a 4:00–6:15 pm availability window that should fit two one-hour in-person lessons at 4:00 and 5:15 with a 15-minute travel gap.
 
 **How to apply:** Keep the times shown to parents consistent with server-side availability and conflict checks. Preferred start suggestions must not be confused with whether another time is actually bookable.
+
+The user chose preferred start suggestions with flexible alternatives combined with request-to-book, not immediate confirmed bookings.
+
+**Why:** The user wants tutors to confirm session requests before payment is properly taken. They explicitly accepted a payment hold that can be released if the tutor does not confirm.
+
+**How to apply:** Distinguish requested, payment-authorised and tutor-confirmed states. Do not describe a session as confirmed or its payment as captured before tutor acceptance. Preserve travel checks while a request reserves the time, and release temporary reservations when declined, cancelled or expired. Clearly distinguish simulated beta payments from real card authorisations.
