@@ -961,6 +961,22 @@ paths:
                 items:
                   $ref: "#/components/schemas/Payment"
 
+  /admin/user-requests:
+    get:
+      operationId: listAdminUserRequests
+      summary: Pending user requests ordered by priority and oldest first
+      tags: [admin]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Removal, verified reapplication and account approval work awaiting admins
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AdminUserRequest" }
+        "401": { description: Sign in required }
+        "403": { description: Admin required }
   /admin/deletion-requests:
     get:
       operationId: listDeletionRequests
@@ -1283,6 +1299,23 @@ components:
           type: string
       required: [id, email, firstName, lastName, role, createdAt]
 
+    AdminUserRequest:
+      type: object
+      required: [id, kind, resourceId, userId, email, firstName, lastName, role, requestedAt, priority, reason]
+      properties:
+        id: { type: string }
+        kind:
+          type: string
+          enum: [removal, reapplication, parent_approval, tutor_verification, qualification_update]
+        resourceId: { type: integer }
+        userId: { type: integer }
+        email: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        role: { type: string, enum: [parent, tutor, student, admin] }
+        requestedAt: { type: string, format: date-time }
+        priority: { type: string, enum: [urgent, high, normal] }
+        reason: { type: [string, "null"] }
     AdminUser:
       type: object
       properties:

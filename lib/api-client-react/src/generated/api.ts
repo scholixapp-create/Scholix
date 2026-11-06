@@ -31,6 +31,7 @@ import type {
   AdminStats,
   AdminUser,
   AdminUserManagementError,
+  AdminUserRequest,
   AdminUserStatusUpdate,
   ApproveTutorBody,
   AuthResponse,
@@ -4051,6 +4052,107 @@ export function useListPayments<TData = Awaited<ReturnType<typeof listPayments>>
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListPaymentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminUserRequestsUrl = () => {
+
+
+
+
+  return `/api/admin/user-requests`
+}
+
+/**
+ * @summary Pending user requests ordered by priority and oldest first
+ */
+export const listAdminUserRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminUserRequest[]> => {
+
+  return customFetch<AdminUserRequest[]>(getListAdminUserRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminUserRequestsQueryKey = () => {
+    return [
+    `/api/admin/user-requests`
+    ] as const;
+    }
+
+
+export const getListAdminUserRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminUserRequests>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminUserRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminUserRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminUserRequests>>> = ({ signal }) => listAdminUserRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminUserRequests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminUserRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminUserRequests>>>
+export type ListAdminUserRequestsQueryError = ErrorType<void>
+
+
+export function useListAdminUserRequests<TData = Awaited<ReturnType<typeof listAdminUserRequests>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminUserRequests>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminUserRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminUserRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminUserRequests<TData = Awaited<ReturnType<typeof listAdminUserRequests>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminUserRequests>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminUserRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminUserRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminUserRequests<TData = Awaited<ReturnType<typeof listAdminUserRequests>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminUserRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Pending user requests ordered by priority and oldest first
+ */
+
+export function useListAdminUserRequests<TData = Awaited<ReturnType<typeof listAdminUserRequests>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminUserRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminUserRequestsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

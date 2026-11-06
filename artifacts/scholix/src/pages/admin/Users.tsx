@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import {
+  getAdminListUsersQueryKey,
   getGetAdminUserQueryKey,
+  getListAdminUserRequestsQueryKey,
+  getListDeletionRequestsQueryKey,
   useAdminListUsers,
   useApproveParent,
   useDeleteAdminUser,
@@ -11,7 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { AlertCircle, GraduationCap, Search, ShieldCheck, User, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import DeletionRequestsQueue from "@/components/admin/DeletionRequestsQueue";
+import UserRequestsQueue from "@/components/admin/UserRequestsQueue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,10 +57,16 @@ export default function AdminUsers() {
     return () => window.clearTimeout(timeout);
   }, [search]);
 
-  const users = useAdminListUsers({ search: debouncedSearch });
-  const detail = useGetAdminUser(selectedUserId ?? 0, {
-    query: { enabled: selectedUserId !== null },
+  const users = useAdminListUsers({ search: debouncedSearch }, {
+    query: { refetchInterval: 30_000, refetchOnMount: "always", refetchOnWindowFocus: true, queryKey: getAdminListUsersQueryKey({ search: debouncedSearch }) },
   });
+  const detail = useGetAdminUser(selectedUserId ?? 0, {
+    query: { enabled: selectedUserId !== null, refetchInterval: 30_000, refetchOnMount: "always", queryKey: getGetAdminUserQueryKey(selectedUserId ?? 0) },
+  });
+  const invalidateRequests = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: getListAdminUserRequestsQueryKey() }),
+    queryClient.invalidateQueries({ queryKey: getListDeletionRequestsQueryKey() }),
+  ]);
   const statusMutation = useUpdateAdminUserStatus({
     mutation: {
       onSuccess: async (updatedUser) => {
@@ -68,6 +77,7 @@ export default function AdminUsers() {
         queryClient.setQueryData(getGetAdminUserQueryKey(updatedUser.id), updatedUser.isActive ? { ...updatedUser, reapplicationRequestedAt: null } : updatedUser);
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }),
+          invalidateRequests(),
           queryClient.invalidateQueries({ queryKey: getGetAdminUserQueryKey(updatedUser.id) }),
         ]);
       },
@@ -92,6 +102,7 @@ export default function AdminUsers() {
         queryClient.setQueryData(getGetAdminUserQueryKey(updatedUser.id), updatedUser);
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }),
+          invalidateRequests(),
           queryClient.invalidateQueries({ queryKey: getGetAdminUserQueryKey(updatedUser.id) }),
         ]);
       },
@@ -113,6 +124,7 @@ export default function AdminUsers() {
         setSelectedUserId(null);
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }),
+          invalidateRequests(),
           queryClient.invalidateQueries({
             queryKey: getGetAdminUserQueryKey(selectedUserId ?? 0),
           }),
@@ -143,7 +155,13 @@ export default function AdminUsers() {
         </p>
       </div>
 
-      <DeletionRequestsQueue
+      <UserRequestsQueue
+        onSelectUser={(userId) => {
+          setStatusError("");
+          setApproveError("");
+          setApproveSuccess("");
+          setSelectedUserId(userId);
+        }}
         onReviewed={(userId) => queryClient.invalidateQueries({ queryKey: getGetAdminUserQueryKey(userId) })}
       />
 
@@ -222,8 +240,8 @@ export default function AdminUsers() {
                     </span>
                   )}
                   {listedUser.reapplicationRequestedAt && !listedUser.isActive && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold" data-testid={`status-reapplication-${listedUser.id}`}>
-                      Reapplied {format(parseISO(listedUser.reapplicationRequestedAt), "MMM d, yyyy")}
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold ring-1 ring-amber-300" data-testid={`status-reapplication-${listedUser.id}`}>
+                      Reapplication pending, reapplied {format(parseISO(listedUser.reapplicationRequestedAt), "MMM d, yyyy")}
                     </span>
                   )}
                   {listedUser.role === "parent" && listedUser.parentApproved === false && (
@@ -373,7 +391,7 @@ export default function AdminUsers() {
               {approveSuccess && <p className="text-sm text-emerald-700" role="status">{approveSuccess}</p>}
               {selectedUser.deletionRequestedAt && !selectedUser.archivedAt && (
                 <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-                  This user has a pending removal request. Review it in the removal requests queue at the top of this page. The request alone does not change access.
+                  This user has a pending removal request. Review it in the user requests queue at the top of this page. The request alone does not change access.
                 </p>
               )}
               {isSelf ? (

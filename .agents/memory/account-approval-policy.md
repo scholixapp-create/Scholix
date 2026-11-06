@@ -44,3 +44,9 @@ Account removal uses restricted archival where history must survive. Unused chil
 **Why:** The user approved removal with restricted archival rather than destroying financial, lesson, dispute or audit records.
 
 **How to apply:** Explain retention before confirmation, resolve outstanding lessons before processing, and retain only necessary records with restricted access. Do not represent archival as complete erasure or promise an unimplemented retention-expiry schedule.
+
+Admin-facing user requests belong in one prioritised "User requests" section, not isolated removal-only queues or email-only alerts.
+
+**Why:** The user could not find either a removal request or a returning parent's reapplication in the admin interface and explicitly requested a general, priority-ordered place for requests needing an admin response.
+
+**How to apply:** When adding an approval/request workflow, provide a visible pending entry and a path to the existing authorised review action. Email delivery is supplementary, not proof that admins can see the request.

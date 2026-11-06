@@ -89,6 +89,51 @@ export interface OtpResendResponse {
   emailFailed?: boolean;
 }
 
+export type AdminUserRequestKind = typeof AdminUserRequestKind[keyof typeof AdminUserRequestKind];
+
+
+export const AdminUserRequestKind = {
+  removal: 'removal',
+  reapplication: 'reapplication',
+  parent_approval: 'parent_approval',
+  tutor_verification: 'tutor_verification',
+  qualification_update: 'qualification_update',
+} as const;
+
+export type AdminUserRequestRole = typeof AdminUserRequestRole[keyof typeof AdminUserRequestRole];
+
+
+export const AdminUserRequestRole = {
+  parent: 'parent',
+  tutor: 'tutor',
+  student: 'student',
+  admin: 'admin',
+} as const;
+
+export type AdminUserRequestPriority = typeof AdminUserRequestPriority[keyof typeof AdminUserRequestPriority];
+
+
+export const AdminUserRequestPriority = {
+  urgent: 'urgent',
+  high: 'high',
+  normal: 'normal',
+} as const;
+
+export interface AdminUserRequest {
+  id: string;
+  kind: AdminUserRequestKind;
+  resourceId: number;
+  userId: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: AdminUserRequestRole;
+  requestedAt: string;
+  priority: AdminUserRequestPriority;
+  /** @nullable */
+  reason: string | null;
+}
+
 export type AdminUserRole = typeof AdminUserRole[keyof typeof AdminUserRole];
 
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { BrandMark } from "@/components/Brand";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { useLogout } from "@workspace/api-client-react";
+import { getListAdminUserRequestsQueryKey, useListAdminUserRequests, useLogout } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNotifications } from "@/hooks/useNotifications";
 import NotificationsPanel from "@/components/NotificationsPanel";
@@ -118,6 +118,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const logoutMutation = useLogout();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const isAdmin = user?.role === "admin";
+  const adminRequests = useListAdminUserRequests({
+    query: { enabled: isAdmin, refetchInterval: isAdmin ? 30_000 : false, refetchOnWindowFocus: isAdmin, queryKey: getListAdminUserRequestsQueryKey() },
+  });
+  const requestBadge = !isAdmin || adminRequests.isLoading
+    ? null
+    : adminRequests.isError || !adminRequests.data
+      ? { text: "?", label: "Pending user requests unavailable" }
+      : adminRequests.data.length > 0
+        ? { text: adminRequests.data.length > 99 ? "99+" : String(adminRequests.data.length), label: `${adminRequests.data.length} pending user requests` }
+        : null;
   const { notifications, unreadCount, isLoading: notifsLoading, markRead, markAllRead, dismiss } = useNotifications();
 
   if (!user) return <>{children}</>;
@@ -186,7 +197,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 {item.icon}
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {item.href === "/admin/users" && requestBadge && (
+                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand-gold text-sidebar text-[10px] font-bold flex items-center justify-center" title={requestBadge.label} data-testid="badge-pending-user-requests">
+                    <span aria-hidden="true">{requestBadge.text}</span>
+                    <span className="sr-only">{requestBadge.label}</span>
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -314,7 +331,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </footer>
 
         {/* Bottom nav — mobile */}
-        <nav aria-label="Mobile navigation" className="lg:hidden flex items-center overflow-x-auto overscroll-x-contain border-t border-border bg-card px-2 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] shrink-0">
+        <nav aria-label="Mobile navigation" className={`lg:hidden ${isAdmin ? "grid grid-cols-3" : "flex items-center overflow-x-auto overscroll-x-contain"} border-t border-border bg-card px-2 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] shrink-0`}>
           {navItems.map((item) => {
             const active = location === item.href || location.startsWith(item.href + "/");
             return (
@@ -322,11 +339,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex-1 min-w-20 shrink-0 flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-colors ${
+                className={`relative ${isAdmin ? "min-w-0" : "flex-1 min-w-20 shrink-0"} flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-colors ${
                   active ? "text-brand-teal" : "text-muted-foreground"
                 }`}
               >
                 {item.icon}
+                {item.href === "/admin/users" && requestBadge && (
+                  <span className="absolute top-0.5 left-1/2 ml-1.5 min-w-[16px] h-4 px-1 rounded-full bg-brand-gold text-sidebar text-[9px] font-bold flex items-center justify-center" data-testid="badge-pending-user-requests-mobile">
+                    <span aria-hidden="true">{requestBadge.text}</span>
+                    <span className="sr-only">{requestBadge.label}</span>
+                  </span>
+                )}
                 <span className="text-[10px] font-medium max-w-20 truncate">{item.label}</span>
               </Link>
             );

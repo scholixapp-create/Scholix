@@ -3,6 +3,44 @@ import { BrandMark } from "@/components/Brand";
 import { BookOpen, Shield, CreditCard, Calendar, Star, Users, ArrowRight, CheckCircle } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 import { AccountNavigation } from "@/components/AccountNavigation";
+import type { ReactNode } from "react";
+
+const brandBase = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/brand`;
+
+function StudySection({
+  image, dark = false, position = "center 60%", className = "", children,
+}: {
+  image: "MainHero.jpg" | "TutorFocused.jpg" | "LearningDetail.jpg";
+  dark?: boolean;
+  position?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={`relative isolate overflow-hidden ${dark ? "bg-sidebar" : "bg-brand-cream"} ${className}`}>
+      <div className="absolute inset-0 -z-10 pointer-events-none select-none" aria-hidden="true">
+        <img
+          src={`${brandBase}/${image}`}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          className="w-full h-full object-cover"
+          style={{ objectPosition: position }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background: dark
+              ? "linear-gradient(110deg, rgba(15,39,71,.95), rgba(15,39,71,.84) 55%, rgba(15,39,71,.91))"
+              : "linear-gradient(110deg, rgba(250,247,240,.95), rgba(250,247,240,.84) 55%, rgba(250,247,240,.76))",
+          }}
+        />
+      </div>
+      {children}
+    </section>
+  );
+}
 
 const features = [
   {
@@ -63,7 +101,8 @@ export default function About() {
       </header>
 
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-5 py-16 text-center">
+      <StudySection image="TutorFocused.jpg" position="center 45%">
+        <div className="max-w-5xl mx-auto px-5 py-16 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold mb-6">
           Built for Australian tutors
         </div>
@@ -82,10 +121,11 @@ export default function About() {
             Find a tutor
           </Link>
         </div>
-      </section>
+        </div>
+      </StudySection>
 
       {/* Stats */}
-      <section className="bg-sidebar">
+      <StudySection image="MainHero.jpg" dark position="center 65%">
         <div className="max-w-5xl mx-auto px-5 py-10 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
           {stats.map((s) => (
             <div key={s.label}>
@@ -94,15 +134,16 @@ export default function About() {
             </div>
           ))}
         </div>
-      </section>
+      </StudySection>
 
       {/* Features */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
+      <StudySection image="LearningDetail.jpg" position="center 65%">
+        <div className="max-w-5xl mx-auto px-5 py-16">
         <h2 className="text-2xl font-bold text-foreground text-center mb-2">Everything a tutor needs</h2>
         <p className="text-muted-foreground text-center mb-10">One platform. No spreadsheets, no chasing payments.</p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((f) => (
-            <div key={f.title} className="bg-card border border-card-border rounded-xl p-5">
+            <div key={f.title} className="bg-card/95 border border-card-border rounded-xl p-5">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
                 {f.icon}
               </div>
@@ -111,10 +152,11 @@ export default function About() {
             </div>
           ))}
         </div>
-      </section>
+        </div>
+      </StudySection>
 
       {/* Mission */}
-      <section className="bg-muted/40 border-y border-border">
+      <StudySection image="MainHero.jpg" className="border-y border-border" position="center 60%">
         <div className="max-w-3xl mx-auto px-5 py-14 text-center">
           <h2 className="text-2xl font-bold text-foreground mb-4">Our mission</h2>
           <p className="text-muted-foreground leading-relaxed text-base">
@@ -123,10 +165,11 @@ export default function About() {
             professional-grade platform with the same tools a large tutoring company would have, without the overhead.
           </p>
         </div>
-      </section>
+      </StudySection>
 
       {/* Why Scholix */}
-      <section className="max-w-5xl mx-auto px-5 py-16">
+      <StudySection image="TutorFocused.jpg" position="center 65%">
+        <div className="max-w-5xl mx-auto px-5 py-16">
         <h2 className="text-2xl font-bold text-foreground text-center mb-10">Why tutors choose Scholix</h2>
         <div className="space-y-3 max-w-xl mx-auto">
           {[
@@ -143,10 +186,11 @@ export default function About() {
             </div>
           ))}
         </div>
-      </section>
+        </div>
+      </StudySection>
 
       {/* CTA */}
-      <section className="bg-sidebar">
+      <StudySection image="LearningDetail.jpg" dark position="center 70%">
         <div className="max-w-3xl mx-auto px-5 py-14 text-center">
           <h2 className="text-2xl font-bold text-white mb-3">Ready to get started?</h2>
           <p className="text-white/70 mb-7">Join Scholix today and run your tutoring business with confidence.</p>
@@ -159,7 +203,7 @@ export default function About() {
             </Link>
           </div>
         </div>
-      </section>
+      </StudySection>
 
       {/* Footer */}
       <footer className="border-t border-border bg-background">

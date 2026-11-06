@@ -958,6 +958,25 @@ export const ListPaymentsResponse = zod.array(ListPaymentsResponseItem)
 
 
 /**
+ * @summary Pending user requests ordered by priority and oldest first
+ */
+export const ListAdminUserRequestsResponseItem = zod.object({
+  "id": zod.string(),
+  "kind": zod.enum(['removal', 'reapplication', 'parent_approval', 'tutor_verification', 'qualification_update']),
+  "resourceId": zod.number().int(),
+  "userId": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "role": zod.enum(['parent', 'tutor', 'student', 'admin']),
+  "requestedAt": zod.coerce.date(),
+  "priority": zod.enum(['urgent', 'high', 'normal']),
+  "reason": zod.string().nullable()
+})
+export const ListAdminUserRequestsResponse = zod.array(ListAdminUserRequestsResponseItem)
+
+
+/**
  * @summary Admin deletion-request queue, pending first
  */
 export const ListDeletionRequestsResponseItem = zod.object({

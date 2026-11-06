@@ -16,6 +16,7 @@ import reportsRouter from "./reports";
 import academyRouter from "./academy";
 import tutorUpdatesRouter from "./tutorUpdates";
 import accountRemovalRouter from "./accountRemoval";
+import adminRequestsRouter from "./adminRequests";
 
 const router: IRouter = Router();
 
@@ -26,6 +27,7 @@ router.use(verificationRouter);
 router.use(tutorsRouter);
 router.use(studentsRouter);
 router.use(accountRemovalRouter);
+router.use(adminRequestsRouter);
 router.use(sessionsRouter);
 router.use(progressRouter);
 router.use(paymentsRouter);
