@@ -38,3 +38,9 @@ Verify frontend releases using Railway's deployed commit and live feature checks
 **Why:** Vite embeds environment-specific configuration into its bundle. A healthy production build can have a different asset hash from the same commit built in Replit, so waiting for hash equality can incorrectly suggest a stalled release.
 
 **How to apply:** Confirm both services deployed the intended commit, inspect the live page for the changed feature, and check the configured API origin separately. Do not replace production configuration just to match a development build.
+
+Do not promise exact background-job deadlines from API-process timers when Railway sleeping is enabled.
+
+**Why:** The production API's sleeping setting pauses the process while idle. An in-process expiry or reminder scheduler cannot run during that pause, even though request-time availability checks can reject an expired reservation once traffic resumes.
+
+**How to apply:** Keep beta expiry checks on request paths as well as the scheduler, and explain that idle-period notifications may be delayed. Before real payments depend on timed authorisation release, provide a durable execution mechanism that runs independently of API sleep, or explicitly review the hosting setting with the user.
