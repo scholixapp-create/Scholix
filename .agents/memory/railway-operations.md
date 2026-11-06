@@ -27,6 +27,12 @@ Treat Railway's AI-agent usage limit separately from the availability of its dir
 
 **How to apply:** Use available direct tools for independent evidence, do not change billing or usage limits automatically, and state explicitly when authenticated database or admin-status checks remain unverified.
 
+Use an API-first release when the frontend depends on changed booking or payment semantics.
+
+**Why:** Both services follow the same GitHub branch, so a push alone does not guarantee deployment order. Temporarily pinning the frontend to its currently deployed commit held the old interface while the new API became healthy.
+
+**How to apply:** Stage the source pin in production only, review the environment patch before committing it, and preserve existing service settings. A source pin triggers a rebuild of the old commit, not a pause of the running service. After verifying the new API, remove the pin through another reviewed production-only source change to release the frontend and restore normal branch tracking.
+
 Keep the tutor-document volume mounted at the legacy API uploads directory unless a deliberate file migration is planned.
 
 **Why:** The mount location was chosen to keep both the previously deployed API and the new mount-aware API compatible during rollout. A different mount location would leave the old API writing ephemeral files between deployment steps. The owner explicitly accepted possible re-uploads for the initial volume attachment, not for every future release.
