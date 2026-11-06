@@ -3,6 +3,7 @@ import { and, eq, gte, lte } from "drizzle-orm";
 import { createNotification } from "./notify";
 import { sessionReminderEmailHtml } from "./email";
 import { logger } from "./logger";
+import { expireBookingRequests } from "./bookingRequests";
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString("en-GB", {
@@ -189,6 +190,9 @@ const REMINDER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const WWCC_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function startScheduler(): void {
+  const expire = () => { void expireBookingRequests().catch((err) => logger.error({ err }, "Booking request expiry failed")); };
+  expire();
+  setInterval(expire, 60_000);
   logger.info("Scheduler started — session reminders will check every hour");
 
   void sendSessionReminders();

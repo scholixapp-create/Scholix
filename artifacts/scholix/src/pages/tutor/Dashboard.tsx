@@ -1,6 +1,7 @@
 import { useAuth } from "@/context/AuthContext";
+import { formatInZone } from "@/lib/bookingRequests";
 import { useTutorInvoices } from "@/hooks/useTutorInvoices";
-import { useListSessions, useGetSessionSummary, useGetTutorAvailability } from "@workspace/api-client-react";
+import { useListSessions, useGetSessionSummary, useGetTutorAvailability, getListSessionsQueryKey } from "@workspace/api-client-react";
 import { useTutorMe, isTutorVerified } from "@/hooks/useTutorMe";
 import GetMoreStudents from "@/components/tutor/GetMoreStudents";
 import TutorReviewsSection from "@/components/tutor/TutorReviewsSection";
@@ -8,7 +9,7 @@ import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
 import {
   Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen,
-  Shield, AlertCircle, AlertTriangle, XCircle, Bell, TrendingUp, Layers, ArrowUp, Wallet,
+  Shield, AlertCircle, Hourglass, AlertTriangle, XCircle, Bell, TrendingUp, Layers, ArrowUp, Wallet,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -141,12 +142,12 @@ function GrowEarningsSection({
             <p className="text-sm font-semibold text-amber-800">Getting Paid During Beta</p>
           </div>
           <p className="text-xs text-amber-700 leading-relaxed mb-3">
-            Payments are not processed through Scholix yet. To get paid:
+            Booking holds, captures and releases on Scholix are simulated during beta. No money is collected and no card is charged. Never ask a family for payment before you accept their request.
           </p>
           <div className="space-y-2 mb-3">
             {[
-              "Agree on a payment method with your student/parent",
-              "Receive payment via PayID, bank transfer, or cash",
+              "Accept or decline each request on My Sessions before it expires",
+              "Only after you accept, arrange any direct beta-era payment with the family",
               "Use Scholix to track sessions and generate invoices",
             ].map((step, i) => (
               <div key={i} className="flex items-start gap-2">
@@ -158,7 +159,7 @@ function GrowEarningsSection({
             ))}
           </div>
           <p className="text-[11px] text-amber-600 font-medium">
-            Full payment processing coming soon.
+            Real payment processing is coming soon.
           </p>
         </div>
 
@@ -313,8 +314,14 @@ export default function TutorDashboard() {
   const profileComplete = !!(tutorProfile?.bio?.trim() && (tutorProfile?.subjects?.length ?? 0) > 0);
 
   const sessions = useListSessions(tutorId ? { tutorId } : undefined, {
-    query: { enabled: !!tutorId } as any,
+    query: {
+      enabled: !!tutorId,
+      queryKey: getListSessionsQueryKey(tutorId ? { tutorId } : undefined),
+      refetchInterval: 30_000,
+      refetchOnMount: "always",
+    },
   });
+  const pendingRequests = sessions.data?.filter((s) => s.status === "pending_confirmation") ?? [];
   const summary = useGetSessionSummary(tutorId ? { tutorId } : undefined, {
     query: { enabled: !!tutorId } as any,
   });
@@ -348,6 +355,26 @@ export default function TutorDashboard() {
         <h1 className="text-xl font-bold text-foreground">{greeting()}, {user?.firstName}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Here's what's happening today</p>
       </div>
+
+      {/* Booking requests */}
+      <Link
+        href="/tutor/sessions"
+        className={`mb-6 flex items-center justify-between gap-3 p-4 rounded-xl border transition-colors ${pendingRequests.length > 0 ? "bg-amber-50 border-amber-200 hover:border-amber-400" : "bg-card border-card-border hover:border-primary/40"}`}
+        data-testid="link-booking-requests"
+      >
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${pendingRequests.length > 0 ? "bg-amber-100" : "bg-muted"}`}>
+            <Hourglass size={16} className={pendingRequests.length > 0 ? "text-amber-700" : "text-muted-foreground"} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground" data-testid="text-request-count">
+              {pendingRequests.length === 0 ? "No booking requests waiting" : `${pendingRequests.length} booking request${pendingRequests.length === 1 ? "" : "s"} to review`}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">Requests expire after 24 hours or at lesson start if sooner</p>
+          </div>
+        </div>
+        <ChevronRight size={16} className="text-muted-foreground" />
+      </Link>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 mb-6">
@@ -437,7 +464,7 @@ export default function TutorDashboard() {
                     <p className="text-sm font-semibold text-foreground truncate">{session.subject}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{session.studentName}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {format(parseISO(session.scheduledAt), "EEE, MMM d 'at' h:mm a")} · {session.durationMinutes}min
+                      {formatInZone(session.scheduledAt)} · {session.durationMinutes}min
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">

@@ -474,11 +474,16 @@ export const GetTutorAvailableSlotsParams = zod.object({
 })
 
 export const GetTutorAvailableSlotsQueryParams = zod.object({
+  "lessonMode": zod.enum(['online', 'in_person']).optional(),
   "date": zod.coerce.string().describe('YYYY-MM-DD'),
   "duration": zod.coerce.number().int().describe('Session duration in minutes')
 })
 
 export const GetTutorAvailableSlotsResponse = zod.object({
+  "timezone": zod.string(),
+  "lessonMode": zod.enum(['online', 'in_person']),
+  "preferredSlots": zod.array(zod.string()),
+  "slotInstants": zod.record(zod.string(), zod.string()),
   "date": zod.string().describe('YYYY-MM-DD'),
   "duration": zod.number().int().describe('Session duration in minutes'),
   "slots": zod.array(zod.string()).describe('Available start times in HH:MM (24h) format')
@@ -740,17 +745,21 @@ export const InviteStudentResponse = zod.void()
 export const ListSessionsQueryParams = zod.object({
   "tutorId": zod.coerce.number().int().optional(),
   "studentId": zod.coerce.number().int().optional(),
-  "status": zod.enum(['scheduled', 'completed', 'cancelled']).optional()
+  "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']).optional()
 })
 
 export const ListSessionsResponseItem = zod.object({
+  "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
+  "requestExpiresAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "paymentStatus": zod.string().nullish(),
   "id": zod.number().int(),
   "tutorId": zod.number().int(),
   "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
-  "status": zod.enum(['scheduled', 'completed', 'cancelled']),
+  "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
@@ -764,6 +773,7 @@ export const ListSessionsResponse = zod.array(ListSessionsResponseItem)
  * @summary Create a new session
  */
 export const CreateSessionBody = zod.object({
+  "lessonMode": zod.enum(['online', 'in_person']),
   "tutorId": zod.number().int(),
   "studentId": zod.number().int(),
   "subject": zod.string(),
@@ -773,13 +783,17 @@ export const CreateSessionBody = zod.object({
 })
 
 export const CreateSessionResponse = zod.object({
+  "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
+  "requestExpiresAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "paymentStatus": zod.string().nullish(),
   "id": zod.number().int(),
   "tutorId": zod.number().int(),
   "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
-  "status": zod.enum(['scheduled', 'completed', 'cancelled']),
+  "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
@@ -796,13 +810,17 @@ export const GetSessionParams = zod.object({
 })
 
 export const GetSessionResponse = zod.object({
+  "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
+  "requestExpiresAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "paymentStatus": zod.string().nullish(),
   "id": zod.number().int(),
   "tutorId": zod.number().int(),
   "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
-  "status": zod.enum(['scheduled', 'completed', 'cancelled']),
+  "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
@@ -820,13 +838,17 @@ export const CompleteSessionParams = zod.object({
 
 export const CompleteSessionResponse = zod.object({
   "session": zod.object({
+  "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
+  "requestExpiresAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "paymentStatus": zod.string().nullish(),
   "id": zod.number().int(),
   "tutorId": zod.number().int(),
   "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
-  "status": zod.enum(['scheduled', 'completed', 'cancelled']),
+  "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
@@ -850,6 +872,40 @@ export const CompleteSessionResponse = zod.object({
 
 
 /**
+ * @summary Owning tutor accepts or declines an authorised booking request
+ */
+
+
+
+export const DecideSessionRequestParams = zod.object({
+  "sessionId": zod.coerce.number().int().min(1)
+})
+
+export const DecideSessionRequestBody = zod.object({
+  "decision": zod.enum(['accept', 'decline'])
+})
+
+export const DecideSessionRequestResponse = zod.object({
+  "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
+  "requestExpiresAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "paymentStatus": zod.string().nullish(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "subject": zod.string(),
+  "scheduledAt": zod.string(),
+  "durationMinutes": zod.number().int(),
+  "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
+  "isPaid": zod.boolean(),
+  "totalAmount": zod.number(),
+  "tutorName": zod.string().nullish(),
+  "studentName": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Cancel a session
  */
 export const CancelSessionParams = zod.object({
@@ -857,13 +913,17 @@ export const CancelSessionParams = zod.object({
 })
 
 export const CancelSessionResponse = zod.object({
+  "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
+  "requestExpiresAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "paymentStatus": zod.string().nullish(),
   "id": zod.number().int(),
   "tutorId": zod.number().int(),
   "studentId": zod.number().int(),
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
-  "status": zod.enum(['scheduled', 'completed', 'cancelled']),
+  "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
@@ -925,7 +985,7 @@ export const DownloadInvoicePdfResponse = zod.unknown()
 
 
 /**
- * @summary Simulate a payment for a session
+ * @summary Authorise a simulated beta hold, without capture, for tutor confirmation
  */
 export const SimulatePaymentBody = zod.object({
   "sessionId": zod.number().int()
@@ -935,7 +995,7 @@ export const SimulatePaymentResponse = zod.object({
   "id": zod.number().int(),
   "sessionId": zod.number().int(),
   "amount": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'refunded']),
+  "status": zod.enum(['pending', 'authorized', 'released', 'paid', 'refunded']),
   "simulatedAt": zod.string()
 })
 
@@ -951,7 +1011,7 @@ export const ListPaymentsResponseItem = zod.object({
   "id": zod.number().int(),
   "sessionId": zod.number().int(),
   "amount": zod.number(),
-  "status": zod.enum(['pending', 'paid', 'refunded']),
+  "status": zod.enum(['pending', 'authorized', 'released', 'paid', 'refunded']),
   "simulatedAt": zod.string()
 })
 export const ListPaymentsResponse = zod.array(ListPaymentsResponseItem)

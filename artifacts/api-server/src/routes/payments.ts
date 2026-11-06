@@ -1,283 +1,37 @@
 import { Router } from "express";
-import { lockBookableStudent } from "../lib/accountRemoval";
-import { db, paymentsTable, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, paymentsTable, sessionsTable, tutorsTable, studentsTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 import { SimulatePaymentBody, ListPaymentsQueryParams } from "@workspace/api-zod";
-import { createNotification } from "../lib/notify";
-import { paymentConfirmedEmailHtml, sessionBookedEmailHtml } from "../lib/email";
-import { format } from "date-fns";
 import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
-import { canBookForStudent } from "../lib/sessionAccess";
-import { lockBookableTutor } from "../lib/bookableTutor";
+import { authorizeBooking } from "../lib/bookingRequests";
+import { BookingError } from "../lib/scheduling";
 
 const router = Router();
-
-function toWhatsAppNumber(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("04") && digits.length === 10) {
-    return "61" + digits.slice(1);
-  }
-  return digits;
-}
-
-async function getTierCommission(tutorId: number, studentId: number, totalAmount: number) {
-  const [tutor] = await db.select().from(tutorsTable).where(eq(tutorsTable.id, tutorId)).limit(1);
-
-  if (tutor?.firstStudentId === studentId) {
-    return { commissionRate: 0, platformCommission: 0, tutorEarnings: totalAmount, tier: "first_student_free", isCommissionFree: true };
-  }
-
-  const completed = await db
-    .select({ id: sessionsTable.id, studentId: sessionsTable.studentId, isCommissionFree: sessionsTable.isCommissionFree })
-    .from(sessionsTable)
-    .where(and(eq(sessionsTable.tutorId, tutorId), eq(sessionsTable.status, "completed")));
-
-  const prevWithStudent = completed.filter((s) => s.studentId === studentId);
-  if (prevWithStudent.length === 0) {
-    return { commissionRate: 0, platformCommission: 0, tutorEarnings: totalAmount, tier: "first_session_free", isCommissionFree: true };
-  }
-
-  // Only count sessions where commission was actually paid — free sessions don't advance the tier
-  const count = completed.filter((s) => !s.isCommissionFree).length;
-  let rate = 0.30;
-  let tier = "standard";
-  if (count >= 50) { rate = 0.05; tier = "expert"; }
-  else if (count >= 25) { rate = 0.15; tier = "established"; }
-  else if (count >= 10) { rate = 0.24; tier = "growth"; }
-
-  return { commissionRate: rate, platformCommission: totalAmount * rate, tutorEarnings: totalAmount * (1 - rate), tier, isCommissionFree: false };
-}
-
+const paymentJson = (p: typeof paymentsTable.$inferSelect) => ({
+  id: p.id, sessionId: p.sessionId, amount: p.amount, status: p.status, simulatedAt: p.simulatedAt.toISOString(),
+});
 router.post("/payments/simulate", requireAuth, async (req, res) => {
   const parsed = SimulatePaymentBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid request body" });
-    return;
+  if (!parsed.success) { res.status(400).json({ error: "Invalid request body" }); return; }
+  try {
+    res.json(paymentJson(await authorizeBooking(parsed.data.sessionId, (req as AuthRequest).user)));
+  } catch (err) {
+    if (err instanceof BookingError) { res.status(err.statusCode).json({ error: err.message }); return; }
+    throw err;
   }
-
-  const { sessionId } = parsed.data;
-
-  const [session] = await db
-    .select()
-    .from(sessionsTable)
-    .where(eq(sessionsTable.id, sessionId))
-    .limit(1);
-
-  if (!session) {
-    res.status(404).json({ error: "Session not found" });
-    return;
-  }
-  const [owner] = await db.select({ parentId: studentsTable.parentId }).from(studentsTable)
-    .where(eq(studentsTable.id, session.studentId)).limit(1);
-  if (!owner || !canBookForStudent((req as AuthRequest).user, owner.parentId)) {
-    res.status(403).json({ error: "Only the approved parent for this session can confirm payment" }); return;
-  }
-  if (session.status !== "pending_payment" || session.isPaid) {
-    res.status(409).json({ error: "This session is not awaiting payment confirmation" }); return;
-  }
-
-  const confirmed = await db.transaction(async (tx) => {
-    if (!await lockBookableStudent(tx, session.studentId) || !await lockBookableTutor(tx, session.tutorId)) return null;
-    return tx
-    .update(sessionsTable)
-    .set({ isPaid: true, status: "scheduled" })
-    .where(and(eq(sessionsTable.id, sessionId), eq(sessionsTable.status, "pending_payment"), eq(sessionsTable.isPaid, false)))
-    .returning({ id: sessionsTable.id });
-  });
-  if (!confirmed) {
-    res.status(403).json({ error: "This tutor is inactive or is no longer approved. Payment cannot be confirmed." }); return;
-  }
-  if (!confirmed.length) {
-    res.status(409).json({ error: "This session has already been updated" }); return;
-  }
-
-  const [payment] = await db
-    .insert(paymentsTable)
-    .values({ sessionId, amount: session.totalAmount, status: "paid" })
-    .returning();
-
-  // Generate invoice immediately on payment (if not already exists)
-  const [existingInv] = await db.select().from(invoicesTable).where(eq(invoicesTable.sessionId, sessionId)).limit(1);
-  if (!existingInv) {
-    const comm = await getTierCommission(session.tutorId, session.studentId, session.totalAmount);
-    await db.insert(invoicesTable).values({
-      sessionId,
-      totalAmount: session.totalAmount,
-      platformCommission: comm.platformCommission,
-      tutorEarnings: comm.tutorEarnings,
-      commissionRate: comm.commissionRate,
-      commissionTier: comm.tier,
-    });
-    // Mark isCommissionFree on session
-    if (comm.isCommissionFree) {
-      await db.update(sessionsTable).set({ isCommissionFree: true }).where(eq(sessionsTable.id, sessionId));
-    }
-  }
-
-  const [student] = await db
-    .select()
-    .from(studentsTable)
-    .where(eq(studentsTable.id, session.studentId))
-    .limit(1);
-
-  const [tutorRow] = await db
-    .select({ userId: tutorsTable.userId, firstName: usersTable.firstName, lastName: usersTable.lastName, phone: usersTable.phone })
-    .from(tutorsTable)
-    .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
-    .where(eq(tutorsTable.id, session.tutorId))
-    .limit(1);
-
-  const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "your tutor";
-  const dateStr = format(session.scheduledAt, "EEE, MMM d 'at' h:mm a");
-
-  // Fetch the new invoice ID for notification links
-  const [newInvoice] = await db
-    .select({ id: invoicesTable.id })
-    .from(invoicesTable)
-    .where(eq(invoicesTable.sessionId, sessionId))
-    .limit(1);
-  const invoiceNum = newInvoice ? `#${String(newInvoice.id).padStart(5, "0")}` : "";
-
-  if (student?.parentId) {
-    const [parentUser] = await db
-      .select({ firstName: usersTable.firstName, phone: usersTable.phone })
-      .from(usersTable)
-      .where(eq(usersTable.id, student.parentId))
-      .limit(1);
-
-    await createNotification({
-      userId: student.parentId,
-      type: "payment_confirmed",
-      title: "Payment confirmed: invoice ready",
-      message: `Invoice ${invoiceNum} for your ${session.subject} session with ${tutorName} on ${dateStr} is now available`,
-      actionUrl: "/parent/invoices",
-      actionLabel: "View invoice",
-      emailSubject: `Payment confirmed: ${session.subject} with ${tutorName}`,
-      emailHtml: paymentConfirmedEmailHtml({
-        recipientName: parentUser?.firstName ?? "there",
-        tutorName,
-        subject: session.subject,
-        date: dateStr,
-        amount: session.totalAmount,
-      }),
-    });
-
-    const parentPhone = parentUser?.phone ?? null;
-    const tutorPhone = tutorRow?.phone ?? null;
-
-    if (parentPhone && tutorPhone) {
-      const tutorWaLink = `https://wa.me/${toWhatsAppNumber(tutorPhone)}`;
-      await createNotification({
-        userId: student.parentId,
-        type: "whatsapp_connect",
-        title: "Connect with your tutor on WhatsApp",
-        message: `Message ${tutorName} directly to confirm logistics, share resources, or ask questions`,
-        actionUrl: tutorWaLink,
-        actionLabel: "Open WhatsApp",
-      });
-    }
-  }
-
-  if (tutorRow) {
-    const studentName = student
-      ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
-      : "A student";
-
-    await createNotification({
-      userId: tutorRow.userId,
-      type: "invoice_generated",
-      title: `Invoice ${invoiceNum} generated`,
-      message: `Invoice for your ${session.subject} session with ${studentName} on ${dateStr} is ready. Available in your Invoices section`,
-      actionUrl: "/tutor/invoices",
-      actionLabel: "View invoices",
-    });
-
-    await createNotification({
-      userId: tutorRow.userId,
-      type: "session_booked",
-      title: "New session confirmed",
-      message: `${studentName} booked ${session.subject} on ${dateStr}. Payment received`,
-      actionUrl: "/tutor/sessions",
-      actionLabel: "View sessions",
-      emailSubject: `New session confirmed: ${session.subject}`,
-      emailHtml: sessionBookedEmailHtml({
-        recipientName: tutorRow.firstName,
-        tutorName,
-        studentName,
-        subject: session.subject,
-        date: dateStr,
-        duration: session.durationMinutes,
-        amount: session.totalAmount,
-      }),
-    });
-
-    const parentPhone = student?.parentId
-      ? await db
-          .select({ phone: usersTable.phone })
-          .from(usersTable)
-          .where(eq(usersTable.id, student.parentId))
-          .limit(1)
-          .then((r) => r[0]?.phone ?? null)
-      : null;
-
-    if (tutorRow.phone && parentPhone) {
-      const parentWaLink = `https://wa.me/${toWhatsAppNumber(parentPhone)}`;
-      const parentFirstName = student?.parentId
-        ? await db
-            .select({ firstName: usersTable.firstName })
-            .from(usersTable)
-            .where(eq(usersTable.id, student.parentId))
-            .limit(1)
-            .then((r) => r[0]?.firstName ?? "the parent")
-        : "the parent";
-
-      await createNotification({
-        userId: tutorRow.userId,
-        type: "whatsapp_connect",
-        title: "Connect with the parent on WhatsApp",
-        message: `Say hello to ${parentFirstName}. Introduce yourself and confirm any session details`,
-        actionUrl: parentWaLink,
-        actionLabel: "Open WhatsApp",
-      });
-    }
-  }
-
-  res.json({
-    id: payment.id,
-    sessionId: payment.sessionId,
-    amount: payment.amount,
-    status: payment.status,
-    simulatedAt: payment.simulatedAt.toISOString(),
-  });
 });
-
 router.get("/payments", requireAuth, async (req, res) => {
   const params = ListPaymentsQueryParams.safeParse(req.query);
-  if (!params.success) {
-    res.status(400).json({ error: "Invalid payment filters" }); return;
-  }
-  const sessionId = params.data.sessionId;
+  if (!params.success) { res.status(400).json({ error: "Invalid payment filters" }); return; }
   const actor = (req as AuthRequest).user;
   const ownership = actor.role === "admin" ? undefined
     : actor.role === "parent" ? eq(studentsTable.parentId, actor.id)
-    : actor.role === "tutor" ? eq(tutorsTable.userId, actor.id)
-    : eq(studentsTable.userId, actor.id);
-
+    : actor.role === "tutor" ? eq(tutorsTable.userId, actor.id) : eq(studentsTable.userId, actor.id);
   const rows = await db.select({ payment: paymentsTable }).from(paymentsTable)
-    .innerJoin(sessionsTable, eq(paymentsTable.sessionId, sessionsTable.id))
-    .innerJoin(studentsTable, eq(sessionsTable.studentId, studentsTable.id))
-    .innerJoin(tutorsTable, eq(sessionsTable.tutorId, tutorsTable.id))
-    .where(and(ownership, sessionId === undefined ? undefined : eq(paymentsTable.sessionId, sessionId)));
-
-  res.json(
-    rows.map(({ payment: p }) => ({
-      id: p.id,
-      sessionId: p.sessionId,
-      amount: p.amount,
-      status: p.status,
-      simulatedAt: p.simulatedAt.toISOString(),
-    }))
-  );
+    .innerJoin(sessionsTable, eq(sessionsTable.id, paymentsTable.sessionId))
+    .innerJoin(studentsTable, eq(studentsTable.id, sessionsTable.studentId))
+    .innerJoin(tutorsTable, eq(tutorsTable.id, sessionsTable.tutorId))
+    .where(and(ownership, params.data.sessionId === undefined ? undefined : eq(paymentsTable.sessionId, params.data.sessionId)));
+  res.json(rows.map(({ payment }) => paymentJson(payment)));
 });
-
 export default router;

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import PDFDocument from "pdfkit";
-import { db, invoicesTable, sessionsTable, tutorsTable, studentsTable, usersTable } from "@workspace/db";
+import { db, invoicesTable, sessionsTable, tutorsTable, studentsTable, usersTable, paymentsTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 import { canAccessInvoice, parseInvoiceId, resolveInvoiceListScope } from "../lib/invoiceAccess";
@@ -188,6 +188,9 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
   }
 
   let parentFirstName = "", parentLastName = "", parentEmail = "", parentPhone = "", parentAddress = "";
+  const [payment] = await db.select({ provider: paymentsTable.provider }).from(paymentsTable)
+    .where(eq(paymentsTable.sessionId, session.id)).limit(1);
+  const betaPayment = (payment?.provider ?? "beta") === "beta";
   if (student?.parentId) {
     const [parentRow] = await db
       .select({
@@ -218,8 +221,8 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
     : "Student";
   const parentName = parentFirstName ? `${parentFirstName} ${parentLastName}` : "Parent";
   const invoiceDate = invoice.generatedAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-  const sessionDate = session.scheduledAt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  const sessionTime = session.scheduledAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  const sessionDate = session.scheduledAt.toLocaleDateString("en-GB", { timeZone: "Australia/Melbourne", weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const sessionTime = session.scheduledAt.toLocaleTimeString("en-AU", { timeZone: "Australia/Melbourne", timeZoneName: "short", hour: "numeric", minute: "2-digit", hour12: true });
 
   const doc = new PDFDocument({ size: "A4", margin: 50 });
   res.setHeader("Content-Type", "application/pdf");
@@ -249,7 +252,7 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
     .text(invoiceDate, 50, y)
     .text(sessionDate, 200, y)
     .text(`${session.durationMinutes} minutes`, 360, y)
-    .text("PAID", 460, y, { width: 60 });
+    .text(session.status === "cancelled" ? "CANCELLED" : betaPayment ? "BETA" : "PAID", 460, y, { width: 60 });
 
   // FROM / TO boxes — taller to fit phone + address
   y += 40;
@@ -299,14 +302,14 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
   // Total paid box
   y += 60;
   doc.rect(doc.page.width - 200, y, 150, 40).fill(NAV);
-  doc.fontSize(8).fillColor("rgba(255,255,255,0.75)").font("Helvetica").text("TOTAL PAID", doc.page.width - 192, y + 8);
+  doc.fontSize(8).fillColor("rgba(255,255,255,0.75)").font("Helvetica").text(betaPayment ? "SIMULATED AMOUNT" : "TOTAL PAID", doc.page.width - 192, y + 8);
   doc.fontSize(16).fillColor("#ffffff").font("Helvetica-Bold").text(`$${session.totalAmount.toFixed(2)}`, doc.page.width - 192, y + 18);
 
   // Footer
   const footerY = doc.page.height - 60;
   doc.rect(0, footerY, doc.page.width, 60).fill(LIGHT_CREAM);
   doc.fontSize(8).fillColor(MID_GRAY).font("Helvetica")
-    .text("Thank you for using Scholix. Payment is processed through the platform.", 50, footerY + 20, { align: "center", width: doc.page.width - 100 })
+    .text(betaPayment ? "Scholix beta: payment is simulated. No online charge has been made." : "Thank you for using Scholix.", 50, footerY + 20, { align: "center", width: doc.page.width - 100 })
     .text(`Invoice ${invoiceNum} · Generated ${invoiceDate} · scholix.app`, 50, footerY + 35, { align: "center", width: doc.page.width - 100 });
   doc.rect(50, footerY - 20, doc.page.width - 100, 16).fill(ACCENT);
   doc.fontSize(7.5).fillColor("#ffffff").font("Helvetica-Bold").text("PAYMENT RECEIVED: THANK YOU", 0, footerY - 14, { align: "center" });

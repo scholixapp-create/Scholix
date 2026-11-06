@@ -3,6 +3,8 @@ import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessions
 import { eq, inArray, and, isNotNull, isNull } from "drizzle-orm";
 import { UpdateTutorProfileBody, SetTutorAvailabilityBody } from "@workspace/api-zod";
 import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
+import { tutorSlots } from "../lib/schedulingStore";
+import { BookingError, type LessonMode } from "../lib/scheduling";
 
 const router = Router();
 
@@ -183,28 +185,30 @@ router.get("/tutors/:tutorId/availability", async (req, res) => {
 });
 
 // PUT /tutors/:tutorId/availability — replace all windows
-router.put("/tutors/:tutorId/availability", async (req, res) => {
-  const tutorId = parseInt(req.params.tutorId, 10);
+router.put("/tutors/:tutorId/availability", requireAuth, async (req, res) => {
+  const tutorId = parseInt(req.params.tutorId as string, 10);
+  const actor = (req as AuthRequest).user;
+  const [owner] = await db.select({ userId: tutorsTable.userId }).from(tutorsTable).where(eq(tutorsTable.id, tutorId));
+  if (!owner || (actor.role !== "admin" && (actor.role !== "tutor" || owner.userId !== actor.id))) {
+    res.status(403).json({ error: "Only this tutor or an admin can update availability" }); return;
+  }
   const parsed = SetTutorAvailabilityBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-
-  // Delete all existing windows for this tutor
-  await db.delete(availabilityTable).where(eq(availabilityTable.tutorId, tutorId));
-
-  if (parsed.data.windows.length > 0) {
-    await db.insert(availabilityTable).values(
-      parsed.data.windows.map((w) => ({
-        tutorId,
-        dayOfWeek: w.dayOfWeek,
-        startTime: w.startTime,
-        endTime: w.endTime,
-        timezone: "Australia/Melbourne",
-      }))
-    );
+  const validClock = /^([01]\d|2[0-3]):[0-5]\d$/;
+  if (parsed.data.windows.some((w) => !Number.isInteger(w.dayOfWeek) || w.dayOfWeek < 0 || w.dayOfWeek > 6
+    || !validClock.test(w.startTime) || !validClock.test(w.endTime) || w.startTime >= w.endTime)) {
+    res.status(400).json({ error: "Use valid same-day availability windows with an end after the start" }); return;
   }
+  await db.transaction(async (tx) => {
+    await tx.select({ id: tutorsTable.id }).from(tutorsTable).where(eq(tutorsTable.id, tutorId)).for("update");
+    await tx.delete(availabilityTable).where(eq(availabilityTable.tutorId, tutorId));
+    if (parsed.data.windows.length) await tx.insert(availabilityTable).values(parsed.data.windows.map((w) => ({
+      tutorId, dayOfWeek: w.dayOfWeek, startTime: w.startTime, endTime: w.endTime, timezone: "Australia/Melbourne",
+    })));
+  });
 
   const windows = await db
     .select()
@@ -218,131 +222,30 @@ router.put("/tutors/:tutorId/availability", async (req, res) => {
 //
 // GET /tutors/:tutorId/available-slots?date=YYYY-MM-DD&duration=60
 //
-// Melbourne is AEST (UTC+10) or AEDT (UTC+11 during summer).
-// We use a fixed UTC+10 offset for MVP simplicity.
-//
-// The frontend creates scheduledAt via: new Date(`${date}T${time}:00`) which
-// produces a local-timezone Date in the user's browser (AEST for AU users).
-// All UTC arithmetic here must match that convention so conflict checks align.
-//
-const AEST_OFFSET_MS = 10 * 60 * 60 * 1000; // UTC+10
-
 router.get("/tutors/:tutorId/available-slots", async (req, res) => {
   const tutorId = parseInt(req.params.tutorId, 10);
   if (!await isPublicTutor(tutorId)) {
     res.status(404).json({ error: "Tutor is unavailable" }); return;
   }
-  const date = req.query.date as string;
-  const duration = parseInt(req.query.duration as string, 10);
-  const parentId = req.query.parentId ? parseInt(req.query.parentId as string, 10) : null;
-
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || isNaN(duration) || duration < 15) {
-    res.status(400).json({ error: "date (YYYY-MM-DD) and duration (minutes, ≥15) are required" });
-    return;
+  const mode = req.query.lessonMode;
+  if (mode !== undefined && mode !== "online" && mode !== "in_person") {
+    res.status(400).json({ error: "Invalid lesson mode" }); return;
   }
-
-  const [year, month, day] = date.split("-").map(Number);
-
-  // Day of week in AEST: 0=Mon … 6=Sun
-  // The date string represents an AEST date. Midnight AEST = prior UTC day 14:00.
-  const aestMidnightUtc = new Date(Date.UTC(year, month - 1, day) - AEST_OFFSET_MS);
-  // JS getDay() on the AEST midnight (in UTC): Sun=0, Mon=1, …, Sat=6
-  const jsDay = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1; // Mon=0 … Sun=6
-
-  // Load tutor profile to get teaching mode + default travel buffer
-  const [tutorRow] = await db
-    .select({ teachingMode: tutorsTable.teachingMode, travelBufferMinutes: tutorsTable.travelBufferMinutes })
-    .from(tutorsTable)
-    .where(eq(tutorsTable.id, tutorId))
-    .limit(1);
-
-  const tutorMode = tutorRow?.teachingMode ?? "online";
-  let bufferMins = tutorRow?.travelBufferMinutes ?? 0;
-
-  // Per-parent relationship override.
-  // Prefer the authenticated user from the Bearer token; fall back to the
-  // parentId query param only when the request is unauthenticated.
-  const tokenUserId = await getUserIdFromBearer(req.headers.authorization);
-  const resolvedParentId = tokenUserId ?? parentId;
-  if (resolvedParentId && !isNaN(resolvedParentId)) {
-    const [rel] = await db
-      .select({ travelBufferMinutes: tutorRelationshipsTable.travelBufferMinutes })
-      .from(tutorRelationshipsTable)
-      .where(and(eq(tutorRelationshipsTable.tutorId, tutorId), eq(tutorRelationshipsTable.parentId, resolvedParentId)))
-      .limit(1);
-    if (rel?.travelBufferMinutes !== null && rel?.travelBufferMinutes !== undefined) {
-      bufferMins = rel.travelBufferMinutes;
-    }
+  const [tutor] = await db.select().from(tutorsTable).where(eq(tutorsTable.id, tutorId));
+  if (!tutor || tutor.verificationStatus !== "verified") {
+    res.status(404).json({ error: "Tutor is unavailable" }); return;
   }
-
-  // Travel buffer only applies for in-person/both modes
-  const effectiveBuffer = tutorMode === "online" ? 0 : bufferMins;
-
-  // Get tutor's availability windows for this day of week
-  const windows = await db
-    .select()
-    .from(availabilityTable)
-    .where(and(eq(availabilityTable.tutorId, tutorId), eq(availabilityTable.dayOfWeek, dayOfWeek)));
-
-  if (windows.length === 0) {
-    res.json({ date, duration, slots: [] });
-    return;
+  try {
+    // Never accept a caller-supplied parentId for another family's overrides.
+    const parentId = await getUserIdFromBearer(req.headers.authorization);
+    const { buffer, ...result } = await tutorSlots(db, tutor, parentId, String(req.query.date ?? ""),
+      Number(req.query.duration), mode as LessonMode | undefined);
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result);
+  } catch (err) {
+    if (err instanceof BookingError) { res.status(err.statusCode).json({ error: err.message }); return; }
+    throw err;
   }
-
-  // Query sessions for this tutor on this AEST date
-  // AEST day in UTC: [aestMidnightUtc, aestMidnightUtc + 24h)
-  const aestEndOfDayUtc = new Date(aestMidnightUtc.getTime() + 24 * 60 * 60 * 1000);
-
-  const sessionsOnDate = await db
-    .select({ scheduledAt: sessionsTable.scheduledAt, durationMinutes: sessionsTable.durationMinutes })
-    .from(sessionsTable)
-    .where(
-      and(
-        eq(sessionsTable.tutorId, tutorId),
-        inArray(sessionsTable.status, ["pending_payment", "scheduled"])
-      )
-    );
-
-  // Convert sessions to AEST-day-relative minute ranges.
-  // Travel buffer is added only to the END of each booked session: the tutor
-  // needs travel time after finishing before they can start the next session.
-  // We do NOT shrink the start — that would block valid slots before a booking.
-  const bookedRanges = sessionsOnDate
-    .filter((s) => s.scheduledAt >= aestMidnightUtc && s.scheduledAt < aestEndOfDayUtc)
-    .map((s) => {
-      const msFromAestMidnight = s.scheduledAt.getTime() - aestMidnightUtc.getTime();
-      const startMins = Math.round(msFromAestMidnight / 60000);
-      return {
-        startMins,
-        endMins: startMins + s.durationMinutes + effectiveBuffer,
-      };
-    });
-
-  // Generate slots within each availability window.
-  // For short sessions (<60 min) use a 15-min step so :15/:30/:45 starts are offered.
-  // For 60/90 min sessions keep the existing 30-min step.
-  const STEP = duration < 60 ? 15 : 30;
-  const resultSlots = new Set<string>();
-
-  for (const w of windows) {
-    const windowStart = timeToMins(w.startTime);
-    const windowEnd = timeToMins(w.endTime);
-    let slotStart = windowStart;
-    while (slotStart + duration <= windowEnd) {
-      const slotEnd = slotStart + duration;
-      const hasConflict = bookedRanges.some(
-        (b) => b.startMins < slotEnd && b.endMins > slotStart
-      );
-      if (!hasConflict) {
-        resultSlots.add(minsToTime(slotStart));
-      }
-      slotStart += STEP;
-    }
-  }
-
-  const slots = [...resultSlots].sort();
-  res.json({ date, duration, slots });
 });
 
 // ── Tutor students ────────────────────────────────────────────────────────────

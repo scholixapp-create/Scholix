@@ -20,3 +20,9 @@ The user chose preferred start suggestions with flexible alternatives combined w
 **Why:** The user wants tutors to confirm session requests before payment is properly taken. They explicitly accepted a payment hold that can be released if the tutor does not confirm.
 
 **How to apply:** Distinguish requested, payment-authorised and tutor-confirmed states. Do not describe a session as confirmed or its payment as captured before tutor acceptance. Preserve travel checks while a request reserves the time, and release temporary reservations when declined, cancelled or expired. Clearly distinguish simulated beta payments from real card authorisations.
+
+Keep beta payments for now; the user says real payments will be implemented very soon.
+
+**Why:** The user explicitly selected beta payments while asking that the upcoming real-payment integration remain in context.
+
+**How to apply:** Do not silently introduce a live payment provider or imply simulated holds move money. Keep payment-specific operations separate from scheduling and tutor approval, so the real integration can preserve the same booking rules.

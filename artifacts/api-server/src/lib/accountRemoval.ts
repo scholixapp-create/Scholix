@@ -50,11 +50,11 @@ async function hasStudentHistory(tx: LifecycleTx, studentId: number) {
 async function assertNoUnresolvedSessions(tx: LifecycleTx, studentIds: number[], tutorIds: number[] = []) {
   const result = await tx.execute(sql`SELECT EXISTS (
     SELECT 1 FROM sessions
-    WHERE status IN ('pending_payment', 'scheduled')
+    WHERE status IN ('pending_payment', 'pending_confirmation', 'scheduled')
       AND (student_id = ANY(${integerArray(studentIds)}) OR tutor_id = ANY(${integerArray(tutorIds)}))
   ) AS blocked`);
   if ((result.rows[0] as { blocked: boolean }).blocked) {
-    throw new AccountRemovalError("Resolve or cancel pending-payment and scheduled lessons before removing this account or student. Completed lessons and financial history will be retained.", 409);
+    throw new AccountRemovalError("Resolve or cancel pending booking requests and scheduled lessons before removing this account or student. Completed lessons and financial history will be retained.", 409);
   }
 }
 async function revokeAccounts(tx: LifecycleTx, userIds: number[], now: Date) {

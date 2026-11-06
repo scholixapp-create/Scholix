@@ -169,6 +169,12 @@ function emailWrapper(headerText: string, body: string) {
   `;
 }
 
+export function bookingStatusEmailHtml(opts: { title: string; message: string; actionUrl: string }) {
+  return emailWrapper(opts.title, `<p>${escapeHtml(opts.message)}</p>
+    <p><a href="${escapeHtml(opts.actionUrl)}" style="display:inline-block;background:${EMAIL_PALETTE.turquoise};color:#ffffff;padding:12px 20px;border-radius:8px;text-decoration:none">View booking</a></p>
+    <p style="font-size:13px;color:${EMAIL_PALETTE.muted}">Scholix beta: authorisations, captures and releases are simulated. No real card is charged.</p>`);
+}
+
 function detailsTable(rows: { label: string; value: string; accent?: boolean }[]) {
   return `
     <table style="width:100%;border-collapse:collapse;margin:16px 0">

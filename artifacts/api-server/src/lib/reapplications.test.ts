@@ -64,10 +64,13 @@ test("admin reactivation applies only verified proposals and always invalidates 
 });
 
 test("session creation and payment confirmation hold the bookability lock through the write", () => {
-  for (const route of ["sessions", "payments"]) {
-    const source = readFileSync(new URL(`../routes/${route}.ts`, import.meta.url), "utf8");
-    assert.match(source, /db\.transaction\(async \(tx\) => \{[\s\S]*?lockBookableTutor\(tx,/);
-  }
+  const sessions = readFileSync(new URL("../routes/sessions.ts", import.meta.url), "utf8");
+  assert.match(sessions, /db\.transaction\(async \(tx\) => \{[\s\S]*?lockBookableTutor\(tx,/);
+  const requests = readFileSync(new URL("./bookingRequests.ts", import.meta.url), "utf8");
+  assert.match(requests, /lockBookableTutor\(tx, session.tutorId\)/);
+  assert.match(requests, /db\.transaction\(async \(tx\) => \{[\s\S]*?lockedSession\(tx, initial/);
+  const payments = readFileSync(new URL("../routes/payments.ts", import.meta.url), "utf8");
+  assert.match(payments, /authorizeBooking\(parsed.data.sessionId/);
   const source = readFileSync(new URL("../routes/tutors.ts", import.meta.url), "utf8");
   assert.match(source, /eq\(usersTable\.isActive, true\)/);
   assert.equal((source.match(/if \(!await isPublicTutor\(tutorId\)\)/g) ?? []).length, 3);

@@ -3,12 +3,13 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { sessionsTable } from "./sessions";
 
-export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "refunded"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "authorized", "released", "paid", "refunded"]);
 
 export const paymentsTable = pgTable("payments", {
   id: serial("id").primaryKey(),
   sessionId: integer("session_id").notNull().references(() => sessionsTable.id),
   amount: real("amount").notNull(),
+  provider: text("provider").notNull().default("beta"),
   status: paymentStatusEnum("status").notNull().default("pending"),
   simulatedAt: timestamp("simulated_at").defaultNow().notNull(),
 });

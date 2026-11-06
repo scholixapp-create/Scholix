@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { lockBookableStudent } from "../lib/accountRemoval";
-import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, tutorRelationshipsTable, reviewsTable } from "@workspace/db";
+import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, paymentsTable, reviewsTable } from "@workspace/db";
 import { eq, and, ne, inArray } from "drizzle-orm";
-import { CreateSessionBody, ListSessionsQueryParams } from "@workspace/api-zod";
+import { CreateSessionBody, ListSessionsQueryParams, DecideSessionRequestBody } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
 import { sessionBookedEmailHtml, sessionCompletedEmailHtml } from "../lib/email";
 import { format } from "date-fns";
@@ -10,6 +10,9 @@ import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authM
 import { canBookForStudent, canActOnSession } from "../lib/sessionAccess";
 import { lockBookableTutor } from "../lib/bookableTutor";
 import { config } from "../lib/config";
+import { tutorSlots } from "../lib/schedulingStore";
+import { BookingError, localDate, localTime } from "../lib/scheduling";
+import { cancelBooking, decideBooking, expireBookingRequests } from "../lib/bookingRequests";
 
 const router = Router();
 
@@ -133,6 +136,7 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect) {
     .limit(1);
 
   if (student) studentName = student.archivedAt ? "Removed student" : `${student.firstName} ${student.lastName ?? ""}`.trim();
+  const [payment] = await db.select({ status: paymentsTable.status }).from(paymentsTable).where(eq(paymentsTable.sessionId, s.id)).limit(1);
 
   return {
     id: s.id,
@@ -142,6 +146,10 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect) {
     scheduledAt: s.scheduledAt.toISOString(),
     durationMinutes: s.durationMinutes,
     status: s.status,
+    lessonMode: s.lessonMode,
+    requestExpiresAt: s.requestExpiresAt?.toISOString() ?? null,
+    cancellationReason: s.cancellationReason,
+    paymentStatus: payment?.status ?? null,
     isPaid: s.isPaid,
     totalAmount: s.totalAmount,
     isCommissionFree: s.isCommissionFree,
@@ -207,6 +215,7 @@ router.get("/sessions/summary", requireAuth, async (req, res) => {
 });
 
 router.get("/sessions", requireAuth, async (req, res) => {
+  await expireBookingRequests();
   const user = (req as AuthRequest).user;
   const params = ListSessionsQueryParams.safeParse(req.query);
   const statusFilter = params.success ? params.data.status : undefined;
@@ -230,7 +239,7 @@ router.get("/sessions", requireAuth, async (req, res) => {
     conditions.push(eq(sessionsTable.tutorId, tutorRow.id));
     // Default: exclude pending_payment for tutors
     if (!statusFilter) {
-      conditions.push(inArray(sessionsTable.status, ["scheduled", "completed", "cancelled"]));
+      conditions.push(inArray(sessionsTable.status, ["pending_confirmation", "scheduled", "completed", "cancelled"]));
     }
   } else if (user.role === "parent") {
     // Parent sees only sessions for their own children
@@ -266,7 +275,7 @@ router.get("/sessions", requireAuth, async (req, res) => {
   }
 
   if (statusFilter) {
-    conditions.push(eq(sessionsTable.status, statusFilter as "pending_payment" | "scheduled" | "completed" | "cancelled"));
+    conditions.push(eq(sessionsTable.status, statusFilter));
   }
 
   const sessions = conditions.length > 0
@@ -308,83 +317,56 @@ router.post("/sessions", requireAuth, async (req, res) => {
     res.status(403).json({ error: "This tutor is not approved for new bookings" }); return;
   }
 
-  const totalAmount = (tutor.hourlyRate * parsed.data.durationMinutes) / 60;
-
-  // Resolve travel buffer for this tutor + requesting parent combination.
-  // Use the authenticated user from the Bearer token as the parent identity.
-  const tutorMode = tutor.teachingMode ?? "online";
-  let bufferMins = tutor.travelBufferMinutes ?? 0;
-
-  const requestingUserId = await getUserIdFromBearer(req.headers.authorization);
-  if (requestingUserId && tutorMode !== "online") {
-    const [rel] = await db
-      .select({ travelBufferMinutes: tutorRelationshipsTable.travelBufferMinutes })
-      .from(tutorRelationshipsTable)
-      .where(and(
-        eq(tutorRelationshipsTable.tutorId, tutor.id),
-        eq(tutorRelationshipsTable.parentId, requestingUserId)
-      ))
-      .limit(1);
-    if (rel?.travelBufferMinutes !== null && rel?.travelBufferMinutes !== undefined) {
-      bufferMins = rel.travelBufferMinutes;
-    }
-  }
-
-  // Buffer applies only for in-person/both modes; zero for online
-  const effectiveBuffer = tutorMode === "online" ? 0 : bufferMins;
-
-  // Overlap detection: prevent double-booking the tutor.
-  // Existing sessions are extended by effectiveBuffer to enforce travel time
-  // after each in-person session before the next one can start.
   const newStart = new Date(parsed.data.scheduledAt);
-  const newEnd = new Date(newStart.getTime() + parsed.data.durationMinutes * 60000);
-
-  const activeSessions = await db
-    .select({ scheduledAt: sessionsTable.scheduledAt, durationMinutes: sessionsTable.durationMinutes })
-    .from(sessionsTable)
-    .where(
-      and(
-        eq(sessionsTable.tutorId, parsed.data.tutorId),
-        inArray(sessionsTable.status, ["pending_payment", "scheduled"])
-      )
-    );
-
-  for (const s of activeSessions) {
-    const sEnd = new Date(s.scheduledAt.getTime() + (s.durationMinutes + effectiveBuffer) * 60000);
-    if (s.scheduledAt < newEnd && sEnd > newStart) {
-      res.status(409).json({ error: "That time is no longer available. Another session overlaps this slot." });
-      return;
-    }
+  if (!/Z$|[+-]\d{2}:\d{2}$/.test(parsed.data.scheduledAt) || isNaN(newStart.getTime())
+    || newStart.getUTCSeconds() || newStart.getUTCMilliseconds() || newStart.getUTCMinutes() % 15) {
+    res.status(400).json({ error: "Choose a valid quarter-hour start with an explicit timezone" }); return;
   }
-
-  // Session created as pending_payment — confirmed only after payment
-  const session = await db.transaction(async (tx) => {
-    if (!await lockBookableStudent(tx, parsed.data.studentId) || !await lockBookableTutor(tx, tutor.id)) return undefined;
-    const [created] = await tx
-    .insert(sessionsTable)
-    .values({
-      tutorId: parsed.data.tutorId,
-      studentId: parsed.data.studentId,
-      subject: parsed.data.subject,
-      scheduledAt: newStart,
-      durationMinutes: parsed.data.durationMinutes,
-      status: "pending_payment",
-      isPaid: false,
-      totalAmount,
-    })
-    .returning();
-    return created;
-  });
-  if (!session) {
-    res.status(403).json({ error: "This tutor is inactive or is no longer approved for bookings" }); return;
+  if (!parsed.data.subject.trim() || parsed.data.subject.length > 200) {
+    res.status(400).json({ error: "Enter a valid lesson subject" }); return;
   }
+  try {
+    // Recheck availability AFTER locking the tutor. Two simultaneous bookings
+    // cannot both pass an earlier, unlocked availability check.
+    const session = await db.transaction(async (tx) => {
+      if (!await lockBookableStudent(tx, parsed.data.studentId) || !await lockBookableTutor(tx, tutor.id)) {
+        throw new BookingError("This family or tutor is inactive or no longer approved", 403);
+      }
+      const [currentTutor] = await tx.select().from(tutorsTable).where(eq(tutorsTable.id, tutor.id));
+      const slots = await tutorSlots(tx, currentTutor, actor.id, localDate(newStart),
+        parsed.data.durationMinutes, parsed.data.lessonMode);
+      if (slots.slotInstants[localTime(newStart)] !== newStart.toISOString()) {
+        throw new BookingError("That time is no longer available. Choose another start time.");
+      }
+      const [created] = await tx.insert(sessionsTable).values({
+        tutorId: tutor.id, studentId: parsed.data.studentId, subject: parsed.data.subject,
+        scheduledAt: newStart, durationMinutes: parsed.data.durationMinutes,
+        status: "pending_payment", isPaid: false, totalAmount: (currentTutor.hourlyRate * parsed.data.durationMinutes) / 60,
+        lessonMode: slots.lessonMode, travelBufferMinutes: slots.buffer,
+        requestExpiresAt: new Date(Math.min(Date.now() + 15 * 60_000, newStart.getTime())),
+      }).returning();
+      return created;
+    });
+    res.status(201).json(await sessionToJson(session));
+  } catch (err) {
+    if (err instanceof BookingError) { res.status(err.statusCode).json({ error: err.message }); return; }
+    throw err;
+  }
+});
 
-  const sessionJson = await sessionToJson(session);
-
-  res.status(201).json(sessionJson);
+router.post("/sessions/:sessionId/decision", requireAuth, async (req, res) => {
+  const parsed = DecideSessionRequestBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Choose accept or decline" }); return; }
+  try {
+    res.json(await sessionToJson(await decideBooking(Number(req.params.sessionId), (req as AuthRequest).user, parsed.data.decision)));
+  } catch (err) {
+    if (err instanceof BookingError) { res.status(err.statusCode).json({ error: err.message }); return; }
+    throw err;
+  }
 });
 
 router.get("/sessions/:sessionId", requireAuth, async (req, res) => {
+  await expireBookingRequests();
   const user = (req as AuthRequest).user;
   const sessionId = parseInt(req.params["sessionId"] as string, 10);
   const [session] = await db
@@ -608,30 +590,12 @@ router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
 });
 
 router.post("/sessions/:sessionId/cancel", requireAuth, async (req, res) => {
-  const sessionId = parseInt(req.params.sessionId as string, 10);
-  const [current] = await db.select().from(sessionsTable).where(eq(sessionsTable.id, sessionId)).limit(1);
-  if (!current) { res.status(404).json({ error: "Session not found" }); return; }
-  const [parties] = await db.select({
-    tutorUserId: tutorsTable.userId, parentId: studentsTable.parentId,
-  }).from(tutorsTable).innerJoin(studentsTable, eq(studentsTable.id, current.studentId))
-    .where(eq(tutorsTable.id, current.tutorId)).limit(1);
-  if (!parties || !canActOnSession((req as AuthRequest).user, parties, "cancel")) {
-    res.status(403).json({ error: "Session access denied" }); return;
+  try {
+    res.json(await sessionToJson(await cancelBooking(Number(req.params.sessionId), (req as AuthRequest).user)));
+  } catch (err) {
+    if (err instanceof BookingError) { res.status(err.statusCode).json({ error: err.message }); return; }
+    throw err;
   }
-  if (!["pending_payment", "scheduled"].includes(current.status)) {
-    res.status(409).json({ error: "Only upcoming sessions can be cancelled" }); return;
-  }
-  const [session] = await db
-    .update(sessionsTable)
-    .set({ status: "cancelled" })
-    .where(and(eq(sessionsTable.id, sessionId), inArray(sessionsTable.status, ["pending_payment", "scheduled"])))
-    .returning();
-
-  if (!session) {
-    res.status(404).json({ error: "Session not found" });
-    return;
-  }
-  res.json(await sessionToJson(session));
 });
 
 export default router;

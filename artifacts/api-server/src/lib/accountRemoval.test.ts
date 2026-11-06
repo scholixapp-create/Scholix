@@ -32,7 +32,7 @@ test("family removal writes no session, payment, invoice, dispute or audit delet
     assert.ok(!source.includes(`.delete(${table})`), table);
   }
   assert.match(source, /authVersion: sql`\$\{usersTable.authVersion\} \+ 1`/);
-  assert.match(source, /status IN \('pending_payment', 'scheduled'\)/);
+  assert.match(source, /status IN \('pending_payment', 'pending_confirmation', 'scheduled'\)/);
   assert.match(source, /for\("update"\)/);
 });
 test("lifecycle audit SQL blocks update, delete and truncate and has no identity FKs", async () => {

@@ -1,10 +1,15 @@
 import { useAuth } from "@/context/AuthContext";
-import { useListSessions, useGetSessionSummary, useGetSessionReview, getGetSessionReviewQueryKey, type Session } from "@workspace/api-client-react";
+import {
+  useListSessions, useGetSessionSummary, useGetSessionReview, getGetSessionReviewQueryKey, useCancelSession,
+  getListSessionsQueryKey, getGetSessionSummaryQueryKey, type Session,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateBookingQueries, apiErrorMessage, formatInZone, lessonModeLabel, timeLeft } from "@/lib/bookingRequests";
 import { Link, useLocation, useSearch } from "wouter";
 import { useEffect, useMemo, useRef, useState } from "react";
 import SessionReviewDialog from "@/components/SessionReviewDialog";
 import StatusBadge from "@/components/StatusBadge";
-import { Calendar, GraduationCap, Bell, ChevronRight, Star, AlertCircle } from "lucide-react";
+import { Calendar, GraduationCap, Bell, ChevronRight, Star, AlertCircle, Hourglass, XCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 function TutorReviewButton({ session, onOpen }: { session: Session; onOpen: () => void }) {
@@ -26,8 +31,47 @@ function TutorReviewButton({ session, onOpen }: { session: Session; onOpen: () =
 
 export default function ParentDashboard() {
   const { user } = useAuth();
-  const sessions = useListSessions(undefined);
-  const summary = useGetSessionSummary(undefined);
+  const qc = useQueryClient();
+  const sessions = useListSessions(undefined, {
+    query: { queryKey: getListSessionsQueryKey(), refetchInterval: 30_000, refetchOnMount: "always", refetchOnWindowFocus: true },
+  });
+  const summary = useGetSessionSummary(undefined, {
+    query: { queryKey: getGetSessionSummaryQueryKey(), refetchInterval: 30_000, refetchOnMount: "always" },
+  });
+  const cancelMutation = useCancelSession();
+  const [actionError, setActionError] = useState<{ id: number; msg: string } | null>(null);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [, setTick] = useState(0);
+  useEffect(() => { const t = window.setInterval(() => setTick((n) => n + 1), 30_000); return () => window.clearInterval(t); }, []);
+
+  const requests = useMemo(
+    () => (sessions.data ?? [])
+      .filter((s) => s.status === "pending_confirmation" || s.status === "pending_payment")
+      .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()),
+    [sessions.data],
+  );
+  const recentUpdates = useMemo(
+    () => (sessions.data ?? [])
+      .filter((s) => s.status === "cancelled")
+      .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
+      .slice(0, 4),
+    [sessions.data],
+  );
+
+  const withdraw = (session: Session) => {
+    const verb = session.status === "pending_payment" ? "Cancel this unfinished checkout?" : "Withdraw this request? The simulated hold will be released.";
+    if (!confirm(verb)) return;
+    setActionError(null);
+    setCancellingId(session.id);
+    cancelMutation.mutate({ sessionId: session.id }, {
+      onSuccess: () => invalidateBookingQueries(qc),
+      onError: (err) => {
+        setActionError({ id: session.id, msg: apiErrorMessage(err, "Could not withdraw. It may already have been decided. Refreshing.") });
+        invalidateBookingQueries(qc);
+      },
+      onSettled: () => setCancellingId(null),
+    });
+  };
 
   const upcoming = sessions.data
     ?.filter((s) => s.status === "scheduled")
@@ -127,6 +171,59 @@ export default function ParentDashboard() {
         </div>
       </Link>
 
+      {/* Booking requests */}
+      {requests.length > 0 && (
+        <div className="mb-6" data-testid="section-requests">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-foreground">Requests awaiting a decision</h2>
+            <span className="text-xs text-muted-foreground">Updates every 30 seconds</span>
+          </div>
+          <div className="space-y-2">
+            {requests.map((session) => {
+              const isCheckout = session.status === "pending_payment";
+              const left = timeLeft(session.requestExpiresAt);
+              return (
+                <div key={session.id} className="bg-card border border-amber-200 rounded-xl p-4 animate-in fade-in slide-in-from-top-1 duration-300" data-testid={`card-request-${session.id}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{session.subject}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">with {session.tutorName} · {session.studentName}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {formatInZone(session.scheduledAt)} · {session.durationMinutes}min · {lessonModeLabel(session.lessonMode)}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <StatusBadge status={session.status} />
+                      <span className="text-xs font-medium text-foreground">${session.totalAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-border flex items-center justify-between gap-3">
+                    <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 leading-relaxed">
+                      <Hourglass size={12} className="shrink-0 mt-0.5 text-amber-700" />
+                      <span>
+                        {isCheckout
+                          ? <>Checkout not finished. No hold placed. {session.requestExpiresAt && <>Expires {formatInZone(session.requestExpiresAt)}{left ? ` (${left})` : ""}.</>} Cancel, then book again to retry.</>
+                          : <>Waiting for {session.tutorName ?? "your tutor"} to accept. {session.requestExpiresAt && <>Expires {formatInZone(session.requestExpiresAt)}{left ? ` (${left})` : ""}.</>} Simulated hold only, no real card charged.</>}
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => withdraw(session)}
+                      disabled={cancellingId === session.id}
+                      className="shrink-0 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/40 disabled:opacity-60 transition-colors"
+                      data-testid={`button-withdraw-${session.id}`}
+                    >
+                      {cancellingId === session.id ? "Working..." : isCheckout ? "Cancel" : "Withdraw"}
+                    </button>
+                  </div>
+                  {actionError?.id === session.id && <p className="text-xs text-destructive mt-2" role="alert">{actionError.msg}</p>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Upcoming sessions */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
@@ -157,7 +254,7 @@ export default function ParentDashboard() {
                     <p className="text-sm font-semibold text-foreground">{session.subject}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">with {session.tutorName}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {format(parseISO(session.scheduledAt), "EEE, MMM d 'at' h:mm a")} · {session.durationMinutes}min
+                      {formatInZone(session.scheduledAt)} · {session.durationMinutes}min
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
@@ -170,6 +267,30 @@ export default function ParentDashboard() {
           </div>
         )}
       </div>
+
+      {/* Recent updates */}
+      {recentUpdates.length > 0 && (
+        <div className="mb-6" data-testid="section-updates">
+          <h2 className="text-sm font-semibold text-foreground mb-3">Recent updates</h2>
+          <div className="space-y-2">
+            {recentUpdates.map((session) => (
+              <div key={session.id} className="bg-card border border-card-border rounded-xl p-4 flex items-start justify-between gap-3" data-testid={`card-update-${session.id}`}>
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <XCircle size={15} className="text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{session.subject} with {session.tutorName}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{formatInZone(session.scheduledAt)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{session.cancellationReason ?? "Cancelled"}</p>
+                  </div>
+                </div>
+                <Link href={`/parent/book/${session.tutorId}`} className="shrink-0 text-xs font-semibold text-brand-teal hover:underline" data-testid={`link-rebook-${session.id}`}>
+                  Book again
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Completed sessions and reviews */}
       <div className="mb-6 scroll-mt-4" id="completed-sessions" ref={completedSectionRef} data-testid="section-completed-sessions">
@@ -211,7 +332,7 @@ export default function ParentDashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{session.subject}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">with {session.tutorName}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{format(parseISO(session.scheduledAt), "EEE, MMM d")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{formatInZone(session.scheduledAt)}</p>
                 </div>
                 {reviewTargetIds.has(session.id) ? (
                   <TutorReviewButton session={session} onOpen={() => { setDeepLinkError(""); setReviewSessionId(session.id); }} />

@@ -1,11 +1,14 @@
 import { useState, useMemo } from "react";
-import { useRoute, useLocation, Link } from "wouter";
-import { useGetTutor, useGetTutorAvailability, useListStudents, useCreateSession, useSimulatePayment, useGetTutorRelationshipForParent } from "@workspace/api-client-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getListSessionsQueryKey } from "@workspace/api-client-react";
+import { useRoute, Link } from "wouter";
+import {
+  useGetTutor, useGetTutorAvailability, useListStudents, useCreateSession, useSimulatePayment,
+  useGetTutorRelationshipForParent, useGetTutorAvailableSlots, getGetTutorAvailableSlotsQueryKey, useCancelSession, getSession,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateBookingQueries, apiErrorMessage, apiErrorStatus, formatInZone, lessonModeLabel } from "@/lib/bookingRequests";
 import { useAuth } from "@/context/AuthContext";
 import {
-  ArrowLeft, CheckCircle, CreditCard, Baby, Plus, Calendar, Clock,
+  ArrowLeft, Hourglass, CreditCard, Monitor, MapPin, RefreshCw, Baby, Plus, Calendar, Clock,
   Bell, ChevronRight, ShieldCheck, ChevronLeft, Info,
   AlertTriangle,
 } from "lucide-react";
@@ -14,6 +17,16 @@ import {
   isBefore, startOfToday, parseISO,
 } from "date-fns";
 import { VICTORIAN_SUBJECTS } from "@/lib/subjects";
+import StatusBadge from "@/components/StatusBadge";
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between py-2.5 gap-3">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-semibold text-foreground text-right">{value}</span>
+    </div>
+  );
+}
 
 type BookStep = "details" | "duration" | "date" | "time" | "payment" | "confirmed";
 
@@ -34,7 +47,6 @@ function fmtTime(t: string): string {
 export default function BookSession() {
   const [, params] = useRoute("/parent/book/:tutorId");
   const tutorId = Number(params?.tutorId);
-  const [, navigate] = useLocation();
   const qc = useQueryClient();
   const { user } = useAuth();
 
@@ -43,6 +55,7 @@ export default function BookSession() {
   const allStudents = useListStudents();
   const createSession = useCreateSession();
   const simulatePayment = useSimulatePayment();
+  const cancelSession = useCancelSession();
 
   const relationshipQuery = useGetTutorRelationshipForParent(
     tutorId,
@@ -53,7 +66,11 @@ export default function BookSession() {
   const myStudents = allStudents.data?.filter((s) => s.parentId === user?.id) ?? [];
 
   const [step, setStep] = useState<BookStep>("details");
-  const [selectedStudentId, setSelectedStudentId] = useState<number>(myStudents.length === 1 ? myStudents[0].id : 0);
+  const [chosenStudentId, setSelectedStudentId] = useState<number>(0);
+  // Students load asynchronously. Derive the displayed auto-selection from the
+  // current list, rather than freezing its initial empty state in useState.
+  const selectedStudentId = myStudents.some((s) => s.id === chosenStudentId) ? chosenStudentId
+    : myStudents.length === 1 ? myStudents[0].id : 0;
   const [subject, setSubject] = useState("");
   const [selectedDuration, setSelectedDuration] = useState<number>(0);
   const [selectedDate, setSelectedDate] = useState<string>("");   // "YYYY-MM-DD"
@@ -61,7 +78,10 @@ export default function BookSession() {
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [createdSession, setCreatedSession] = useState<{
     id: number; subject: string; scheduledAt: string; durationMinutes: number; totalAmount: number;
+    lessonMode?: string | null; requestExpiresAt?: string | null;
   } | null>(null);
+  const [chosenMode, setChosenMode] = useState<"online" | "in_person" | "">("");
+  const [conflictNotice, setConflictNotice] = useState("");
   const [error, setError] = useState("");
 
   // Compute available day-of-week numbers from tutor's availability windows
@@ -76,19 +96,24 @@ export default function BookSession() {
     return d && d.length > 0 ? d : [60, 90];
   }, [tutor.data?.sessionDurations]);
 
-  // Fetch available time slots for selected date + duration
-  const slotsQuery = useQuery({
-    queryKey: ["available-slots", tutorId, selectedDate, selectedDuration],
-    queryFn: async (): Promise<{ date: string; duration: number; slots: string[] }> => {
-      const parentParam = user?.id ? `&parentId=${user.id}` : "";
-      const r = await fetch(
-        `/api/tutors/${tutorId}/available-slots?date=${selectedDate}&duration=${selectedDuration}${parentParam}`
-      );
-      if (!r.ok) return { date: selectedDate, duration: selectedDuration, slots: [] };
-      return r.json();
+  // Lesson mode: relationship override wins, otherwise tutor default; "both" requires an explicit choice
+  const relMode = relationshipQuery.data?.lessonMode;
+  const tutorMode = tutor.data?.teachingMode;
+  const fixedMode: "online" | "in_person" | null =
+    relMode === "online" || relMode === "in_person" ? relMode
+    : tutorMode === "online" || tutorMode === "in_person" ? tutorMode
+    : null;
+  const lessonMode: "online" | "in_person" | "" = fixedMode ?? chosenMode;
+
+  const slotParams = { date: selectedDate, duration: selectedDuration, ...(lessonMode ? { lessonMode } : {}) };
+  const slotsEnabled = !!tutorId && !!selectedDate && selectedDuration > 0 && !!lessonMode;
+  const slotsQuery = useGetTutorAvailableSlots(tutorId, slotParams, {
+    query: {
+      enabled: slotsEnabled,
+      queryKey: getGetTutorAvailableSlotsQueryKey(tutorId, slotParams),
+      staleTime: 15000,
+      retry: 1,
     },
-    enabled: !!selectedDate && selectedDuration > 0,
-    staleTime: 30000,
   });
 
   // Calendar grid for current calendarMonth
@@ -120,6 +145,7 @@ export default function BookSession() {
     setError("");
     if (!selectedStudentId) { setError("Please select a student"); return; }
     if (!subject) { setError("Please select a subject"); return; }
+    if (!lessonMode) { setError("Please choose online or in-person"); return; }
     setStep("duration");
   };
 
@@ -140,7 +166,13 @@ export default function BookSession() {
     setError("");
     if (!selectedTime) { setError("Please select a time"); return; }
 
-    const scheduledAt = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+    const scheduledAt = slotsQuery.data?.slotInstants?.[selectedTime];
+    if (!scheduledAt || !lessonMode) {
+      setError("That time is no longer available. Please choose another.");
+      setSelectedTime("");
+      slotsQuery.refetch();
+      return;
+    }
 
     createSession.mutate(
       {
@@ -150,17 +182,25 @@ export default function BookSession() {
           subject,
           scheduledAt,
           durationMinutes: selectedDuration,
+          lessonMode,
         },
       },
       {
         onSuccess: (session) => {
-          setCreatedSession(session as typeof createdSession);
+          setCreatedSession(session);
+          setConflictNotice("");
           setStep("payment");
-          qc.invalidateQueries({ queryKey: getListSessionsQueryKey() });
+          invalidateBookingQueries(qc);
         },
         onError: (err: unknown) => {
-          const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-          setError(msg ?? "Could not create session. The slot may have just been taken.");
+          const status = apiErrorStatus(err);
+          if (status === 409 || status === 422) {
+            setConflictNotice(apiErrorMessage(err, "That time was just taken. Times below have been refreshed."));
+            setSelectedTime("");
+            slotsQuery.refetch();
+            return;
+          }
+          setError(apiErrorMessage(err, "Could not create the request. Please try again."));
         },
       }
     );
@@ -172,12 +212,34 @@ export default function BookSession() {
       { data: { sessionId: createdSession.id } },
       {
         onSuccess: () => {
+          setError("");
+          const sessionId = createdSession.id;
+          // The hold is authorised. Drop the stale 15-minute checkout deadline, then load the new request deadline.
+          setCreatedSession((prev) => (prev ? { ...prev, requestExpiresAt: null } : prev));
           setStep("confirmed");
-          qc.invalidateQueries({ queryKey: getListSessionsQueryKey() });
+          invalidateBookingQueries(qc);
+          getSession(sessionId)
+            .then((fresh) => setCreatedSession((prev) => (prev && prev.id === fresh.id ? { ...prev, ...fresh } : prev)))
+            .catch(() => { /* Hold already authorised; dashboard shows the live deadline. */ });
         },
-        onError: () => setError("Payment failed. Please try again."),
+        onError: (err) => setError(apiErrorMessage(err, "We could not place the beta hold. Please try again.")),
       }
     );
+  };
+
+  const handleAbandonCheckout = () => {
+    if (!createdSession) { setStep("time"); return; }
+    cancelSession.mutate({ sessionId: createdSession.id }, {
+      onSuccess: () => {
+        setCreatedSession(null);
+        setSelectedTime("");
+        setError("");
+        setStep("time");
+        invalidateBookingQueries(qc);
+        slotsQuery.refetch();
+      },
+      onError: (err) => setError(apiErrorMessage(err, "Could not cancel this checkout. Try again from your dashboard.")),
+    });
   };
 
   // ── Loading / not found ───────────────────────────────────────────────────
@@ -191,8 +253,9 @@ export default function BookSession() {
 
   // ── Tutor header card (shared) ────────────────────────────────────────────
 
-  const relationshipLessonMode = relationshipQuery.data?.lessonMode ?? null;
+  const relationshipLessonMode = relMode ?? null;
   const effectiveMode = relationshipLessonMode ?? tutor.data.teachingMode;
+  const tz = slotsQuery.data?.timezone;
   const isFamilyOverride = !!relationshipLessonMode;
 
   const modeLabel = effectiveMode === "in_person" ? "In-person" : effectiveMode === "both" ? "Online & in-person" : "Online";
@@ -231,64 +294,53 @@ export default function BookSession() {
   // ── Confirmed ─────────────────────────────────────────────────────────────
 
   if (step === "confirmed" && createdSession) {
-    const scheduledDate = new Date(createdSession.scheduledAt);
+    const expiresLabel = createdSession.requestExpiresAt ? formatInZone(createdSession.requestExpiresAt, tz) : null;
     return (
-      <div className="p-4 md:p-6 max-w-sm mx-auto pt-10">
+      <div className="p-4 md:p-6 max-w-sm mx-auto pt-10 animate-in fade-in slide-in-from-bottom-2 duration-500" data-testid="screen-request-sent">
         <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={32} className="text-accent" />
+          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4 animate-in zoom-in-75 duration-500">
+            <Hourglass size={28} className="text-amber-700" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Session Booked!</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">Payment processed. Your session is confirmed.</p>
+          <h1 className="text-2xl font-bold text-foreground">Request sent</h1>
+          <p className="text-sm text-muted-foreground mt-1.5">Awaiting confirmation from {tutor.data!.firstName}. This lesson is not booked until they accept.</p>
         </div>
 
         <div className="bg-card border border-card-border rounded-2xl overflow-hidden mb-5">
-          <div className="px-4 py-3 border-b border-border bg-muted/30">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Session Details</p>
+          <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Request details</p>
+            <StatusBadge status="pending_confirmation" />
           </div>
           <div className="px-4 py-3 divide-y divide-border">
-            <div className="flex justify-between py-2.5">
-              <span className="text-sm text-muted-foreground">Tutor</span>
-              <span className="text-sm font-semibold text-foreground">{tutor.data!.firstName} {tutor.data!.lastName}</span>
-            </div>
-            {selectedStudent && (
-              <div className="flex justify-between py-2.5">
-                <span className="text-sm text-muted-foreground">Student</span>
-                <span className="text-sm font-semibold text-foreground">{selectedStudent.firstName}{(selectedStudent as any).lastName ? ` ${(selectedStudent as any).lastName}` : ""}</span>
-              </div>
-            )}
-            <div className="flex justify-between py-2.5">
-              <span className="text-sm text-muted-foreground">Subject</span>
-              <span className="text-sm font-semibold text-foreground">{createdSession.subject}</span>
-            </div>
-            <div className="flex justify-between py-2.5">
-              <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Calendar size={13} /> Date & time</span>
-              <span className="text-sm font-semibold text-foreground text-right">
-                {format(scheduledDate, "EEE, MMM d")}<br />
-                <span className="font-normal text-muted-foreground">{format(scheduledDate, "h:mm a")}</span>
+            <Row label="Tutor" value={`${tutor.data!.firstName} ${tutor.data!.lastName}`} />
+            {selectedStudent && <Row label="Student" value={`${selectedStudent.firstName}${selectedStudent.lastName ? ` ${selectedStudent.lastName}` : ""}`} />}
+            <Row label="Subject" value={createdSession.subject} />
+            <Row label="Lesson" value={lessonModeLabel(createdSession.lessonMode ?? lessonMode)} />
+            <div className="flex justify-between py-2.5 gap-3">
+              <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Calendar size={13} /> Requested time</span>
+              <span className="text-sm font-semibold text-foreground text-right" data-testid="text-request-time">
+                {formatInZone(createdSession.scheduledAt, tz)}
+                {tz && <span className="block text-[11px] font-normal text-muted-foreground">{tz}</span>}
               </span>
             </div>
-            <div className="flex justify-between py-2.5">
-              <span className="text-sm text-muted-foreground flex items-center gap-1.5"><Clock size={13} /> Duration</span>
-              <span className="text-sm font-semibold text-foreground">{createdSession.durationMinutes} min</span>
-            </div>
-            <div className="flex justify-between py-2.5">
-              <span className="text-sm text-muted-foreground">Amount paid</span>
-              <span className="text-sm font-bold text-accent">${createdSession.totalAmount.toFixed(2)}</span>
-            </div>
+            <Row label="Duration" value={`${createdSession.durationMinutes} min`} />
+            <Row label="Beta hold" value={`$${createdSession.totalAmount.toFixed(2)}`} />
           </div>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5">
-          <p className="text-xs font-semibold text-amber-800 mb-1">Pay your tutor directly</p>
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 space-y-1.5">
+          <p className="text-xs font-semibold text-amber-800">What happens next</p>
           <p className="text-xs text-amber-700 leading-relaxed">
-            Scholix is in beta. Payments are simulated. Please pay <strong>{tutor.data!.firstName} {tutor.data!.lastName}</strong> via PayID, bank transfer, or cash.
+            {expiresLabel
+              ? <>{tutor.data!.firstName} has until <strong>{expiresLabel}</strong> to respond.</>
+              : <>{tutor.data!.firstName} has 24 hours, or until the lesson starts if sooner, to respond. Your dashboard shows the exact deadline.</>}
+            {" "}If they accept, the simulated hold is captured and the lesson is scheduled. If they decline or the request expires, the hold is released.
           </p>
+          <p className="text-[11px] text-amber-700">Beta: no real card was charged. You can withdraw this request from your dashboard at any time before it is accepted.</p>
         </div>
 
         <div className="space-y-2">
-          <Link href="/parent/dashboard" className="flex items-center justify-between w-full py-3 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity">
-            Go to Dashboard <ChevronRight size={16} />
+          <Link href="/parent/dashboard" className="flex items-center justify-between w-full py-3 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity" data-testid="link-dashboard">
+            Track request on dashboard <ChevronRight size={16} />
           </Link>
           <Link href="/settings" className="flex items-center justify-between w-full py-3 px-4 rounded-xl bg-card border border-card-border text-sm font-medium text-foreground hover:border-primary/40 transition-colors">
             <span className="flex items-center gap-2"><Bell size={14} className="text-muted-foreground" /> Manage Notifications</span>
@@ -305,17 +357,19 @@ export default function BookSession() {
     return (
       <div className="p-4 md:p-6 max-w-sm mx-auto">
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setStep("time")} className="p-2 rounded-lg hover:bg-muted transition-colors">
+          <button onClick={handleAbandonCheckout} disabled={cancelSession.isPending} aria-label="Cancel checkout and choose another time" className="p-2 rounded-lg hover:bg-muted transition-colors">
             <ArrowLeft size={18} />
           </button>
-          <h1 className="text-xl font-bold text-foreground">Pay before session</h1>
+          <h1 className="text-xl font-bold text-foreground">Place a beta hold</h1>
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4 flex items-start gap-2.5">
           <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
           <div>
-            <p className="text-xs font-semibold text-amber-800">This is a simulated payment</p>
-            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">Scholix is in beta. No real charges are made.</p>
+            <p className="text-xs font-semibold text-amber-800">Simulated hold, no real card charged</p>
+            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+              This authorises a beta hold and sends your request to {tutor.data!.firstName}. It is captured only if they accept, and released if they decline or don't respond within 24 hours (or before the lesson starts, if sooner). Unfinished checkouts expire after 15 minutes.
+            </p>
           </div>
         </div>
 
@@ -334,8 +388,16 @@ export default function BookSession() {
               <span className="text-muted-foreground">Duration</span>
               <span className="font-medium">{createdSession.durationMinutes} min</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Lesson</span>
+              <span className="font-medium">{lessonModeLabel(createdSession.lessonMode ?? lessonMode)}</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Time</span>
+              <span className="font-medium text-right">{formatInZone(createdSession.scheduledAt, tz)}{tz ? ` (${tz})` : ""}</span>
+            </div>
             <div className="flex justify-between pt-2 border-t border-border">
-              <span className="font-semibold">Total</span>
+              <span className="font-semibold">Hold amount</span>
               <span className="font-bold text-base">${createdSession.totalAmount.toFixed(2)}</span>
             </div>
           </div>
@@ -362,7 +424,15 @@ export default function BookSession() {
           disabled={simulatePayment.isPending}
           className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 disabled:opacity-60 transition-opacity"
         >
-          {simulatePayment.isPending ? "Processing..." : `Pay $${createdSession.totalAmount.toFixed(2)}`}
+          {simulatePayment.isPending ? "Placing hold..." : `Place hold and send request: $${createdSession.totalAmount.toFixed(2)}`}
+        </button>
+        <button
+          onClick={handleAbandonCheckout}
+          disabled={cancelSession.isPending || simulatePayment.isPending}
+          className="w-full mt-2 py-2.5 rounded-xl text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-muted transition-colors"
+          data-testid="button-cancel-checkout"
+        >
+          {cancelSession.isPending ? "Cancelling..." : "Cancel and choose another time"}
         </button>
       </div>
     );
@@ -371,7 +441,25 @@ export default function BookSession() {
   // ── Step: time slot selection ─────────────────────────────────────────────
 
   if (step === "time") {
-    const slots = slotsQuery.data?.slots ?? [];
+    const preferred = slotsQuery.data?.preferredSlots ?? [];
+    const allSlots = slotsQuery.data?.slots ?? [];
+    const preferredSet = new Set(preferred);
+    const otherSlots = allSlots.filter((t) => !preferredSet.has(t));
+    const slots = allSlots;
+    const slotBtn = (time: string) => (
+      <button
+        key={time}
+        onClick={() => { setSelectedTime(time); setError(""); }}
+        data-testid={`button-slot-${time}`}
+        className={`py-3 rounded-xl border-2 text-sm font-semibold transition-all duration-200 active:scale-95 ${
+          selectedTime === time
+            ? "border-primary bg-primary text-white scale-[1.03]"
+            : "border-border bg-card text-foreground hover:border-primary/40"
+        }`}
+      >
+        {fmtTime(time)}
+      </button>
+    );
     const dateLabel = selectedDate
       ? format(parseISO(selectedDate), "EEEE, d MMMM")
       : "";
@@ -384,15 +472,34 @@ export default function BookSession() {
           </button>
           <div>
             <h1 className="text-xl font-bold text-foreground">Choose a time</h1>
-            <p className="text-xs text-muted-foreground">{dateLabel} · {selectedDuration} min session</p>
+            <p className="text-xs text-muted-foreground">{dateLabel} · {selectedDuration} min · {lessonModeLabel(lessonMode)}</p>
           </div>
         </div>
 
         <TutorCard />
 
+        {tz && (
+          <p className="text-[11px] text-muted-foreground mb-3 flex items-center gap-1.5" data-testid="text-timezone">
+            <Clock size={11} /> Times shown in {tz} (tutor's time zone)
+          </p>
+        )}
+        {conflictNotice && (
+          <div role="status" className="mb-3 flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 animate-in fade-in duration-300">
+            <RefreshCw size={13} className="shrink-0 mt-0.5" /> {conflictNotice}
+          </div>
+        )}
         {slotsQuery.isLoading ? (
           <div className="grid grid-cols-3 gap-2">
             {[1,2,3,4,5,6].map(i => <div key={i} className="h-12 rounded-xl bg-muted animate-pulse" />)}
+          </div>
+        ) : slotsQuery.isError ? (
+          <div className="p-6 rounded-2xl border border-destructive/30 bg-destructive/5 text-center" role="alert">
+            <AlertTriangle size={20} className="text-destructive mx-auto mb-2" />
+            <p className="text-sm font-medium text-foreground">We couldn't load times</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{apiErrorMessage(slotsQuery.error, "Something went wrong reaching the server.")}</p>
+            <button onClick={() => slotsQuery.refetch()} className="mt-3 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted transition-colors" data-testid="button-retry-slots">
+              Try again
+            </button>
           </div>
         ) : slots.length === 0 ? (
           <div className="p-6 rounded-2xl border-2 border-dashed border-border bg-muted/20 text-center">
@@ -400,26 +507,23 @@ export default function BookSession() {
             <p className="text-sm font-medium text-foreground">No times available</p>
             <p className="text-xs text-muted-foreground mt-0.5">All slots on this date are taken. Try another date.</p>
             <button onClick={() => setStep("date")} className="mt-3 text-xs text-primary font-semibold hover:underline">
-              ← Choose another date
+              Choose another date
             </button>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2 mb-5">
-              {slots.map((time) => (
-                <button
-                  key={time}
-                  onClick={() => setSelectedTime(time)}
-                  className={`py-3 rounded-xl border-2 text-sm font-semibold transition-all ${
-                    selectedTime === time
-                      ? "border-primary bg-primary text-white"
-                      : "border-border bg-card text-foreground hover:border-primary/40"
-                  }`}
-                >
-                  {fmtTime(time)}
-                </button>
-              ))}
-            </div>
+            {preferred.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-foreground mb-2">Suggested starts</p>
+                <div className="grid grid-cols-3 gap-2 mb-4">{preferred.map(slotBtn)}</div>
+              </>
+            )}
+            {otherSlots.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-muted-foreground mb-2">{preferred.length > 0 ? "Other flexible starts" : "Available starts"}</p>
+                <div className="grid grid-cols-3 gap-2 mb-5">{otherSlots.map(slotBtn)}</div>
+              </>
+            )}
 
             {selectedTime && (
               <div className="bg-muted/50 rounded-xl p-3.5 mb-4 space-y-1.5">
@@ -442,7 +546,7 @@ export default function BookSession() {
                   <span className="font-medium">{selectedDuration} min</span>
                 </div>
                 <div className="flex justify-between text-sm pt-1.5 border-t border-border">
-                  <span className="font-semibold">Total</span>
+                  <span className="font-semibold">Beta hold if sent</span>
                   <span className="font-bold text-accent">${totalAmount.toFixed(2)}</span>
                 </div>
               </div>
@@ -456,9 +560,9 @@ export default function BookSession() {
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 disabled:opacity-60 transition-opacity"
             >
               {createSession.isPending
-                ? "Booking…"
+                ? "Reserving..."
                 : selectedTime
-                  ? `Book session: $${totalAmount.toFixed(2)}`
+                  ? `Continue to request: $${totalAmount.toFixed(2)}`
                   : "Select a time above"}
             </button>
           </>
@@ -696,6 +800,29 @@ export default function BookSession() {
           <Link href="/parent/students" className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors">
             <Plus size={10} /> Add another student
           </Link>
+        </div>
+      )}
+
+      {/* Lesson mode */}
+      {!fixedMode && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-foreground mb-1.5">Lesson type</label>
+          <div className="grid grid-cols-2 gap-2">
+            {([["online", "Online", Monitor], ["in_person", "In-person", MapPin]] as const).map(([val, label, Icon]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => { setChosenMode(val); setSelectedTime(""); }}
+                aria-pressed={chosenMode === val}
+                data-testid={`button-mode-${val}`}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-lg border-2 text-sm font-semibold transition-all duration-200 ${
+                  chosenMode === val ? "border-primary bg-primary/5 text-primary" : "border-border bg-card text-foreground hover:border-primary/40"
+                }`}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

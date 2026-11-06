@@ -269,7 +269,21 @@ export interface SetAvailabilityBody {
   windows: SetAvailabilityBodyWindowsItem[];
 }
 
+export type AvailableSlotsResponseLessonMode = typeof AvailableSlotsResponseLessonMode[keyof typeof AvailableSlotsResponseLessonMode];
+
+
+export const AvailableSlotsResponseLessonMode = {
+  online: 'online',
+  in_person: 'in_person',
+} as const;
+
+export type AvailableSlotsResponseSlotInstants = {[key: string]: string};
+
 export interface AvailableSlotsResponse {
+  timezone: string;
+  lessonMode: AvailableSlotsResponseLessonMode;
+  preferredSlots: string[];
+  slotInstants: AvailableSlotsResponseSlotInstants;
   /** YYYY-MM-DD */
   date: string;
   /** Session duration in minutes */
@@ -410,16 +424,37 @@ export interface InviteStudentBody {
   email: string;
 }
 
+/**
+ * @nullable
+ */
+export type SessionLessonMode = typeof SessionLessonMode[keyof typeof SessionLessonMode] | null;
+
+
+export const SessionLessonMode = {
+  online: 'online',
+  in_person: 'in_person',
+} as const;
+
 export type SessionStatus = typeof SessionStatus[keyof typeof SessionStatus];
 
 
 export const SessionStatus = {
+  pending_payment: 'pending_payment',
+  pending_confirmation: 'pending_confirmation',
   scheduled: 'scheduled',
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;
 
 export interface Session {
+  /** @nullable */
+  lessonMode?: SessionLessonMode;
+  /** @nullable */
+  requestExpiresAt?: string | null;
+  /** @nullable */
+  cancellationReason?: string | null;
+  /** @nullable */
+  paymentStatus?: string | null;
   id: number;
   tutorId: number;
   studentId: number;
@@ -436,7 +471,16 @@ export interface Session {
   createdAt: string;
 }
 
+export type CreateSessionBodyLessonMode = typeof CreateSessionBodyLessonMode[keyof typeof CreateSessionBodyLessonMode];
+
+
+export const CreateSessionBodyLessonMode = {
+  online: 'online',
+  in_person: 'in_person',
+} as const;
+
 export interface CreateSessionBody {
+  lessonMode: CreateSessionBodyLessonMode;
   tutorId: number;
   studentId: number;
   subject: string;
@@ -444,6 +488,18 @@ export interface CreateSessionBody {
   durationMinutes: number;
   /** @nullable */
   availabilitySlotId?: number | null;
+}
+
+export type SessionDecisionInputDecision = typeof SessionDecisionInputDecision[keyof typeof SessionDecisionInputDecision];
+
+
+export const SessionDecisionInputDecision = {
+  accept: 'accept',
+  decline: 'decline',
+} as const;
+
+export interface SessionDecisionInput {
+  decision: SessionDecisionInputDecision;
 }
 
 export interface Invoice {
@@ -499,6 +555,8 @@ export type PaymentStatus = typeof PaymentStatus[keyof typeof PaymentStatus];
 
 export const PaymentStatus = {
   pending: 'pending',
+  authorized: 'authorized',
+  released: 'released',
   paid: 'paid',
   refunded: 'refunded',
 } as const;
@@ -679,6 +737,7 @@ export type VerifyReapplication200 = {
 };
 
 export type GetTutorAvailableSlotsParams = {
+lessonMode?: GetTutorAvailableSlotsLessonMode;
 /**
  * YYYY-MM-DD
  */
@@ -688,6 +747,14 @@ date: string;
  */
 duration: number;
 };
+
+export type GetTutorAvailableSlotsLessonMode = typeof GetTutorAvailableSlotsLessonMode[keyof typeof GetTutorAvailableSlotsLessonMode];
+
+
+export const GetTutorAvailableSlotsLessonMode = {
+  online: 'online',
+  in_person: 'in_person',
+} as const;
 
 export type ListSessionsParams = {
 tutorId?: number;
@@ -699,6 +766,8 @@ export type ListSessionsStatus = typeof ListSessionsStatus[keyof typeof ListSess
 
 
 export const ListSessionsStatus = {
+  pending_payment: 'pending_payment',
+  pending_confirmation: 'pending_confirmation',
   scheduled: 'scheduled',
   completed: 'completed',
   cancelled: 'cancelled',

@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useListTutors, useListSessions, useCompleteSession, useCancelSession } from "@workspace/api-client-react";
+import { useListTutors, useListSessions, useCompleteSession, useCancelSession, useDecideSessionRequest } from "@workspace/api-client-react";
 import { getListSessionsQueryKey } from "@workspace/api-client-react";
+import { invalidateBookingQueries, apiErrorMessage, formatInZone, lessonModeLabel, timeLeft } from "@/lib/bookingRequests";
 import { useQueryClient } from "@tanstack/react-query";
 import StatusBadge from "@/components/StatusBadge";
-import { Calendar, CheckCircle, X, Download, FileText, Sparkles, TrendingUp, Star, ClipboardList } from "lucide-react";
+import { Calendar, Hourglass, CheckCircle, X, Download, FileText, Sparkles, TrendingUp, Star, ClipboardList } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
@@ -308,22 +309,52 @@ export default function TutorSessions() {
   const tutorId = tutorProfile?.id;
 
   const sessions = useListSessions(tutorId ? { tutorId } : undefined, {
-    query: { enabled: !!tutorId } as any,
+    query: {
+      enabled: !!tutorId,
+      queryKey: getListSessionsQueryKey(tutorId ? { tutorId } : undefined),
+      refetchInterval: 30_000,
+      refetchOnMount: "always",
+    },
   });
+  const decideMutation = useDecideSessionRequest();
+  const [decidingId, setDecidingId] = useState<number | null>(null);
+  const [decision, setDecision] = useState<{ id: number; ok: boolean; msg: string } | null>(null);
   const completeMutation = useCompleteSession();
   const cancelMutation = useCancelSession();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [progressSession, setProgressSession] = useState<{ id: number; studentName: string } | null>(null);
   const [filter, setFilter] = useState<"all" | "scheduled" | "completed">("all");
 
+  const requests = (sessions.data ?? [])
+    .filter((s) => s.status === "pending_confirmation")
+    .sort((a, b) => new Date(a.requestExpiresAt ?? a.scheduledAt).getTime() - new Date(b.requestExpiresAt ?? b.scheduledAt).getTime());
+
+  const handleDecide = (sessionId: number, d: "accept" | "decline") => {
+    if (d === "decline" && !confirm("Decline this request? The parent's simulated hold will be released.")) return;
+    setDecidingId(sessionId);
+    setDecision(null);
+    decideMutation.mutate({ sessionId, data: { decision: d } }, {
+      onSuccess: () => {
+        setDecision({ id: sessionId, ok: true, msg: d === "accept" ? "Accepted. The lesson is scheduled." : "Declined. The hold has been released." });
+        invalidateBookingQueries(qc);
+      },
+      onError: (err) => {
+        setDecision({ id: sessionId, ok: false, msg: apiErrorMessage(err, "Could not record your decision. The request may have expired or been withdrawn.") });
+        invalidateBookingQueries(qc);
+      },
+      onSettled: () => setDecidingId(null),
+    });
+  };
+
   const filtered = sessions.data
-    ?.filter((s) => filter === "all" || s.status === filter)
+    ?.filter((s) => s.status !== "pending_confirmation" && s.status !== "pending_payment")
+    .filter((s) => filter === "all" || s.status === filter)
     .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()) ?? [];
 
   const handleComplete = (sessionId: number) => {
     completeMutation.mutate({ sessionId }, {
       onSuccess: (data) => {
-        qc.invalidateQueries({ queryKey: getListSessionsQueryKey() });
+        invalidateBookingQueries(qc);
         const inv = data.invoice as InvoiceData;
         setInvoice(inv);
       },
@@ -333,7 +364,7 @@ export default function TutorSessions() {
   const handleCancel = (sessionId: number) => {
     if (!confirm("Cancel this session?")) return;
     cancelMutation.mutate({ sessionId }, {
-      onSuccess: () => qc.invalidateQueries({ queryKey: getListSessionsQueryKey() }),
+      onSuccess: () => invalidateBookingQueries(qc),
     });
   };
 
@@ -364,6 +395,79 @@ export default function TutorSessions() {
       <div className="mb-6">
         <h1 className="text-xl font-bold text-foreground">My Sessions</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{sessions.data?.length ?? 0} total sessions</p>
+      </div>
+
+      {decision && !requests.some((r) => r.id === decision.id) && (
+        <div role="status" className={`mb-4 p-3 rounded-xl text-xs font-medium animate-in fade-in slide-in-from-top-1 duration-300 ${decision.ok ? "bg-accent/10 text-accent" : "bg-destructive/10 text-destructive"}`} data-testid="text-decision-result">
+          {decision.msg}
+        </div>
+      )}
+
+      <div className="mb-6" id="requests" data-testid="section-requests">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <Hourglass size={14} className="text-amber-700" /> Booking requests
+            {requests.length > 0 && <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">{requests.length}</span>}
+          </h2>
+          <span className="text-[11px] text-muted-foreground">Refreshes every 30s</span>
+        </div>
+        {sessions.isError ? (
+          <div className="bg-card border border-card-border rounded-xl p-4 text-center">
+            <p className="text-sm text-muted-foreground">We could not load your requests.</p>
+            <button onClick={() => sessions.refetch()} className="mt-2 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold hover:bg-muted transition-colors">Try again</button>
+          </div>
+        ) : requests.length === 0 ? (
+          <div className="bg-card border border-dashed border-border rounded-xl p-4 text-center text-xs text-muted-foreground">
+            No requests waiting. New requests appear here and must be accepted before they expire.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {requests.map((session) => {
+              const left = timeLeft(session.requestExpiresAt);
+              const busy = decidingId === session.id;
+              return (
+                <div key={session.id} className="bg-card border border-amber-200 rounded-xl p-4 animate-in fade-in slide-in-from-top-1 duration-300" data-testid={`card-request-${session.id}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{session.subject}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{session.studentName} · {lessonModeLabel(session.lessonMode)}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{formatInZone(session.scheduledAt)} · {session.durationMinutes}min</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <StatusBadge status={session.status} />
+                      <span className="text-xs font-semibold text-foreground">${session.totalAmount.toFixed(2)}</span>
+                      <span className="text-[10px] text-muted-foreground">beta hold</span>
+                    </div>
+                  </div>
+                  {session.requestExpiresAt && (
+                    <p className="text-[11px] text-amber-800 mt-2">
+                      Respond by {formatInZone(session.requestExpiresAt)}{left ? ` (${left})` : ""}. Otherwise it expires and the hold is released.
+                    </p>
+                  )}
+                  <div className="flex gap-2 pt-3 mt-3 border-t border-border">
+                    <button
+                      onClick={() => handleDecide(session.id, "accept")}
+                      disabled={busy}
+                      className="flex-1 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:opacity-90 active:scale-[0.98] disabled:opacity-60 transition-all flex items-center justify-center gap-1.5"
+                      data-testid={`button-accept-${session.id}`}
+                    >
+                      <CheckCircle size={13} /> {busy ? "Saving..." : "Accept"}
+                    </button>
+                    <button
+                      onClick={() => handleDecide(session.id, "decline")}
+                      disabled={busy}
+                      className="py-2 px-3 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40 disabled:opacity-60 transition-colors"
+                      data-testid={`button-decline-${session.id}`}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                  {decision?.id === session.id && !decision.ok && <p className="text-xs text-destructive mt-2" role="alert">{decision.msg}</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex gap-1 mb-4 p-1 bg-muted rounded-xl">
@@ -407,13 +511,13 @@ export default function TutorSessions() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{session.studentName}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {format(parseISO(session.scheduledAt), "EEE, MMM d 'at' h:mm a")} · {session.durationMinutes}min
+                      {formatInZone(session.scheduledAt)} · {session.durationMinutes}min
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <StatusBadge status={session.status} />
                     <span className="text-xs font-semibold text-foreground">${session.totalAmount.toFixed(0)}</span>
-                    {session.isPaid && <span className="text-[10px] text-accent font-medium">Paid</span>}
+                    {session.isPaid && <span className="text-[10px] text-accent font-medium">Beta payment simulated</span>}
                   </div>
                 </div>
                 {session.status === "scheduled" && (
