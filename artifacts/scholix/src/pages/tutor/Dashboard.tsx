@@ -7,9 +7,10 @@ import GetMoreStudents from "@/components/tutor/GetMoreStudents";
 import TutorReviewsSection from "@/components/tutor/TutorReviewsSection";
 import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
+import { SessionModeLocation, SessionStudentLink } from "@/components/tutor/SessionContext";
 import {
   Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen,
-  Shield, AlertCircle, Hourglass, AlertTriangle, XCircle, Bell, TrendingUp, Layers, ArrowUp, Wallet,
+  Shield, AlertCircle, Hourglass, AlertTriangle, XCircle, Bell, TrendingUp, Layers, Wallet,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -123,8 +124,6 @@ function GrowEarningsSection({
     ? Math.min(((completedSessions - currentTier.min) / (nextTier.min - currentTier.min)) * 100, 100)
     : 100;
 
-  const suggestedRate = hourlyRate < 75 ? 75 : hourlyRate < 90 ? 90 : hourlyRate < 110 ? 110 : null;
-
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
@@ -194,7 +193,8 @@ function GrowEarningsSection({
           {nextTier ? (
             <p className="text-[11px] text-muted-foreground">
               <span className="font-semibold text-foreground">{nextTier.min - completedSessions} more sessions</span>{" "}
-              to reach {nextTier.name} tier ({nextTier.rate}% fee). Save ${((currentTier.rate - nextTier.rate) / 100 * hourlyRate).toFixed(0)}/session
+              to reach {nextTier.name} tier ({nextTier.rate}% fee).{" "}
+              <span className="text-accent font-semibold">Earn +${((currentTier.rate - nextTier.rate) / 100 * hourlyRate).toFixed(0)}/session</span>
             </p>
           ) : (
             <p className="text-[11px] text-accent font-semibold">You've reached Expert tier. Only 5% fee on Scholix!</p>
@@ -218,33 +218,6 @@ function GrowEarningsSection({
             ))}
           </div>
         </div>
-
-        {/* 3 — Increase Your Rate */}
-        {suggestedRate && (
-          <div className="bg-gradient-to-br from-accent/5 to-accent/10 border border-accent/20 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-                <ArrowUp size={14} className="text-accent" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">Increase Your Rate</p>
-            </div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">Your current rate</span>
-              <span className="text-sm font-bold text-foreground">${hourlyRate}/hr</span>
-            </div>
-            <div className="bg-accent/10 rounded-lg px-3 py-2 mb-3">
-              <p className="text-xs text-accent font-medium">
-                Top tutors on Scholix charge ${suggestedRate}+/hr. Consider raising your rate.
-              </p>
-            </div>
-            <Link
-              href="/tutor/profile"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline"
-            >
-              Update my rate <ChevronRight size={11} />
-            </Link>
-          </div>
-        )}
 
         {/* 4 — Group Sessions */}
         <div className="bg-card border border-card-border rounded-xl p-4">
@@ -462,10 +435,23 @@ export default function TutorDashboard() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate">{session.subject}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{session.studentName}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      <SessionStudentLink studentId={session.studentId} studentName={session.studentName} />
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {formatInZone(session.scheduledAt)} · {session.durationMinutes}min
                     </p>
+                    <div className="mt-2">
+                      <SessionModeLocation
+                        sessionId={session.id}
+                        studentId={session.studentId}
+                        studentName={session.studentName}
+                        lessonMode={session.lessonMode ?? null}
+                        locationAddress={session.locationAddress}
+                        status={session.status}
+                        compact
+                      />
+                    </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <StatusBadge status={session.status} />

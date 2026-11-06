@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, useSearch } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useListTutors, useGetTutorStudents, useListSessions, useGetTutorRelationships, useUpsertTutorRelationship } from "@workspace/api-client-react";
 import { getGetTutorRelationshipsQueryKey } from "@workspace/api-client-react";
@@ -6,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users, GraduationCap, BookOpen, Target, Settings2, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
+import { SessionModeLocation } from "@/components/tutor/SessionContext";
 
 type LessonModeOverride = "online" | "in_person" | null;
 
@@ -18,8 +20,9 @@ interface ProgressEntry {
   scheduledAt: string;
 }
 
-function StudentProgressHistory({ studentId }: { studentId: number }) {
-  const [open, setOpen] = useState(false);
+function StudentProgressHistory({ studentId, initiallyOpen = false }: { studentId: number; initiallyOpen?: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen);
+  useEffect(() => setOpen(initiallyOpen), [initiallyOpen]);
   const progress = useQuery<ProgressEntry[]>({
     queryKey: ["tutor", "student-progress", studentId],
     enabled: open,
@@ -174,6 +177,11 @@ function PrefEditor({ tutorId, parentId, currentMode, currentBuffer }: PrefEdito
 }
 
 export default function TutorStudents() {
+  const search = useSearch();
+  const requestedStudent = new URLSearchParams(search).get("student");
+  const selectedStudentId = requestedStudent && /^[1-9]\d*$/.test(requestedStudent)
+    ? Number(requestedStudent)
+    : null;
   const { user } = useAuth();
   const tutors = useListTutors();
   const tutorProfile = tutors.data?.find((t) => t.userId === user?.id);
@@ -205,9 +213,16 @@ export default function TutorStudents() {
   return (
     <div className="p-4 md:p-6 max-w-lg mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-foreground">My Students</h1>
+        {selectedStudentId && (
+          <Link href="/tutor/students" className="mb-2 inline-flex text-xs font-medium text-primary hover:underline">
+            ← All students
+          </Link>
+        )}
+        <h1 className="text-xl font-bold text-foreground">{selectedStudentId ? "Student profile" : "My Students"}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {students.data?.length ?? 0} student{students.data?.length !== 1 ? "s" : ""} in your practice
+          {selectedStudentId
+            ? "Profile, learning goals, and progress from your sessions"
+            : `${students.data?.length ?? 0} student${students.data?.length !== 1 ? "s" : ""} in your practice`}
         </p>
       </div>
 
@@ -215,16 +230,17 @@ export default function TutorStudents() {
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}
         </div>
-      ) : students.data?.length === 0 ? (
+      ) : (students.data?.filter((student) => selectedStudentId === null || student.id === selectedStudentId).length ?? 0) === 0 ? (
         <div className="bg-card border border-card-border rounded-xl p-8 text-center">
           <Users size={32} className="text-muted-foreground mx-auto mb-3" />
-          <p className="text-sm font-medium text-foreground">No students yet</p>
-          <p className="text-xs text-muted-foreground mt-1">Students will appear here once you have sessions booked</p>
+          <p className="text-sm font-medium text-foreground">{selectedStudentId ? "Student profile unavailable" : "No students yet"}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {selectedStudentId ? "This profile is only available to tutors with sessions for this student." : "Students will appear here once you have sessions booked."}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {students.data?.map((student) => {
-            const s = student as any;
+          {students.data?.filter((student) => selectedStudentId === null || student.id === selectedStudentId).map((student) => {
             const studentSessions = sessions.data?.filter((sess) => sess.studentId === student.id) ?? [];
             const lastSession = studentSessions
               .filter((sess) => sess.status === "completed")
@@ -233,37 +249,37 @@ export default function TutorStudents() {
               .filter((sess) => sess.status === "scheduled")
               .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())[0];
 
-            const displayName = s.lastName
-              ? `${s.firstName} ${s.lastName}`
-              : s.firstName;
-            const initials = s.lastName
-              ? `${s.firstName[0]}${s.lastName[0]}`.toUpperCase()
-              : s.firstName.slice(0, 2).toUpperCase();
-            const subjectList = s.subjects
-              ? s.subjects.split(",").map((sub: string) => sub.trim()).filter(Boolean)
+            const displayName = student.lastName
+              ? `${student.firstName} ${student.lastName}`
+              : student.firstName;
+            const initials = student.lastName
+              ? `${student.firstName[0]}${student.lastName[0]}`.toUpperCase()
+              : student.firstName.slice(0, 2).toUpperCase();
+            const subjectList = student.subjects
+              ? student.subjects.split(",").map((sub) => sub.trim()).filter(Boolean)
               : [];
 
-            const parentId: number | null = s.parentId ?? null;
+            const parentId: number | null = student.parentId ?? null;
             const rel = parentId
               ? relationships.data?.find((r) => r.parentId === parentId)
               : null;
             const prefsOpen = parentId ? expandedPrefs.has(parentId) : false;
 
             return (
-              <div key={student.id} className="bg-card border border-card-border rounded-xl p-4">
+              <div key={`${student.id}-${selectedStudentId ?? "list"}`} className="bg-card border border-card-border rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <span className="text-sm font-bold text-primary">{initials}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground">{displayName}</p>
-                    {s.yearLevel && (
+                    {student.yearLevel && (
                       <span className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-medium">
-                        {s.yearLevel}
+                        {student.yearLevel}
                       </span>
                     )}
-                    {s.school && (
-                      <p className="text-xs text-muted-foreground mt-1">{s.school}</p>
+                    {student.school && (
+                      <p className="text-xs text-muted-foreground mt-1">{student.school}</p>
                     )}
 
                     {subjectList.length > 0 && (
@@ -277,10 +293,10 @@ export default function TutorStudents() {
                       </div>
                     )}
 
-                    {s.goals && (
+                    {student.goals && (
                       <div className="flex items-start gap-1.5 mt-2">
                         <Target size={11} className="text-muted-foreground mt-0.5 shrink-0" />
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">{s.goals}</p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">{student.goals}</p>
                       </div>
                     )}
 
@@ -316,7 +332,21 @@ export default function TutorStudents() {
                   </div>
                 )}
 
-                <StudentProgressHistory studentId={student.id} />
+                {nextSession && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Next session</p>
+                    <SessionModeLocation
+                      sessionId={nextSession.id}
+                      studentId={student.id}
+                      studentName={displayName}
+                      lessonMode={nextSession.lessonMode ?? null}
+                      locationAddress={nextSession.locationAddress}
+                      status={nextSession.status}
+                    />
+                  </div>
+                )}
+
+                <StudentProgressHistory studentId={student.id} initiallyOpen={selectedStudentId === student.id} />
 
                 {parentId && tutorId && (
                   <div className="mt-3 pt-3 border-t border-border">

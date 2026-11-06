@@ -519,7 +519,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Student"
+                  $ref: "#/components/schemas/TutorStudent"
 
   /tutors/{tutorId}/relationships:
     get:
@@ -1583,6 +1583,23 @@ components:
         requestedAt: { type: string, format: date-time }
         reviewedAt: { type: [string, "null"], format: date-time }
         reviewNotes: { type: [string, "null"] }
+    TutorStudent:
+      type: object
+      description: Student profile fields available only to the assigned tutor or an admin.
+      properties:
+        id: { type: integer }
+        userId: { type: ["integer", "null"] }
+        firstName: { type: string }
+        lastName: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        yearLevel: { type: ["string", "null"] }
+        school: { type: ["string", "null"] }
+        subjects: { type: ["string", "null"] }
+        goals: { type: ["string", "null"] }
+        parentId: { type: ["integer", "null"] }
+        createdAt: { type: string }
+      required: [id, firstName, createdAt]
+
     Student:
       type: object
       properties:
@@ -1657,6 +1674,7 @@ components:
       type: object
       properties:
         lessonMode: { type: [string, "null"], enum: [online, in_person, null] }
+        locationAddress: { type: [string, "null"], description: "Only returned to the assigned tutor for a scheduled or completed in-person lesson." }
         requestExpiresAt: { type: [string, "null"] }
         cancellationReason: { type: [string, "null"] }
         paymentStatus: { type: [string, "null"] }

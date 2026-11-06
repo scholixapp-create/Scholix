@@ -296,7 +296,10 @@ router.get("/tutors/:tutorId/students", requireAuth, async (req, res) => {
       firstName: s.firstName,
       lastName: s.lastName,
       email: s.email,
-      gradeLevel: s.gradeLevel ?? null,
+      yearLevel: s.gradeLevel ?? null,
+      school: s.school ?? null,
+      subjects: s.subjects ?? null,
+      goals: s.goals ?? null,
       parentId: s.parentId ?? null,
       createdAt: s.createdAt.toISOString(),
     }))

@@ -383,6 +383,31 @@ export interface AccountDeletionRequest {
   reviewNotes?: string | null;
 }
 
+/**
+ * Student profile fields available only to the assigned tutor or an admin.
+ */
+export interface TutorStudent {
+  id: number;
+  /** @nullable */
+  userId?: number | null;
+  firstName: string;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  yearLevel?: string | null;
+  /** @nullable */
+  school?: string | null;
+  /** @nullable */
+  subjects?: string | null;
+  /** @nullable */
+  goals?: string | null;
+  /** @nullable */
+  parentId?: number | null;
+  createdAt: string;
+}
+
 export interface Student {
   id: number;
   /** @nullable */
@@ -449,6 +474,11 @@ export const SessionStatus = {
 export interface Session {
   /** @nullable */
   lessonMode?: SessionLessonMode;
+  /**
+     * Only returned to the assigned tutor for a scheduled or completed in-person lesson.
+     * @nullable
+     */
+  locationAddress?: string | null;
   /** @nullable */
   requestExpiresAt?: string | null;
   /** @nullable */

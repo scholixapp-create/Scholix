@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { GraduationCap, ShieldCheck, Star, BookOpen, Clock, ArrowLeft, MapPin, Award, Monitor, Layers } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import TestModeBanner from "@/components/TestModeBanner";
+import { parseTutorProfileId } from "@/lib/tutorProfileLink";
 
 const MODE_LABELS: Record<string, string> = {
   online: "Online",
@@ -54,7 +55,7 @@ function StarRating({ rating, size = 14 }: { rating: number; size?: number }) {
 
 export default function TutorProfile() {
   const [, params] = useRoute("/tutor/:id");
-  const tutorId = Number(params?.id);
+  const tutorId = params?.id ? parseTutorProfileId(params.id) ?? 0 : 0;
   const { user } = useAuth();
 
   const tutor = useGetTutor(tutorId);

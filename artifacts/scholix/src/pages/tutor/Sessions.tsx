@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useListTutors, useListSessions, useCompleteSession, useCancelSession, useDecideSessionRequest } from "@workspace/api-client-react";
 import { getListSessionsQueryKey } from "@workspace/api-client-react";
-import { invalidateBookingQueries, apiErrorMessage, formatInZone, lessonModeLabel, timeLeft } from "@/lib/bookingRequests";
+import { invalidateBookingQueries, apiErrorMessage, formatInZone, timeLeft } from "@/lib/bookingRequests";
 import { useQueryClient } from "@tanstack/react-query";
 import StatusBadge from "@/components/StatusBadge";
 import { Calendar, Hourglass, CheckCircle, X, Download, FileText, Sparkles, TrendingUp, Star, ClipboardList } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { PROGRESS_NOTE_HEADINGS, parseGuidedProgressNotes, serializeGuidedProgressNotes, type GuidedProgressNotes } from "@/lib/guidedProgressNotes";
+import { SessionModeLocation, SessionStudentLink } from "@/components/tutor/SessionContext";
 
 function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
 
@@ -180,22 +183,46 @@ function ProgressModal({ sessionId, studentName, onClose }: {
   onClose: () => void;
 }) {
   const [score, setScore] = useState(7);
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState<GuidedProgressNotes>(["", "", ""]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const initialized = useRef(false);
+  const progress = useQuery<{ score: number; notes: string | null } | null>({
+    queryKey: ["tutor", "session-progress", sessionId],
+    refetchOnMount: "always",
+    queryFn: async () => {
+      const response = await fetch(`/api/sessions/${sessionId}/progress`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (!response.ok) throw new Error("Could not load the saved progress notes.");
+      return response.json();
+    },
+  });
+
+  useEffect(() => {
+    if (!progress.isSuccess || progress.isFetching || initialized.current) return;
+    initialized.current = true;
+    if (progress.data) {
+      setScore(progress.data.score);
+      setNotes(parseGuidedProgressNotes(progress.data.notes));
+    }
+  }, [progress.data, progress.isSuccess]);
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError("");
     try {
-      await fetch(`/api/sessions/${sessionId}/progress`, {
+      const response = await fetch(`/api/sessions/${sessionId}/progress`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ score, notes }),
+        body: JSON.stringify({ score, notes: serializeGuidedProgressNotes(notes) }),
       });
+      if (!response.ok) throw new Error("Could not save progress. Please try again.");
       setSaved(true);
       setTimeout(onClose, 1200);
-    } catch {
-      alert("Could not save progress. Please try again.");
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save progress. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -210,7 +237,7 @@ function ProgressModal({ sessionId, studentName, onClose }: {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm bg-card border border-card-border rounded-2xl shadow-2xl overflow-hidden"
+        className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-card border border-card-border rounded-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 pt-5 pb-3 border-b border-border flex items-center justify-between">
@@ -225,7 +252,7 @@ function ProgressModal({ sessionId, studentName, onClose }: {
           </button>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="p-5 space-y-4">
           {saved ? (
             <div className="flex flex-col items-center gap-3 py-4">
               <CheckCircle size={32} className="text-accent" />
@@ -264,18 +291,33 @@ function ProgressModal({ sessionId, studentName, onClose }: {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-foreground mb-1.5">
-                  Notes <span className="text-muted-foreground font-normal">(optional)</span>
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Topics covered, areas to improve, homework set..."
-                  rows={3}
-                  className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                />
-              </div>
+              {progress.isLoading ? (
+                <div role="status" className="text-xs text-muted-foreground">Loading previously saved progress…</div>
+              ) : progress.isError ? (
+                <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                  {progress.error instanceof Error ? progress.error.message : "Saved progress could not be loaded."}
+                  <button type="button" onClick={() => void progress.refetch()} className="ml-2 underline">Try again</button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {PROGRESS_NOTE_HEADINGS.map((heading, index) => (
+                    <label key={heading} className="block text-xs font-medium text-foreground">
+                      {heading}
+                      <textarea
+                        value={notes[index]}
+                        onChange={(e) => setNotes((current) => current.map((section, i) => i === index ? e.target.value : section) as GuidedProgressNotes)}
+                        placeholder={["Summarise the topics and activities covered.", "Note any practice or tasks to complete before next session.", "Add the focus or topic for the next lesson."][index]}
+                        rows={2}
+                        maxLength={2000}
+                        className="mt-1.5 w-full resize-y rounded-lg border border-input bg-background px-3 py-2.5 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </label>
+                  ))}
+                  <p className="text-[10px] text-muted-foreground">Older unstructured notes are kept in the first section when edited.</p>
+                </div>
+              )}
+
+              {saveError && <p role="alert" className="text-xs text-destructive">{saveError}</p>}
 
               <div className="flex gap-2">
                 <button
@@ -286,7 +328,7 @@ function ProgressModal({ sessionId, studentName, onClose }: {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={saving || progress.isLoading || progress.isError}
                   className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center justify-center gap-1.5"
                 >
                   <Star size={13} />
@@ -430,7 +472,20 @@ export default function TutorSessions() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground">{session.subject}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{session.studentName} · {lessonModeLabel(session.lessonMode)}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      <SessionStudentLink studentId={session.studentId} studentName={session.studentName} />
+                    </p>
+                    <div className="mt-2">
+                      <SessionModeLocation
+                        sessionId={session.id}
+                        studentId={session.studentId}
+                        studentName={session.studentName}
+                        lessonMode={session.lessonMode ?? null}
+                        locationAddress={session.locationAddress}
+                        status={session.status}
+                        compact
+                      />
+                    </div>
                       <p className="text-xs text-muted-foreground mt-1">{formatInZone(session.scheduledAt)} · {session.durationMinutes}min</p>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
@@ -509,7 +564,20 @@ export default function TutorSessions() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">{session.studentName}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      <SessionStudentLink studentId={session.studentId} studentName={session.studentName} />
+                    </p>
+                    <div className="mt-2">
+                      <SessionModeLocation
+                        sessionId={session.id}
+                        studentId={session.studentId}
+                        studentName={session.studentName}
+                        lessonMode={session.lessonMode ?? null}
+                        locationAddress={session.locationAddress}
+                        status={session.status}
+                        compact
+                      />
+                    </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {formatInZone(session.scheduledAt)} · {session.durationMinutes}min
                     </p>

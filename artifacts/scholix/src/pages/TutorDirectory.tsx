@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/Brand";
 import { Link } from "wouter";
 import { GraduationCap, Star, Search, ArrowRight, Monitor, MapPin, Layers } from "lucide-react";
+import { tutorProfilePath } from "@/lib/tutorProfileLink";
 import TestModeBanner from "@/components/TestModeBanner";
 
 type ModeFilter = "all" | "online" | "in_person" | "both";
@@ -186,7 +187,7 @@ export default function TutorDirectory() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <Link
-                        href={`/tutor/${tutor.id}`}
+                        href={tutorProfilePath(tutor)}
                         className="text-sm font-bold text-[#0f2747] truncate hover:text-primary transition-colors hover:underline block"
                       >
                         {tutor.firstName} {tutor.lastName}
@@ -245,7 +246,7 @@ export default function TutorDirectory() {
 
                   <div className="mt-auto pt-3 border-t border-gray-100 grid grid-cols-2 gap-2">
                     <Link
-                      href={`/tutor/${tutor.id}`}
+                      href={tutorProfilePath(tutor)}
                       className="flex items-center justify-center py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:border-primary/40 hover:text-primary transition-colors"
                     >
                       View profile

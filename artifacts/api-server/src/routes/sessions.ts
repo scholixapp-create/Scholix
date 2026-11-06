@@ -13,6 +13,7 @@ import { config } from "../lib/config";
 import { tutorSlots } from "../lib/schedulingStore";
 import { BookingError, localDate, localTime } from "../lib/scheduling";
 import { cancelBooking, decideBooking, expireBookingRequests } from "../lib/bookingRequests";
+import { visibleSessionLocation } from "../lib/sessionLocation";
 
 const router = Router();
 
@@ -116,12 +117,12 @@ async function calculateCommission(
   };
 }
 
-async function sessionToJson(s: typeof sessionsTable.$inferSelect) {
+async function sessionToJson(s: typeof sessionsTable.$inferSelect, viewer?: AuthRequest["user"]) {
   let tutorName: string | null = null;
   let studentName: string | null = null;
 
   const [tutorRow] = await db
-    .select({ firstName: usersTable.firstName, lastName: usersTable.lastName })
+    .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, userId: tutorsTable.userId })
     .from(tutorsTable)
     .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
     .where(eq(tutorsTable.id, s.tutorId))
@@ -137,6 +138,38 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect) {
 
   if (student) studentName = student.archivedAt ? "Removed student" : `${student.firstName} ${student.lastName ?? ""}`.trim();
   const [payment] = await db.select({ status: paymentsTable.status }).from(paymentsTable).where(eq(paymentsTable.sessionId, s.id)).limit(1);
+  let parentAddress: string | null = null;
+  let parentActive = false;
+  let parentApproved = false;
+  if (viewer?.role === "tutor" && student && !student.archivedAt && student.parentId && s.lessonMode === "in_person"
+    && (s.status === "scheduled" || s.status === "completed")) {
+    const [parent] = await db.select({
+      address: usersTable.address,
+      role: usersTable.role,
+      isActive: usersTable.isActive,
+      archivedAt: usersTable.archivedAt,
+      parentApproved: usersTable.parentApproved,
+    })
+      .from(usersTable).where(eq(usersTable.id, student.parentId)).limit(1);
+    if (parent?.role === "parent" && parent.isActive && !parent.archivedAt && parent.parentApproved) {
+      parentAddress = parent.address;
+      parentActive = true;
+      parentApproved = true;
+    }
+  }
+  const locationAddress = viewer
+    ? visibleSessionLocation({
+        viewerRole: viewer.role,
+        viewerId: viewer.id,
+        tutorUserId: tutorRow?.userId ?? null,
+        status: s.status,
+        lessonMode: s.lessonMode,
+        parentAddress,
+        studentActive: Boolean(student && !student.archivedAt),
+        parentActive,
+        parentApproved,
+      })
+    : null;
 
   return {
     id: s.id,
@@ -147,6 +180,7 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect) {
     durationMinutes: s.durationMinutes,
     status: s.status,
     lessonMode: s.lessonMode,
+    locationAddress,
     requestExpiresAt: s.requestExpiresAt?.toISOString() ?? null,
     cancellationReason: s.cancellationReason,
     paymentStatus: payment?.status ?? null,
@@ -282,7 +316,7 @@ router.get("/sessions", requireAuth, async (req, res) => {
     ? await db.select().from(sessionsTable).where(and(...conditions))
     : await db.select().from(sessionsTable);
 
-  const result = await Promise.all(sessions.map(sessionToJson));
+  const result = await Promise.all(sessions.map((session) => sessionToJson(session, user)));
   res.json(result);
 });
 
@@ -358,7 +392,8 @@ router.post("/sessions/:sessionId/decision", requireAuth, async (req, res) => {
   const parsed = DecideSessionRequestBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Choose accept or decline" }); return; }
   try {
-    res.json(await sessionToJson(await decideBooking(Number(req.params.sessionId), (req as AuthRequest).user, parsed.data.decision)));
+    const user = (req as AuthRequest).user;
+    res.json(await sessionToJson(await decideBooking(Number(req.params.sessionId), user, parsed.data.decision), user));
   } catch (err) {
     if (err instanceof BookingError) { res.status(err.statusCode).json({ error: err.message }); return; }
     throw err;
@@ -417,7 +452,7 @@ router.get("/sessions/:sessionId", requireAuth, async (req, res) => {
     }
   }
 
-  res.json(await sessionToJson(session));
+  res.json(await sessionToJson(session, user));
 });
 
 router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
@@ -490,7 +525,7 @@ router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
       .returning();
   }
 
-  const sessionJson = await sessionToJson(updated);
+  const sessionJson = await sessionToJson(updated, (req as AuthRequest).user);
 
   const [tutorRow] = await db
     .select({ firstName: usersTable.firstName, lastName: usersTable.lastName })
@@ -591,7 +626,8 @@ router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
 
 router.post("/sessions/:sessionId/cancel", requireAuth, async (req, res) => {
   try {
-    res.json(await sessionToJson(await cancelBooking(Number(req.params.sessionId), (req as AuthRequest).user)));
+    const user = (req as AuthRequest).user;
+    res.json(await sessionToJson(await cancelBooking(Number(req.params.sessionId), user), user));
   } catch (err) {
     if (err instanceof BookingError) { res.status(err.statusCode).json({ error: err.message }); return; }
     throw err;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useAuth } from "@/context/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetMyPromotion,
@@ -9,12 +10,9 @@ import {
   type PromotionActionUpdateAction,
 } from "@workspace/api-client-react";
 import { UserPlus, ChevronRight, Check, Copy, Share2, Mail, Megaphone } from "lucide-react";
+import { tutorProfilePath } from "@/lib/tutorProfileLink";
 
 type ActionKey = PromotionActionUpdateAction;
-
-function profileLink(tutorId: number) {
-  return `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/tutor/${tutorId}`;
-}
 
 function buildText(action: ActionKey, url: string) {
   if (action === "invite_family") {
@@ -47,6 +45,7 @@ function Dot({ done }: { done: boolean }) {
 }
 
 export default function GetMoreStudents({ tutorId, profileComplete, hasAvailability }: { tutorId: number; profileComplete: boolean; hasAvailability: boolean }) {
+  const { user } = useAuth();
   const qc = useQueryClient();
   const promotion = useGetMyPromotion();
   const update = useUpdateMyPromotion();
@@ -54,7 +53,9 @@ export default function GetMoreStudents({ tutorId, profileComplete, hasAvailabil
   const [savingKey, setSavingKey] = useState<ActionKey | null>(null);
 
   const completed = new Set<string>(promotion.data?.completedActions ?? []);
-  const url = profileLink(tutorId);
+  const url = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}${tutorProfilePath({
+    id: tutorId, firstName: user?.firstName ?? "", lastName: user?.lastName ?? "",
+  })}`;
   const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
   const setMsg = (key: ActionKey, text: string, error = false) => setFeedback((f) => ({ ...f, [key]: { text, error } }));

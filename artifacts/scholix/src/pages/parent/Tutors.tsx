@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useListTutors } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { GraduationCap, Star, Search, ShieldCheck, Award, Monitor, MapPin, Layers } from "lucide-react";
+import { tutorProfilePath } from "@/lib/tutorProfileLink";
 
 type ModeFilter = "all" | "online" | "in_person" | "both";
 
@@ -149,7 +150,7 @@ export default function ParentTutors() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <Link
-                            href={`/tutor/${tutor.id}`}
+                            href={tutorProfilePath(tutor)}
                             className="text-sm font-bold text-foreground hover:text-primary transition-colors hover:underline"
                           >
                             {tutor.firstName} {tutor.lastName}
@@ -212,7 +213,7 @@ export default function ParentTutors() {
 
                 <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-2">
                   <Link
-                    href={`/tutor/${tutor.id}`}
+                    href={tutorProfilePath(tutor)}
                     className="flex items-center justify-center py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:border-primary/40 hover:text-primary transition-colors"
                   >
                     View profile

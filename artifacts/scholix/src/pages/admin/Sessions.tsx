@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import StatusBadge from "@/components/StatusBadge";
 import { Calendar } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { tutorProfilePathFromDisplayName } from "@/lib/tutorProfileLink";
 
 export default function AdminSessions() {
   const sessions = useListSessions(undefined);
@@ -94,7 +95,7 @@ export default function AdminSessions() {
           ) : detail.data && (
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <dt className="text-muted-foreground">Subject</dt><dd>{detail.data.subject}</dd>
-              <dt className="text-muted-foreground">Tutor</dt><dd><Link className="text-primary underline" href={`/tutor/${detail.data.tutorId}`}>{detail.data.tutorName ?? `Tutor #${detail.data.tutorId}`}</Link></dd>
+              <dt className="text-muted-foreground">Tutor</dt><dd><Link className="text-primary underline" href={tutorProfilePathFromDisplayName(detail.data.tutorId, detail.data.tutorName)}>{detail.data.tutorName ?? `Tutor #${detail.data.tutorId}`}</Link></dd>
               <dt className="text-muted-foreground">Student</dt><dd>{detail.data.studentName ?? `Student #${detail.data.studentId}`}</dd>
               <dt className="text-muted-foreground">Scheduled</dt><dd>{format(parseISO(detail.data.scheduledAt), "PPpp")}</dd>
               <dt className="text-muted-foreground">Duration</dt><dd>{detail.data.durationMinutes} minutes</dd>

@@ -76,6 +76,7 @@ import type {
   TutorProfile,
   TutorPromotion,
   TutorRelationship,
+  TutorStudent,
   UpdateTutorProfileBody,
   UpsertRelationshipBody,
   User,
@@ -2266,9 +2267,9 @@ export const getGetTutorStudentsUrl = (tutorId: number,) => {
 /**
  * @summary Get students associated with a tutor
  */
-export const getTutorStudents = async (tutorId: number, options?: Parameters<typeof customFetch>[1]): Promise<Student[]> => {
+export const getTutorStudents = async (tutorId: number, options?: Parameters<typeof customFetch>[1]): Promise<TutorStudent[]> => {
 
-  return customFetch<Student[]>(getGetTutorStudentsUrl(tutorId),
+  return customFetch<TutorStudent[]>(getGetTutorStudentsUrl(tutorId),
   {
     ...options,
     method: 'GET'

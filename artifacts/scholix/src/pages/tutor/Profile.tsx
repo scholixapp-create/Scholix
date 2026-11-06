@@ -6,6 +6,7 @@ import { useTutorMe, TUTOR_ME_QUERY_KEY } from "@/hooks/useTutorMe";
 import QualificationsEditor from "@/components/QualificationsEditor";
 import { Link } from "wouter";
 import { ChevronRight, CheckCircle, ExternalLink, User, BookOpen, Clock } from "lucide-react";
+import { tutorProfilePath } from "@/lib/tutorProfileLink";
 
 export default function TutorProfile() {
   const { user } = useAuth();
@@ -48,7 +49,9 @@ export default function TutorProfile() {
   };
 
   const initials = `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`.toUpperCase();
-  const profileUrl = tutorId ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/tutor/${tutorId}` : null;
+  const profileUrl = tutorId && user
+    ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}${tutorProfilePath({ id: tutorId, firstName: user.firstName, lastName: user.lastName })}`
+    : null;
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
