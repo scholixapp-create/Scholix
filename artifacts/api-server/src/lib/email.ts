@@ -140,13 +140,15 @@ const EMAIL_PALETTE = {
 
 function emailWrapper(headerText: string, body: string) {
   const title = escapeHtml(headerText);
+  const logoUrl = escapeHtml(`${config.frontendUrl.replace(/\/+$/, "")}/brand/Scholix-star.svg`);
   return `
     <div style="margin:0;padding:24px 12px;background:${EMAIL_PALETTE.cream};font-family:Arial,Helvetica,sans-serif;color:${EMAIL_PALETTE.ink}">
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;margin:0 auto;border-collapse:separate;border-spacing:0">
         <tr>
           <td align="center" style="padding:22px 20px 20px;background:${EMAIL_PALETTE.navy};border-radius:14px 14px 0 0">
             <p style="margin:0 0 8px;color:${EMAIL_PALETTE.white};font-size:22px;font-weight:700;letter-spacing:.2px">
-              <span style="color:${EMAIL_PALETTE.gold}">★</span> Scholix
+              <img src="${logoUrl}" width="24" height="24" alt="" style="vertical-align:middle;margin-right:7px">
+              Scholix
             </p>
             <h1 style="margin:0;color:${EMAIL_PALETTE.white};font-size:18px;line-height:1.35;font-weight:700">${title}</h1>
           </td>

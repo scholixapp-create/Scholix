@@ -1,11 +1,17 @@
 import { Router } from "express";
 import PDFDocument from "pdfkit";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { db, invoicesTable, sessionsTable, tutorsTable, studentsTable, usersTable, paymentsTable } from "@workspace/db";
 import { eq, inArray } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
 import { canAccessInvoice, parseInvoiceId, resolveInvoiceListScope } from "../lib/invoiceAccess";
 
 const router = Router();
+const SCHOLIX_STAR_PATH = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../assets/scholix-star.png",
+);
 
 function formatInvoiceNumber(scheduledAt: Date, studentId: number, tutorId: number): string {
   const yy = String(scheduledAt.getFullYear()).slice(-2);
@@ -233,15 +239,17 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
   const LIGHT_CREAM = "#faf7f0", BORDER = "#e7e1d5", MID_GRAY = "#596579", DARK = "#0f2747";
 
   // Header
-  doc.rect(0, 0, doc.page.width, 80).fill(NAV);
-  doc.rect(50, 72, doc.page.width - 100, 4).fill(GOLD);
-  doc.fontSize(22).fillColor("#ffffff").font("Helvetica-Bold").text("SCHOLIX", 50, 25);
-  doc.fontSize(9).fillColor("rgba(255,255,255,0.65)").font("Helvetica").text("Tutoring Platform", 50, 50);
+  doc.rect(0, 0, doc.page.width, 84).fill(NAV);
+  doc.rect(0, 80, doc.page.width, 4).fill(ACCENT);
+  doc.rect(50, 76, doc.page.width - 100, 3).fill(GOLD);
+  doc.image(SCHOLIX_STAR_PATH, 50, 22, { fit: [30, 30] });
+  doc.fontSize(21).fillColor("#ffffff").font("Helvetica-Bold").text("Scholix", 88, 27);
+  doc.fontSize(9).fillColor("#faf7f0").font("Helvetica").text("Tutor session invoice", 88, 53);
   doc.fontSize(20).fillColor("#ffffff").font("Helvetica-Bold").text("INVOICE", 0, 30, { align: "right" });
   doc.fontSize(9).fillColor("rgba(255,255,255,0.65)").font("Helvetica").text(`#${invoiceNum}`, 0, 53, { align: "right" });
 
   // Date / session metadata row
-  let y = 105;
+  let y = 108;
   doc.fontSize(8).fillColor(MID_GRAY).font("Helvetica")
     .text("DATE ISSUED", 50, y)
     .text("SESSION DATE", 200, y)
@@ -310,7 +318,7 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
   doc.rect(0, footerY, doc.page.width, 60).fill(LIGHT_CREAM);
   doc.fontSize(8).fillColor(MID_GRAY).font("Helvetica")
     .text(betaPayment ? "Scholix beta: payment is simulated. No online charge has been made." : "Thank you for using Scholix.", 50, footerY + 20, { align: "center", width: doc.page.width - 100 })
-    .text(`Invoice ${invoiceNum} · Generated ${invoiceDate} · scholix.app`, 50, footerY + 35, { align: "center", width: doc.page.width - 100 });
+    .text(`Invoice ${invoiceNum} · Generated ${invoiceDate} · scholix.com.au`, 50, footerY + 35, { align: "center", width: doc.page.width - 100 });
   doc.rect(50, footerY - 20, doc.page.width - 100, 16).fill(ACCENT);
   doc.fontSize(7.5).fillColor("#ffffff").font("Helvetica-Bold").text("PAYMENT RECEIVED: THANK YOU", 0, footerY - 14, { align: "center" });
 

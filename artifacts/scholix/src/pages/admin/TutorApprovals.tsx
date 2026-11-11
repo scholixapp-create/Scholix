@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import EducationReviewPanel, { hasPendingEducation, type EducationFields } from "@/components/admin/EducationReviewPanel";
 import { GraduationCap, CheckCircle, XCircle, Clock, FileText, Download, Eye, Shield, AlertTriangle, ChevronDown } from "lucide-react";
+import { openProtectedDocument } from "@/lib/protectedDocument";
 
 interface TutorWithDocs extends EducationFields {
   id: number;
@@ -95,6 +96,8 @@ export default function AdminTutorApprovals() {
   const [expanded, setExpanded] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [showNotes, setShowNotes] = useState<Record<number, boolean>>({});
+  const [openingDocument, setOpeningDocument] = useState<number | null>(null);
+  const [documentError, setDocumentError] = useState("");
 
   const fetchTutors = () => {
     setLoading(true);
@@ -302,22 +305,35 @@ export default function AdminTutorApprovals() {
                     {tutor.documents.length > 0 && (
                       <div>
                         <p className="text-xs font-semibold text-foreground mb-2">Uploaded Documents</p>
+                        {documentError && <p role="alert" className="text-xs text-destructive mb-2">{documentError}</p>}
                         <div className="space-y-1.5">
                           {tutor.documents.map((doc) => (
-                            <a
+                            <button
                               key={doc.id}
-                              href={`/api/admin/documents/${doc.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border hover:border-primary/40 transition-colors"
+                              type="button"
+                              disabled={openingDocument !== null}
+                              onClick={async () => {
+                                setOpeningDocument(doc.id);
+                                setDocumentError("");
+                                try {
+                                  await openProtectedDocument(doc.id, getToken());
+                                } catch (error) {
+                                  setDocumentError(error instanceof Error ? error.message : "Unable to open document.");
+                                } finally {
+                                  setOpeningDocument(null);
+                                }
+                              }}
+                              className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border hover:border-primary/40 disabled:opacity-60 transition-colors"
                             >
                               <FileText size={13} className="text-primary shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium text-foreground truncate">{doc.originalName}</p>
                                 <p className="text-[10px] text-muted-foreground capitalize">{doc.docType} document</p>
                               </div>
-                              <Download size={12} className="text-muted-foreground shrink-0" />
-                            </a>
+                              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
+                                <Download size={12} /> {openingDocument === doc.id ? "Opening…" : "View"}
+                              </span>
+                            </button>
                           ))}
                         </div>
                       </div>

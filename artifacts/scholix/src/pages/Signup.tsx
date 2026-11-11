@@ -4,7 +4,7 @@ import { Link, useLocation, useSearch } from "wouter";
 import { postAuthDestination, resolveSafeRedirect, withRedirect } from "@/lib/navigation";
 import { useSignup, useVerifyReapplication } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
-import { AlertCircle, Phone, Users, ShieldCheck, RefreshCw, ArrowLeft, Clock, Home } from "lucide-react";
+import { AlertCircle, Phone, Users, ShieldCheck, RefreshCw, ArrowLeft, Clock, Home, Eye, EyeOff } from "lucide-react";
 import TestModeBanner from "@/components/TestModeBanner";
 
 type Role = "tutor" | "parent";
@@ -79,6 +79,7 @@ export default function Signup() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [phoneError, setPhoneError] = useState("");
@@ -450,15 +451,26 @@ export default function Signup() {
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Min 6 characters"
-                minLength={6}
-                required
-                className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Min 6 characters"
+                  minLength={6}
+                  required
+                  className="w-full px-3 pr-10 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-colors"
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((shown) => !shown)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               {password && (() => {
                 const str = getPasswordStrength(password);
                 const filled = str.score <= 1 ? 1 : str.score === 2 ? 2 : str.score === 3 ? 3 : 4;
