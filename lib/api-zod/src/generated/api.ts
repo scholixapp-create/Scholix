@@ -467,16 +467,139 @@ export const SetTutorAvailabilityResponse = zod.array(SetTutorAvailabilityRespon
 
 
 /**
+ * @summary List a tutor's blocked date ranges
+ */
+
+
+
+export const GetTutorUnavailablePeriodsParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1)
+})
+
+export const getTutorUnavailablePeriodsResponseNoteMax = 160;
+
+
+
+export const GetTutorUnavailablePeriodsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "startDate": zod.string().describe('YYYY-MM-DD'),
+  "endDate": zod.string().describe('YYYY-MM-DD'),
+  "note": zod.string().max(getTutorUnavailablePeriodsResponseNoteMax).nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const GetTutorUnavailablePeriodsResponse = zod.array(GetTutorUnavailablePeriodsResponseItem)
+
+
+/**
+ * @summary Block a tutor date range
+ */
+
+
+
+export const CreateTutorUnavailablePeriodParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1)
+})
+
+export const createTutorUnavailablePeriodBodyNoteMax = 160;
+
+
+
+export const CreateTutorUnavailablePeriodBody = zod.object({
+  "startDate": zod.string().describe('YYYY-MM-DD'),
+  "endDate": zod.string().describe('YYYY-MM-DD'),
+  "note": zod.string().max(createTutorUnavailablePeriodBodyNoteMax).optional()
+})
+
+export const createTutorUnavailablePeriodResponseNoteMax = 160;
+
+
+
+export const CreateTutorUnavailablePeriodResponse = zod.object({
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "startDate": zod.string().describe('YYYY-MM-DD'),
+  "endDate": zod.string().describe('YYYY-MM-DD'),
+  "note": zod.string().max(createTutorUnavailablePeriodResponseNoteMax).nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a tutor's blocked date range
+ */
+
+
+
+
+export const DeleteTutorUnavailablePeriodParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1),
+  "periodId": zod.coerce.number().int().min(1)
+})
+
+export const DeleteTutorUnavailablePeriodResponse = zod.void()
+
+
+/**
+ * @summary Offer an available lesson time to a student's parent
+ */
+
+
+
+export const CreateTutorLessonOfferParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1)
+})
+
+
+export const createTutorLessonOfferBodySubjectMax = 200;
+
+
+
+export const CreateTutorLessonOfferBody = zod.object({
+  "studentId": zod.number().int().min(1),
+  "subject": zod.string().min(1).max(createTutorLessonOfferBodySubjectMax),
+  "scheduledAt": zod.string().describe('ISO date-time with explicit timezone'),
+  "durationMinutes": zod.union([zod.literal(30),zod.literal(45),zod.literal(60),zod.literal(90)]),
+  "lessonMode": zod.enum(['online', 'in_person'])
+})
+
+export const CreateTutorLessonOfferResponse = zod.object({
+  "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
+  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "tutorConfirmedAt": zod.string().nullish(),
+  "requestExpiresAt": zod.string().nullish(),
+  "cancellationReason": zod.string().nullish(),
+  "paymentStatus": zod.string().nullish(),
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "subject": zod.string(),
+  "scheduledAt": zod.string(),
+  "durationMinutes": zod.number().int(),
+  "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
+  "isPaid": zod.boolean(),
+  "totalAmount": zod.number(),
+  "tutorName": zod.string().nullish(),
+  "studentName": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary Get dynamically computed available start times for a tutor on a given date
  */
 export const GetTutorAvailableSlotsParams = zod.object({
   "tutorId": zod.coerce.number().int()
 })
 
+
+
+
 export const GetTutorAvailableSlotsQueryParams = zod.object({
   "lessonMode": zod.enum(['online', 'in_person']).optional(),
   "date": zod.coerce.string().describe('YYYY-MM-DD'),
-  "duration": zod.coerce.number().int().describe('Session duration in minutes')
+  "duration": zod.coerce.number().int().describe('Session duration in minutes'),
+  "studentId": zod.coerce.number().int().min(1).optional().describe('Optional student for an authenticated tutor\'s relationship-specific availability')
 })
 
 export const GetTutorAvailableSlotsResponse = zod.object({
@@ -749,6 +872,7 @@ export const ListSessionsQueryParams = zod.object({
 export const ListSessionsResponseItem = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
   "paymentStatus": zod.string().nullish(),
@@ -784,6 +908,7 @@ export const CreateSessionBody = zod.object({
 export const CreateSessionResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
   "paymentStatus": zod.string().nullish(),
@@ -812,6 +937,7 @@ export const GetSessionParams = zod.object({
 export const GetSessionResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
   "paymentStatus": zod.string().nullish(),
@@ -841,6 +967,7 @@ export const CompleteSessionResponse = zod.object({
   "session": zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
   "paymentStatus": zod.string().nullish(),
@@ -890,6 +1017,7 @@ export const DecideSessionRequestBody = zod.object({
 export const DecideSessionRequestResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
   "paymentStatus": zod.string().nullish(),
@@ -918,6 +1046,7 @@ export const CancelSessionParams = zod.object({
 export const CancelSessionResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
   "paymentStatus": zod.string().nullish(),

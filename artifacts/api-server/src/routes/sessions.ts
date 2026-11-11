@@ -183,6 +183,7 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect, viewer?: Auth
     lessonMode: s.lessonMode,
     locationAddress,
     requestExpiresAt: s.requestExpiresAt?.toISOString() ?? null,
+    tutorConfirmedAt: s.tutorConfirmedAt?.toISOString() ?? null,
     cancellationReason: s.cancellationReason,
     paymentStatus: payment?.status ?? null,
     isPaid: s.isPaid,

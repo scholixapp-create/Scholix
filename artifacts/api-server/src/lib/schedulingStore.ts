@@ -1,9 +1,13 @@
-import { db, tutorsTable, availabilityTable, sessionsTable, tutorRelationshipsTable, studentsTable } from "@workspace/db";
-import { and, eq, inArray } from "drizzle-orm";
+import { db, tutorsTable, availabilityTable, tutorUnavailablePeriodsTable, sessionsTable, tutorRelationshipsTable, studentsTable } from "@workspace/db";
+import { and, eq, inArray, lte, gte } from "drizzle-orm";
 import { BookingError, generateSlots, validDate, type LessonMode } from "./scheduling";
 
 type Store = Pick<typeof db, "select">;
 type Tutor = typeof tutorsTable.$inferSelect;
+
+export function isDateUnavailable(date: string, periods: ReadonlyArray<{ startDate: string; endDate: string }>) {
+  return periods.some((period) => period.startDate <= date && date <= period.endDate);
+}
 
 export async function tutorSlots(store: Store, tutor: Tutor, parentId: number | null,
   date: string, duration: number, requestedMode?: LessonMode, now = new Date()) {
@@ -23,6 +27,11 @@ export async function tutorSlots(store: Store, tutor: Tutor, parentId: number | 
   }
   const buffer = Math.max(0, relationship?.travelBufferMinutes ?? tutor.travelBufferMinutes ?? 0);
   const windows = await store.select().from(availabilityTable).where(eq(availabilityTable.tutorId, tutor.id));
+  const unavailable = await store.select().from(tutorUnavailablePeriodsTable).where(and(
+    eq(tutorUnavailablePeriodsTable.tutorId, tutor.id),
+    lte(tutorUnavailablePeriodsTable.startDate, date),
+    gte(tutorUnavailablePeriodsTable.endDate, date),
+  )).limit(1);
   const sessions = await store.select({
     session: sessionsTable, legacyMode: tutorRelationshipsTable.lessonMode,
     legacyBuffer: tutorRelationshipsTable.travelBufferMinutes,
@@ -39,5 +48,5 @@ export async function tutorSlots(store: Store, tutor: Tutor, parentId: number | 
       lessonMode: (s.lessonMode ?? legacyMode ?? (tutor.teachingMode === "online" ? "online" : "in_person")) as LessonMode,
       travelBufferMinutes: s.travelBufferMinutes ?? legacyBuffer ?? tutor.travelBufferMinutes ?? 0,
     }));
-  return { ...generateSlots({ date, duration, mode, buffer, windows, booked, now }), buffer };
+  return { ...generateSlots({ date, duration, mode, buffer, windows: isDateUnavailable(date, unavailable) ? [] : windows, booked, now }), buffer };
 }

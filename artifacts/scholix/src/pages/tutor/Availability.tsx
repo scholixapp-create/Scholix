@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getGetTutorAvailabilityQueryKey, getListTutorsQueryKey } from "@workspace/api-client-react";
 import { CheckCircle, DollarSign, BookOpen, AlertCircle, Clock, MapPin, Wifi } from "lucide-react";
 import { VICTORIAN_SUBJECTS } from "@/lib/subjects";
+import UnavailablePeriodsCard from "@/components/tutor/UnavailablePeriodsCard";
 
 type TeachingMode = "online" | "in_person" | "both";
 
@@ -182,6 +183,8 @@ export default function TutorAvailability() {
         <h1 className="text-xl font-bold text-foreground">Availability</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Set your weekly availability windows and session lengths</p>
       </div>
+
+      {tutorId && <UnavailablePeriodsCard tutorId={tutorId} />}
 
       {/* ── Weekly availability windows ─────────────────────────────────── */}
       <div className="bg-card border border-card-border rounded-2xl overflow-hidden mb-4">

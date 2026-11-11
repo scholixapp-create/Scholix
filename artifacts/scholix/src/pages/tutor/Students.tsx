@@ -4,10 +4,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useListTutors, useGetTutorStudents, useListSessions, useGetTutorRelationships, useUpsertTutorRelationship } from "@workspace/api-client-react";
 import { getGetTutorRelationshipsQueryKey } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, GraduationCap, BookOpen, Target, Settings2, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Users, GraduationCap, BookOpen, Target, Settings2, Check, ChevronDown, ChevronUp, CalendarPlus } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import { SessionModeLocation } from "@/components/tutor/SessionContext";
+import OfferLessonTimeDialog from "@/components/tutor/OfferLessonTimeDialog";
 
 type LessonModeOverride = "online" | "in_person" | null;
 
@@ -200,6 +201,7 @@ export default function TutorStudents() {
   });
 
   const [expandedPrefs, setExpandedPrefs] = useState<Set<number>>(new Set());
+  const [offeringStudentId, setOfferingStudentId] = useState<number | null>(null);
 
   const togglePrefs = (parentId: number) => {
     setExpandedPrefs((prev) => {
@@ -347,6 +349,29 @@ export default function TutorStudents() {
                 )}
 
                 <StudentProgressHistory studentId={student.id} initiallyOpen={selectedStudentId === student.id} />
+
+                {parentId && tutorId && tutorProfile && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setOfferingStudentId(student.id)}
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-primary/30 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/5 transition-colors"
+                    >
+                      <CalendarPlus size={13} /> Offer a lesson time
+                    </button>
+                    <OfferLessonTimeDialog
+                      open={offeringStudentId === student.id}
+                      onClose={() => setOfferingStudentId(null)}
+                      tutorId={tutorId}
+                      studentId={student.id}
+                      studentName={displayName}
+                      subjects={tutorProfile.subjects ?? []}
+                      durations={tutorProfile.sessionDurations ?? [60, 90]}
+                      teachingMode={tutorProfile.teachingMode ?? "online"}
+                      preferredMode={rel?.lessonMode === "online" || rel?.lessonMode === "in_person" ? rel.lessonMode : null}
+                    />
+                  </>
+                )}
 
                 {parentId && tutorId && (
                   <div className="mt-3 pt-3 border-t border-border">

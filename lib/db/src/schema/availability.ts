@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, boolean, date as pgDate, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { tutorsTable } from "./tutors";
@@ -17,6 +17,17 @@ export const availabilityTable = pgTable("availability", {
   date: text("date"),
   isBooked: boolean("is_booked").default(false),
 });
+
+export const tutorUnavailablePeriodsTable = pgTable("tutor_unavailable_periods", {
+  id: serial("id").primaryKey(),
+  tutorId: integer("tutor_id").notNull().references(() => tutorsTable.id, { onDelete: "cascade" }),
+  startDate: pgDate("start_date", { mode: "string" }).notNull(),
+  endDate: pgDate("end_date", { mode: "string" }).notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("tutor_unavailable_periods_tutor_dates_idx").on(table.tutorId, table.startDate, table.endDate),
+]);
 
 export const insertAvailabilitySchema = createInsertSchema(availabilityTable).omit({ id: true });
 export type InsertAvailability = z.infer<typeof insertAvailabilitySchema>;

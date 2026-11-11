@@ -462,6 +462,102 @@ paths:
                 items:
                   $ref: "#/components/schemas/AvailabilitySlot"
 
+  /tutors/{tutorId}/unavailable-periods:
+    get:
+      operationId: getTutorUnavailablePeriods
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: List a tutor's blocked date ranges
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Blocked date ranges
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TutorUnavailablePeriod" }
+        "401": { description: Authentication required }
+        "403": { description: Tutor owner or admin required }
+    post:
+      operationId: createTutorUnavailablePeriod
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Block a tutor date range
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TutorUnavailablePeriodInput" }
+      responses:
+        "201":
+          description: Date range blocked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TutorUnavailablePeriod" }
+        "400": { description: Invalid date range }
+        "401": { description: Authentication required }
+        "403": { description: Tutor owner or admin required }
+        "409": { description: The range overlaps an existing booking or blocked period }
+
+  /tutors/{tutorId}/unavailable-periods/{periodId}:
+    delete:
+      operationId: deleteTutorUnavailablePeriod
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Remove a tutor's blocked date range
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: periodId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "204": { description: Date range removed }
+        "401": { description: Authentication required }
+        "403": { description: Tutor owner or admin required }
+        "404": { description: Date range not found }
+
+  /tutors/{tutorId}/offers:
+    post:
+      operationId: createTutorLessonOffer
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Offer an available lesson time to a student's parent
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TutorLessonOfferInput" }
+      responses:
+        "201":
+          description: Lesson time offered; parent acceptance is still required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { description: Invalid offer or unavailable time }
+        "401": { description: Authentication required }
+        "403": { description: Tutor owner or active approved parent required }
+        "404": { description: Tutor or student not found }
+        "409": { description: Time is already reserved or conflicts with an existing booking }
+
   /tutors/{tutorId}/available-slots:
     get:
       operationId: getTutorAvailableSlots
@@ -488,6 +584,13 @@ paths:
           schema:
             type: integer
           description: "Session duration in minutes"
+        - name: studentId
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+          description: "Optional student for an authenticated tutor's relationship-specific availability"
       responses:
         "200":
           description: Available start times
@@ -1470,6 +1573,37 @@ components:
           type: integer
           description: "Buffer time in minutes the tutor requires between travel sessions"
 
+    TutorUnavailablePeriod:
+      type: object
+      properties:
+        id: { type: integer }
+        tutorId: { type: integer }
+        startDate: { type: string, description: "YYYY-MM-DD" }
+        endDate: { type: string, description: "YYYY-MM-DD" }
+        note: { type: ["string", "null"], maxLength: 160 }
+        createdAt: { type: string, format: date-time }
+      required: [id, tutorId, startDate, endDate, createdAt]
+
+    TutorUnavailablePeriodInput:
+      type: object
+      additionalProperties: false
+      properties:
+        startDate: { type: string, description: "YYYY-MM-DD" }
+        endDate: { type: string, description: "YYYY-MM-DD" }
+        note: { type: string, maxLength: 160 }
+      required: [startDate, endDate]
+
+    TutorLessonOfferInput:
+      type: object
+      additionalProperties: false
+      properties:
+        studentId: { type: integer, minimum: 1 }
+        subject: { type: string, minLength: 1, maxLength: 200 }
+        scheduledAt: { type: string, description: "ISO date-time with explicit timezone" }
+        durationMinutes: { type: integer, enum: [30, 45, 60, 90] }
+        lessonMode: { type: string, enum: [online, in_person] }
+      required: [studentId, subject, scheduledAt, durationMinutes, lessonMode]
+
     AvailabilitySlot:
       type: object
       description: A recurring weekly availability window for a tutor
@@ -1675,6 +1809,7 @@ components:
       properties:
         lessonMode: { type: [string, "null"], enum: [online, in_person, null] }
         locationAddress: { type: [string, "null"], description: "Only returned to the assigned tutor for a scheduled or completed in-person lesson." }
+        tutorConfirmedAt: { type: ["string", "null"] }
         requestExpiresAt: { type: [string, "null"] }
         cancellationReason: { type: [string, "null"] }
         paymentStatus: { type: [string, "null"] }

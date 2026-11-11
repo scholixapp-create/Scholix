@@ -1,10 +1,15 @@
 import { Router } from "express";
-import { db, tutorsTable, usersTable, availabilityTable, studentsTable, sessionsTable, tutorComplianceTable, tutorRelationshipsTable } from "@workspace/db";
-import { eq, inArray, and, isNotNull, isNull } from "drizzle-orm";
-import { UpdateTutorProfileBody, SetTutorAvailabilityBody } from "@workspace/api-zod";
+import { db, tutorsTable, usersTable, availabilityTable, tutorUnavailablePeriodsTable, studentsTable, sessionsTable, tutorComplianceTable, tutorRelationshipsTable } from "@workspace/db";
+import { eq, inArray, and, isNotNull, isNull, lte, gte, asc } from "drizzle-orm";
+import { UpdateTutorProfileBody, SetTutorAvailabilityBody, CreateTutorUnavailablePeriodBody, CreateTutorLessonOfferBody } from "@workspace/api-zod";
 import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
 import { tutorSlots } from "../lib/schedulingStore";
-import { BookingError, type LessonMode } from "../lib/scheduling";
+import { BookingError, localDate, localTime, validDate, type LessonMode } from "../lib/scheduling";
+import { lockBookableStudent } from "../lib/accountRemoval";
+import { lockBookableTutor } from "../lib/bookableTutor";
+import { createNotification } from "../lib/notify";
+import { bookingStatusEmailHtml } from "../lib/email";
+import { config } from "../lib/config";
 
 const router = Router();
 
@@ -218,6 +223,191 @@ router.put("/tutors/:tutorId/availability", requireAuth, async (req, res) => {
   res.json(windows.map(windowToJson));
 });
 
+router.get("/tutors/:tutorId/unavailable-periods", requireAuth, async (req, res) => {
+  const tutorId = Number(req.params.tutorId as string);
+  const actor = (req as AuthRequest).user;
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0) {
+    res.status(400).json({ error: "Invalid tutor ID" }); return;
+  }
+  const [owner] = await db.select({ userId: tutorsTable.userId }).from(tutorsTable)
+    .where(eq(tutorsTable.id, tutorId)).limit(1);
+  if (!owner || (actor.role !== "admin" && (actor.role !== "tutor" || owner.userId !== actor.id))) {
+    res.status(403).json({ error: "Only this tutor or an admin can view blocked dates" }); return;
+  }
+  const periods = await db.select().from(tutorUnavailablePeriodsTable)
+    .where(eq(tutorUnavailablePeriodsTable.tutorId, tutorId))
+    .orderBy(asc(tutorUnavailablePeriodsTable.startDate));
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(periods);
+});
+
+router.post("/tutors/:tutorId/unavailable-periods", requireAuth, async (req, res) => {
+  const tutorId = Number(req.params.tutorId as string);
+  const actor = (req as AuthRequest).user;
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0) {
+    res.status(400).json({ error: "Invalid tutor ID" }); return;
+  }
+  const [owner] = await db.select({ userId: tutorsTable.userId }).from(tutorsTable)
+    .where(eq(tutorsTable.id, tutorId)).limit(1);
+  if (!owner || (actor.role !== "admin" && (actor.role !== "tutor" || owner.userId !== actor.id))) {
+    res.status(403).json({ error: "Only this tutor or an admin can block dates" }); return;
+  }
+  const parsed = CreateTutorUnavailablePeriodBody.safeParse(req.body);
+  if (!parsed.success || !validDate(parsed.data?.startDate ?? "") || !validDate(parsed.data?.endDate ?? "")
+    || parsed.data.startDate > parsed.data.endDate || parsed.data.startDate < localDate(new Date())) {
+    res.status(400).json({ error: "Choose a date range starting today or later, with the end date on or after the start date" }); return;
+  }
+  const now = new Date();
+  try {
+    const period = await db.transaction(async (tx) => {
+      await tx.select({ id: tutorsTable.id }).from(tutorsTable)
+        .where(eq(tutorsTable.id, tutorId)).for("update");
+      const overlap = await tx.select({ id: tutorUnavailablePeriodsTable.id })
+        .from(tutorUnavailablePeriodsTable)
+        .where(and(
+          eq(tutorUnavailablePeriodsTable.tutorId, tutorId),
+          lte(tutorUnavailablePeriodsTable.startDate, parsed.data.endDate),
+          gte(tutorUnavailablePeriodsTable.endDate, parsed.data.startDate),
+        )).limit(1);
+      if (overlap.length) throw new BookingError("This date range overlaps an existing blocked period", 409);
+
+      const sessions = await tx.select().from(sessionsTable).where(and(
+        eq(sessionsTable.tutorId, tutorId),
+        inArray(sessionsTable.status, ["pending_payment", "pending_confirmation", "scheduled"]),
+      ));
+      const hasConflicts = sessions.some((session) => {
+        const active = session.status === "scheduled" || (session.requestExpiresAt
+          ? session.requestExpiresAt > now
+          : session.createdAt.getTime() + 15 * 60_000 > now.getTime());
+        if (!active) return false;
+        const date = localDate(session.scheduledAt);
+        return date >= parsed.data.startDate && date <= parsed.data.endDate;
+      });
+      if (hasConflicts) {
+        throw new BookingError("This range contains existing sessions or active booking requests. Reschedule or cancel them first.", 409);
+      }
+      const [created] = await tx.insert(tutorUnavailablePeriodsTable).values({
+        tutorId,
+        startDate: parsed.data.startDate,
+        endDate: parsed.data.endDate,
+        note: parsed.data.note?.trim() || null,
+      }).returning();
+      return created;
+    });
+    res.status(201).json(period);
+  } catch (error) {
+    if (error instanceof BookingError) { res.status(error.statusCode).json({ error: error.message }); return; }
+    throw error;
+  }
+});
+
+router.delete("/tutors/:tutorId/unavailable-periods/:periodId", requireAuth, async (req, res) => {
+  const tutorId = Number(req.params.tutorId as string);
+  const periodId = Number(req.params.periodId as string);
+  const actor = (req as AuthRequest).user;
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0 || !Number.isSafeInteger(periodId) || periodId <= 0) {
+    res.status(400).json({ error: "Invalid blocked date ID" }); return;
+  }
+  const [owner] = await db.select({ userId: tutorsTable.userId }).from(tutorsTable)
+    .where(eq(tutorsTable.id, tutorId)).limit(1);
+  if (!owner || (actor.role !== "admin" && (actor.role !== "tutor" || owner.userId !== actor.id))) {
+    res.status(403).json({ error: "Only this tutor or an admin can remove blocked dates" }); return;
+  }
+  const [deleted] = await db.delete(tutorUnavailablePeriodsTable).where(and(
+    eq(tutorUnavailablePeriodsTable.id, periodId),
+    eq(tutorUnavailablePeriodsTable.tutorId, tutorId),
+  )).returning({ id: tutorUnavailablePeriodsTable.id });
+  if (!deleted) { res.status(404).json({ error: "Blocked date range not found" }); return; }
+  res.status(204).end();
+});
+
+router.post("/tutors/:tutorId/offers", requireAuth, async (req, res) => {
+  const tutorId = Number(req.params.tutorId as string);
+  const actor = (req as AuthRequest).user;
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0) {
+    res.status(400).json({ error: "Invalid tutor ID" }); return;
+  }
+  const parsed = CreateTutorLessonOfferBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid lesson offer" }); return; }
+  const [tutor] = await db.select().from(tutorsTable).where(and(
+    eq(tutorsTable.id, tutorId), eq(tutorsTable.userId, actor.id),
+  )).limit(1);
+  if (actor.role !== "tutor" || !tutor) {
+    res.status(403).json({ error: "Only this tutor can offer a lesson time" }); return;
+  }
+  const start = new Date(parsed.data.scheduledAt);
+  if (!/Z$|[+-]\d{2}:\d{2}$/.test(parsed.data.scheduledAt) || Number.isNaN(start.getTime())
+    || start.getUTCSeconds() || start.getUTCMilliseconds() || start.getUTCMinutes() % 15) {
+    res.status(400).json({ error: "Choose a valid quarter-hour start with an explicit timezone" }); return;
+  }
+  const subject = parsed.data.subject.trim();
+  if (!subject || subject.length > 200) { res.status(400).json({ error: "Enter a valid lesson subject" }); return; }
+  try {
+    const session = await db.transaction(async (tx) => {
+      if (!await lockBookableStudent(tx, parsed.data.studentId) || !await lockBookableTutor(tx, tutorId)) {
+        throw new BookingError("This tutor or student account is inactive or unavailable", 403);
+      }
+      const [currentTutor] = await tx.select().from(tutorsTable).where(eq(tutorsTable.id, tutorId)).limit(1);
+      const [student] = await tx.select({ id: studentsTable.id, parentId: studentsTable.parentId })
+        .from(studentsTable).where(eq(studentsTable.id, parsed.data.studentId)).limit(1);
+      if (!currentTutor || !student?.parentId) throw new BookingError("Student not found", 404);
+      const [parent] = await tx.select({
+        role: usersTable.role, isActive: usersTable.isActive, archivedAt: usersTable.archivedAt,
+        parentApproved: usersTable.parentApproved,
+      }).from(usersTable).where(eq(usersTable.id, student.parentId)).limit(1);
+      if (!parent || parent.role !== "parent" || !parent.isActive || parent.archivedAt || !parent.parentApproved) {
+        throw new BookingError("The student's parent must have an active approved account to receive an offer", 403);
+      }
+      const [previousConnection] = await tx.select({ id: sessionsTable.id }).from(sessionsTable)
+        .where(and(eq(sessionsTable.tutorId, tutorId), eq(sessionsTable.studentId, student.id))).limit(1);
+      if (!previousConnection) throw new BookingError("Lesson offers can only be sent to students in your existing tutor relationship", 403);
+
+      const slots = await tutorSlots(tx, currentTutor, student.parentId, localDate(start),
+        parsed.data.durationMinutes, parsed.data.lessonMode);
+      if (slots.slotInstants[localTime(start)] !== start.toISOString()) {
+        throw new BookingError("That time is no longer available for this family. Choose another slot.");
+      }
+      const now = new Date();
+      const expiresAt = new Date(Math.min(now.getTime() + 24 * 60 * 60_000, start.getTime()));
+      const [created] = await tx.insert(sessionsTable).values({
+        tutorId,
+        studentId: student.id,
+        subject,
+        scheduledAt: start,
+        durationMinutes: parsed.data.durationMinutes,
+        status: "pending_payment",
+        isPaid: false,
+        totalAmount: (currentTutor.hourlyRate * parsed.data.durationMinutes) / 60,
+        lessonMode: slots.lessonMode,
+        travelBufferMinutes: slots.buffer,
+        tutorConfirmedAt: now,
+        requestExpiresAt: expiresAt,
+      }).returning();
+      return { created, parentId: student.parentId };
+    });
+    const title = "Your tutor offered a lesson time";
+    const message = `${subject} on ${localDate(session.created.scheduledAt)} at ${localTime(session.created.scheduledAt)}. Accept by ${session.created.requestExpiresAt?.toLocaleString("en-AU", { timeZone: "Australia/Melbourne" })}. It will be confirmed when you accept; beta payment is simulated and no money is taken.`;
+    await createNotification({
+      userId: session.parentId,
+      type: "action_confirm_session",
+      title,
+      message,
+      actionUrl: "/parent/dashboard",
+      actionLabel: "Review lesson offer",
+      emailSubject: title,
+      emailHtml: bookingStatusEmailHtml({
+        title,
+        message,
+        actionUrl: new URL("/parent/dashboard", config.frontendUrl).toString(),
+      }),
+    });
+    res.status(201).json(session.created);
+  } catch (error) {
+    if (error instanceof BookingError) { res.status(error.statusCode).json({ error: error.message }); return; }
+    throw error;
+  }
+});
+
 // ── Available slots (dynamic) ─────────────────────────────────────────────────
 //
 // GET /tutors/:tutorId/available-slots?date=YYYY-MM-DD&duration=60
@@ -236,8 +426,26 @@ router.get("/tutors/:tutorId/available-slots", async (req, res) => {
     res.status(404).json({ error: "Tutor is unavailable" }); return;
   }
   try {
-    // Never accept a caller-supplied parentId for another family's overrides.
-    const parentId = await getUserIdFromBearer(req.headers.authorization);
+    // Parents use their own token identity. A tutor may specify one of their existing
+    // students so offered times use that family's mode and travel preferences.
+    let parentId = await getUserIdFromBearer(req.headers.authorization);
+    if (req.query.studentId !== undefined) {
+      const studentId = Number(req.query.studentId);
+      if (!Number.isSafeInteger(studentId) || studentId <= 0) {
+        res.status(400).json({ error: "Invalid student ID" }); return;
+      }
+      const [link] = await db.select({
+        parentId: studentsTable.parentId,
+        tutorUserId: tutorsTable.userId,
+      }).from(studentsTable)
+        .innerJoin(sessionsTable, and(eq(sessionsTable.studentId, studentsTable.id), eq(sessionsTable.tutorId, tutorId)))
+        .innerJoin(tutorsTable, eq(tutorsTable.id, sessionsTable.tutorId))
+        .where(eq(studentsTable.id, studentId)).limit(1);
+      if (!link?.parentId || (parentId !== link.parentId && parentId !== link.tutorUserId)) {
+        res.status(403).json({ error: "Student availability is only available to their parent or assigned tutor" }); return;
+      }
+      parentId = link.parentId;
+    }
     const { buffer, ...result } = await tutorSlots(db, tutor, parentId, String(req.query.date ?? ""),
       Number(req.query.duration), mode as LessonMode | undefined);
     res.setHeader("Cache-Control", "no-store");

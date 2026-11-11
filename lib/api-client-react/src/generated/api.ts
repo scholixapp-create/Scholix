@@ -73,10 +73,13 @@ import type {
   SuccessResponse,
   TutorEducation,
   TutorInvoiceSummary,
+  TutorLessonOfferInput,
   TutorProfile,
   TutorPromotion,
   TutorRelationship,
   TutorStudent,
+  TutorUnavailablePeriod,
+  TutorUnavailablePeriodInput,
   UpdateTutorProfileBody,
   UpsertRelationshipBody,
   User,
@@ -2138,6 +2141,361 @@ export const useSetTutorAvailability = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getSetTutorAvailabilityMutationOptions(options), queryClient);
+    }
+
+export const getGetTutorUnavailablePeriodsUrl = (tutorId: number,) => {
+
+
+
+
+  return `/api/tutors/${tutorId}/unavailable-periods`
+}
+
+/**
+ * @summary List a tutor's blocked date ranges
+ */
+export const getTutorUnavailablePeriods = async (tutorId: number, options?: Parameters<typeof customFetch>[1]): Promise<TutorUnavailablePeriod[]> => {
+
+  return customFetch<TutorUnavailablePeriod[]>(getGetTutorUnavailablePeriodsUrl(tutorId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTutorUnavailablePeriodsQueryKey = (tutorId: number,) => {
+    return [
+    `/api/tutors/${tutorId}/unavailable-periods`
+    ] as const;
+    }
+
+
+export const getGetTutorUnavailablePeriodsQueryOptions = <TData = Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError = ErrorType<void>>(tutorId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTutorUnavailablePeriodsQueryKey(tutorId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTutorUnavailablePeriods>>> = ({ signal }) => getTutorUnavailablePeriods(tutorId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: tutorId !== null && tutorId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTutorUnavailablePeriodsQueryResult = NonNullable<Awaited<ReturnType<typeof getTutorUnavailablePeriods>>>
+export type GetTutorUnavailablePeriodsQueryError = ErrorType<void>
+
+
+export function useGetTutorUnavailablePeriods<TData = Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError = ErrorType<void>>(
+ tutorId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTutorUnavailablePeriods>>,
+          TError,
+          Awaited<ReturnType<typeof getTutorUnavailablePeriods>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTutorUnavailablePeriods<TData = Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError = ErrorType<void>>(
+ tutorId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTutorUnavailablePeriods>>,
+          TError,
+          Awaited<ReturnType<typeof getTutorUnavailablePeriods>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTutorUnavailablePeriods<TData = Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError = ErrorType<void>>(
+ tutorId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List a tutor's blocked date ranges
+ */
+
+export function useGetTutorUnavailablePeriods<TData = Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError = ErrorType<void>>(
+ tutorId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorUnavailablePeriods>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTutorUnavailablePeriodsQueryOptions(tutorId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTutorUnavailablePeriodUrl = (tutorId: number,) => {
+
+
+
+
+  return `/api/tutors/${tutorId}/unavailable-periods`
+}
+
+/**
+ * @summary Block a tutor date range
+ */
+export const createTutorUnavailablePeriod = async (tutorId: number,
+    tutorUnavailablePeriodInput: TutorUnavailablePeriodInput, options?: Parameters<typeof customFetch>[1]): Promise<TutorUnavailablePeriod> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TutorUnavailablePeriod>(getCreateTutorUnavailablePeriodUrl(tutorId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(tutorUnavailablePeriodInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTutorUnavailablePeriodMutationKey = () => ['createTutorUnavailablePeriod'] as const;
+
+export const getCreateTutorUnavailablePeriodMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTutorUnavailablePeriod>>, TError,CreateTutorUnavailablePeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTutorUnavailablePeriod>>, TError,CreateTutorUnavailablePeriodMutationVariables, TContext> => {
+
+const mutationKey = getCreateTutorUnavailablePeriodMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTutorUnavailablePeriod>>, CreateTutorUnavailablePeriodMutationVariables> = (props) => {
+          const {tutorId,data} = props ?? {};
+
+          return  createTutorUnavailablePeriod(tutorId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTutorUnavailablePeriodMutationResult = NonNullable<Awaited<ReturnType<typeof createTutorUnavailablePeriod>>>
+    export type CreateTutorUnavailablePeriodMutationBody = BodyType<TutorUnavailablePeriodInput>
+    export type CreateTutorUnavailablePeriodMutationError = ErrorType<void>
+    export type CreateTutorUnavailablePeriodMutationVariables = {tutorId: number;data: BodyType<TutorUnavailablePeriodInput>}
+
+    /**
+ * @summary Block a tutor date range
+ */
+export const useCreateTutorUnavailablePeriod = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTutorUnavailablePeriod>>, TError,CreateTutorUnavailablePeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createTutorUnavailablePeriod>>,
+        TError,
+        CreateTutorUnavailablePeriodMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTutorUnavailablePeriodMutationOptions(options), queryClient);
+    }
+
+export const getDeleteTutorUnavailablePeriodUrl = (tutorId: number,
+    periodId: number,) => {
+
+
+
+
+  return `/api/tutors/${tutorId}/unavailable-periods/${periodId}`
+}
+
+/**
+ * @summary Remove a tutor's blocked date range
+ */
+export const deleteTutorUnavailablePeriod = async (tutorId: number,
+    periodId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteTutorUnavailablePeriodUrl(tutorId,periodId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTutorUnavailablePeriodMutationKey = () => ['deleteTutorUnavailablePeriod'] as const;
+
+export const getDeleteTutorUnavailablePeriodMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTutorUnavailablePeriod>>, TError,DeleteTutorUnavailablePeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTutorUnavailablePeriod>>, TError,DeleteTutorUnavailablePeriodMutationVariables, TContext> => {
+
+const mutationKey = getDeleteTutorUnavailablePeriodMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTutorUnavailablePeriod>>, DeleteTutorUnavailablePeriodMutationVariables> = (props) => {
+          const {tutorId,periodId} = props ?? {};
+
+          return  deleteTutorUnavailablePeriod(tutorId,periodId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTutorUnavailablePeriodMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTutorUnavailablePeriod>>>
+
+    export type DeleteTutorUnavailablePeriodMutationError = ErrorType<void>
+    export type DeleteTutorUnavailablePeriodMutationVariables = {tutorId: number;periodId: number}
+
+    /**
+ * @summary Remove a tutor's blocked date range
+ */
+export const useDeleteTutorUnavailablePeriod = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTutorUnavailablePeriod>>, TError,DeleteTutorUnavailablePeriodMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTutorUnavailablePeriod>>,
+        TError,
+        DeleteTutorUnavailablePeriodMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteTutorUnavailablePeriodMutationOptions(options), queryClient);
+    }
+
+export const getCreateTutorLessonOfferUrl = (tutorId: number,) => {
+
+
+
+
+  return `/api/tutors/${tutorId}/offers`
+}
+
+/**
+ * @summary Offer an available lesson time to a student's parent
+ */
+export const createTutorLessonOffer = async (tutorId: number,
+    tutorLessonOfferInput: TutorLessonOfferInput, options?: Parameters<typeof customFetch>[1]): Promise<Session> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Session>(getCreateTutorLessonOfferUrl(tutorId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(tutorLessonOfferInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTutorLessonOfferMutationKey = () => ['createTutorLessonOffer'] as const;
+
+export const getCreateTutorLessonOfferMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTutorLessonOffer>>, TError,CreateTutorLessonOfferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTutorLessonOffer>>, TError,CreateTutorLessonOfferMutationVariables, TContext> => {
+
+const mutationKey = getCreateTutorLessonOfferMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTutorLessonOffer>>, CreateTutorLessonOfferMutationVariables> = (props) => {
+          const {tutorId,data} = props ?? {};
+
+          return  createTutorLessonOffer(tutorId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTutorLessonOfferMutationResult = NonNullable<Awaited<ReturnType<typeof createTutorLessonOffer>>>
+    export type CreateTutorLessonOfferMutationBody = BodyType<TutorLessonOfferInput>
+    export type CreateTutorLessonOfferMutationError = ErrorType<void>
+    export type CreateTutorLessonOfferMutationVariables = {tutorId: number;data: BodyType<TutorLessonOfferInput>}
+
+    /**
+ * @summary Offer an available lesson time to a student's parent
+ */
+export const useCreateTutorLessonOffer = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTutorLessonOffer>>, TError,CreateTutorLessonOfferMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createTutorLessonOffer>>,
+        TError,
+        CreateTutorLessonOfferMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateTutorLessonOfferMutationOptions(options), queryClient);
     }
 
 export const getGetTutorAvailableSlotsUrl = (tutorId: number,

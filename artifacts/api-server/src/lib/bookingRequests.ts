@@ -59,19 +59,36 @@ export async function authorizeBooking(sessionId: number, actor: Actor) {
     const session = await lockedSession(tx, initial);
     if (session.status === "pending_confirmation") {
       const [payment] = await tx.select().from(paymentsTable).where(and(eq(paymentsTable.sessionId, session.id), eq(paymentsTable.status, "authorized")));
-      if (payment) return { session, payment, changed: false };
+      if (payment) return { session, payment, changed: false, event: "requested" as const };
+    }
+    if (session.status === "scheduled" && session.isPaid) {
+      const [payment] = await tx.select().from(paymentsTable).where(and(
+        eq(paymentsTable.sessionId, session.id), eq(paymentsTable.provider, "beta"), eq(paymentsTable.status, "paid"),
+      )).limit(1);
+      if (payment) return { session, payment, changed: false, event: "accepted" as const };
     }
     if (session.status !== "pending_payment" || session.isPaid || !session.requestExpiresAt || session.requestExpiresAt <= new Date()) {
       throw new BookingError("This checkout expired or has already been submitted. Choose an available time again.");
     }
     const payment = await authorizeBeta(tx, session);
+    if (session.tutorConfirmedAt) {
+      await captureBeta(tx, session);
+      const [updated] = await tx.update(sessionsTable).set({
+        status: "scheduled",
+        isPaid: true,
+        requestExpiresAt: null,
+      }).where(and(eq(sessionsTable.id, session.id), eq(sessionsTable.status, "pending_payment"))).returning();
+      const [capturedPayment] = await tx.select().from(paymentsTable)
+        .where(eq(paymentsTable.sessionId, session.id)).limit(1);
+      return { session: updated, payment: capturedPayment ?? payment, changed: true, event: "accepted" as const };
+    }
     const [updated] = await tx.update(sessionsTable).set({
       status: "pending_confirmation",
       requestExpiresAt: new Date(Math.min(Date.now() + 24 * 60 * 60_000, session.scheduledAt.getTime())),
     }).where(eq(sessionsTable.id, session.id)).returning();
-    return { session: updated, payment, changed: true };
+    return { session: updated, payment, changed: true, event: "requested" as const };
   });
-  if (result.changed) await notifySafely(result.session, "requested");
+  if (result.changed) await notifySafely(result.session, result.event);
   return result.payment;
 }
 

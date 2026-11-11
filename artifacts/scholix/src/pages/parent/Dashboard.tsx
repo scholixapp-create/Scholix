@@ -1,6 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import {
-  useListSessions, useGetSessionSummary, useGetSessionReview, getGetSessionReviewQueryKey, useCancelSession,
+  useListSessions, useGetSessionSummary, useGetSessionReview, getGetSessionReviewQueryKey, useCancelSession, useSimulatePayment,
   getListSessionsQueryKey, getGetSessionSummaryQueryKey, type Session,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -39,6 +39,7 @@ export default function ParentDashboard() {
     query: { queryKey: getGetSessionSummaryQueryKey(), refetchInterval: 30_000, refetchOnMount: "always" },
   });
   const cancelMutation = useCancelSession();
+  const acceptTutorOfferMutation = useSimulatePayment();
   const [actionError, setActionError] = useState<{ id: number; msg: string } | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [, setTick] = useState(0);
@@ -70,6 +71,17 @@ export default function ParentDashboard() {
         invalidateBookingQueries(qc);
       },
       onSettled: () => setCancellingId(null),
+    });
+  };
+
+  const acceptTutorOffer = (session: Session) => {
+    setActionError(null);
+    acceptTutorOfferMutation.mutate({ data: { sessionId: session.id } }, {
+      onSuccess: () => invalidateBookingQueries(qc),
+      onError: (error) => setActionError({
+        id: session.id,
+        msg: apiErrorMessage(error, "Could not accept this lesson offer. Refresh and try again."),
+      }),
     });
   };
 
@@ -181,6 +193,7 @@ export default function ParentDashboard() {
           <div className="space-y-2">
             {requests.map((session) => {
               const isCheckout = session.status === "pending_payment";
+              const isTutorOffer = isCheckout && !!session.tutorConfirmedAt;
               const left = timeLeft(session.requestExpiresAt);
               return (
                 <div key={session.id} className="bg-card border border-amber-200 rounded-xl p-4 animate-in fade-in slide-in-from-top-1 duration-300" data-testid={`card-request-${session.id}`}>
@@ -201,20 +214,35 @@ export default function ParentDashboard() {
                     <p className="text-[11px] text-muted-foreground flex items-start gap-1.5 leading-relaxed">
                       <Hourglass size={12} className="shrink-0 mt-0.5 text-amber-700" />
                       <span>
-                        {isCheckout
-                          ? <>Checkout not finished. No hold placed. {session.requestExpiresAt && <>Expires {formatInZone(session.requestExpiresAt)}{left ? ` (${left})` : ""}.</>} Cancel, then book again to retry.</>
+                        {isTutorOffer
+                          ? <>Your tutor offered this time. Accept it to confirm the session and place a simulated hold. No real payment is taken. {session.requestExpiresAt && <>Offer expires {formatInZone(session.requestExpiresAt)}{left ? ` (${left})` : ""}.</>}</>
+                          : isCheckout
+                            ? <>Checkout not finished. No hold placed. {session.requestExpiresAt && <>Expires {formatInZone(session.requestExpiresAt)}{left ? ` (${left})` : ""}.</>} Cancel, then book again to retry.</>
                           : <>Waiting for {session.tutorName ?? "your tutor"} to accept. {session.requestExpiresAt && <>Expires {formatInZone(session.requestExpiresAt)}{left ? ` (${left})` : ""}.</>} Simulated hold only, no real card charged.</>}
                       </span>
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => withdraw(session)}
-                      disabled={cancellingId === session.id}
-                      className="shrink-0 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/40 disabled:opacity-60 transition-colors"
-                      data-testid={`button-withdraw-${session.id}`}
-                    >
-                      {cancellingId === session.id ? "Working..." : isCheckout ? "Cancel" : "Withdraw"}
-                    </button>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {isTutorOffer && (
+                        <button
+                          type="button"
+                          onClick={() => acceptTutorOffer(session)}
+                          disabled={acceptTutorOfferMutation.isPending}
+                          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                          data-testid={`button-accept-offer-${session.id}`}
+                        >
+                          {acceptTutorOfferMutation.isPending ? "Accepting…" : "Accept offer"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => withdraw(session)}
+                        disabled={cancellingId === session.id}
+                        className="shrink-0 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-muted-foreground hover:text-destructive hover:border-destructive/40 disabled:opacity-60 transition-colors"
+                        data-testid={`button-withdraw-${session.id}`}
+                      >
+                        {cancellingId === session.id ? "Working..." : isTutorOffer ? "Decline" : isCheckout ? "Cancel" : "Withdraw"}
+                      </button>
+                    </div>
                   </div>
                   {actionError?.id === session.id && <p className="text-xs text-destructive mt-2" role="alert">{actionError.msg}</p>}
                 </div>

@@ -241,6 +241,62 @@ export interface UpdateTutorProfileBody {
   travelBufferMinutes?: number;
 }
 
+export interface TutorUnavailablePeriod {
+  id: number;
+  tutorId: number;
+  /** YYYY-MM-DD */
+  startDate: string;
+  /** YYYY-MM-DD */
+  endDate: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  note?: string | null;
+  createdAt: string;
+}
+
+export interface TutorUnavailablePeriodInput {
+  /** YYYY-MM-DD */
+  startDate: string;
+  /** YYYY-MM-DD */
+  endDate: string;
+  /** @maxLength 160 */
+  note?: string;
+}
+
+export type TutorLessonOfferInputDurationMinutes = typeof TutorLessonOfferInputDurationMinutes[keyof typeof TutorLessonOfferInputDurationMinutes];
+
+
+export const TutorLessonOfferInputDurationMinutes = {
+  NUMBER_30: 30,
+  NUMBER_45: 45,
+  NUMBER_60: 60,
+  NUMBER_90: 90,
+} as const;
+
+export type TutorLessonOfferInputLessonMode = typeof TutorLessonOfferInputLessonMode[keyof typeof TutorLessonOfferInputLessonMode];
+
+
+export const TutorLessonOfferInputLessonMode = {
+  online: 'online',
+  in_person: 'in_person',
+} as const;
+
+export interface TutorLessonOfferInput {
+  /** @minimum 1 */
+  studentId: number;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  subject: string;
+  /** ISO date-time with explicit timezone */
+  scheduledAt: string;
+  durationMinutes: TutorLessonOfferInputDurationMinutes;
+  lessonMode: TutorLessonOfferInputLessonMode;
+}
+
 /**
  * A recurring weekly availability window for a tutor
  */
@@ -479,6 +535,8 @@ export interface Session {
      * @nullable
      */
   locationAddress?: string | null;
+  /** @nullable */
+  tutorConfirmedAt?: string | null;
   /** @nullable */
   requestExpiresAt?: string | null;
   /** @nullable */
@@ -776,6 +834,11 @@ date: string;
  * Session duration in minutes
  */
 duration: number;
+/**
+ * Optional student for an authenticated tutor's relationship-specific availability
+ * @minimum 1
+ */
+studentId?: number;
 };
 
 export type GetTutorAvailableSlotsLessonMode = typeof GetTutorAvailableSlotsLessonMode[keyof typeof GetTutorAvailableSlotsLessonMode];
