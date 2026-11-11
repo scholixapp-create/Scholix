@@ -314,6 +314,13 @@ function ProgressModal({ sessionId, studentName, onClose }: {
                     </label>
                   ))}
                   <p className="text-[10px] text-muted-foreground">Older unstructured notes are kept in the first section when edited.</p>
+                  <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                    <p className="font-semibold text-foreground">Homework and parent follow-up</p>
+                    <p className="mt-1">
+                      Set one clear, manageable task and include how or when it should be completed. After the lesson,
+                      send the parent or family group a short recap with the topic covered, homework, and next lesson focus.
+                    </p>
+                  </div>
                 </div>
               )}
 

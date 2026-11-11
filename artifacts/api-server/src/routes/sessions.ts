@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { lockBookableStudent } from "../lib/accountRemoval";
 import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, paymentsTable, reviewsTable } from "@workspace/db";
-import { eq, and, ne, inArray } from "drizzle-orm";
+import { eq, and, ne, inArray, count } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams, DecideSessionRequestBody } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
 import { sessionBookedEmailHtml, sessionCompletedEmailHtml } from "../lib/email";
@@ -14,6 +14,7 @@ import { tutorSlots } from "../lib/schedulingStore";
 import { BookingError, localDate, localTime } from "../lib/scheduling";
 import { cancelBooking, decideBooking, expireBookingRequests } from "../lib/bookingRequests";
 import { visibleSessionLocation } from "../lib/sessionLocation";
+import { getCommissionTierMilestone } from "../lib/commissionTierMilestones";
 
 const router = Router();
 
@@ -574,6 +575,25 @@ router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
         isCommissionFree: commResult.isCommissionFree,
       }),
     });
+
+    const [completionStats] = await db
+      .select({ total: count() })
+      .from(sessionsTable)
+      .where(and(
+        eq(sessionsTable.tutorId, updated.tutorId),
+        eq(sessionsTable.status, "completed"),
+      ));
+    const milestone = getCommissionTierMilestone(completionStats?.total ?? 0);
+    if (milestone) {
+      await createNotification({
+        userId: tutorUserRow2.userId,
+        type: "commission_tier",
+        title: `You reached the ${milestone.label} commission tier!`,
+        message: `You have completed ${milestone.sessions} sessions on Scholix. Keep up the great work.`,
+        actionUrl: "/tutor/dashboard",
+        actionLabel: "View commission progress",
+      });
+    }
   }
 
   // Notify parent — session completed + rate tutor action

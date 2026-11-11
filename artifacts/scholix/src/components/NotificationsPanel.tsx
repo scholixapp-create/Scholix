@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Bell, Check, CheckCheck, Trash2, BookOpen, CreditCard, GraduationCap, XCircle, X, Upload, Star, MessageCircle, ExternalLink, ArrowRight } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Bell, Check, CheckCheck, Trash2, BookOpen, CreditCard, GraduationCap, XCircle, X, Upload, Star, MessageCircle, ExternalLink, ArrowRight, Trophy } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import type { AppNotification } from "@/hooks/useNotifications";
 import { Link, useLocation } from "wouter";
@@ -16,6 +17,7 @@ const typeConfig: Record<string, { icon: any; iconBg: string; iconColor: string;
   whatsapp_connect:        { icon: MessageCircle,  iconBg: "bg-green-100",        iconColor: "text-green-600",  isActionable: true },
   invoice_generated:       { icon: CreditCard,     iconBg: "bg-accent/10",        iconColor: "text-accent",     isActionable: true },
   verification_info_requested: { icon: Upload,     iconBg: "bg-blue-100",         iconColor: "text-blue-600",   isActionable: true },
+  commission_tier:             { icon: Trophy,     iconBg: "bg-brand-gold/15",    iconColor: "text-brand-gold" },
 };
 
 function ActionButton({
@@ -193,13 +195,18 @@ export default function NotificationsPanel({
     (n) => !n.isRead && typeConfig[n.type]?.isActionable && n.actionUrl
   );
 
-  return (
+  return createPortal((
     <div
       ref={panelRef}
       role="region"
       aria-label="Notifications"
-      className="fixed right-3 top-20 w-80 max-w-[calc(100vw-1.5rem)] bg-card border border-card-border rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
-      style={{ maxHeight: "calc(100dvh - 6rem)" }}
+      className="fixed z-50 bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+      style={{
+        top: "max(5rem, env(safe-area-inset-top))",
+        right: "max(0.75rem, env(safe-area-inset-right))",
+        width: "min(20rem, calc(100vw - 1.5rem))",
+        maxHeight: "calc(100dvh - 6rem)",
+      }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
@@ -282,5 +289,5 @@ export default function NotificationsPanel({
         </div>
       )}
     </div>
-  );
+  ), document.body);
 }

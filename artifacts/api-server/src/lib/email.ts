@@ -154,7 +154,10 @@ function emailWrapper(headerText: string, body: string) {
           </td>
         </tr>
         <tr>
-          <td style="height:4px;background:${EMAIL_PALETTE.turquoise};font-size:0;line-height:0">&nbsp;</td>
+          <td style="height:3px;background:${EMAIL_PALETTE.gold};font-size:0;line-height:0">&nbsp;</td>
+        </tr>
+        <tr>
+          <td style="height:3px;background:${EMAIL_PALETTE.turquoise};font-size:0;line-height:0">&nbsp;</td>
         </tr>
         <tr>
           <td style="padding:24px;background:${EMAIL_PALETTE.white};border:1px solid ${EMAIL_PALETTE.border};border-top:0;border-radius:0 0 14px 14px">

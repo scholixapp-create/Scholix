@@ -13,6 +13,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "whatsapp_connect",
   "invoice_generated",
   "verification_info_requested",
+  "commission_tier",
 ]);
 
 export const notificationsTable = pgTable("notifications", {

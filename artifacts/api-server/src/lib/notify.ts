@@ -14,7 +14,8 @@ type NotificationType =
   | "action_rate_session"
   | "whatsapp_connect"
   | "invoice_generated"
-  | "verification_info_requested";
+  | "verification_info_requested"
+  | "commission_tier";
 
 export async function createNotification(opts: {
   userId: number;
