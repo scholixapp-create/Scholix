@@ -530,6 +530,84 @@ paths:
         "403": { description: Tutor owner or admin required }
         "404": { description: Date range not found }
 
+  /tutors/{tutorId}/calendar-feed:
+    get:
+      operationId: getTutorCalendarFeed
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Get the tutor's private calendar subscription link
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Current calendar feed status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TutorCalendarFeed" }
+        "401": { description: Authentication required }
+        "403": { description: Tutor owner required }
+        "404": { description: Tutor not found }
+    post:
+      operationId: enableTutorCalendarFeed
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Create or rotate the tutor's private calendar subscription link
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: New calendar subscription link
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TutorCalendarFeed" }
+        "401": { description: Authentication required }
+        "403": { description: Tutor owner required }
+        "404": { description: Tutor not found }
+        "503": { description: Calendar signing is not configured }
+    delete:
+      operationId: disableTutorCalendarFeed
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Revoke and disable the tutor's calendar subscription link
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "204": { description: Calendar feed revoked }
+        "401": { description: Authentication required }
+        "403": { description: Tutor owner required }
+        "404": { description: Tutor not found }
+
+  /tutors/{tutorId}/calendar.ics:
+    get:
+      operationId: getTutorCalendarIcs
+      tags: [tutors]
+      summary: Fetch a tutor's private calendar subscription
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: token
+          in: query
+          required: true
+          schema: { type: string, minLength: 43, maxLength: 43 }
+      responses:
+        "200":
+          description: iCalendar subscription with bookings and unavailable periods
+          content:
+            text/calendar:
+              schema: { type: string }
+        "404": { description: Feed not found }
+
   /tutors/{tutorId}/offers:
     post:
       operationId: createTutorLessonOffer
@@ -1583,6 +1661,14 @@ components:
         note: { type: ["string", "null"], maxLength: 160 }
         createdAt: { type: string, format: date-time }
       required: [id, tutorId, startDate, endDate, createdAt]
+
+    TutorCalendarFeed:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled: { type: boolean }
+        feedUrl: { type: ["string", "null"] }
+      required: [enabled, feedUrl]
 
     TutorUnavailablePeriodInput:
       type: object

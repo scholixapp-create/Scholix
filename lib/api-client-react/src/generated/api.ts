@@ -46,6 +46,7 @@ import type {
   ErrorResponse,
   GetSessionSummaryParams,
   GetTutorAvailableSlotsParams,
+  GetTutorCalendarIcsParams,
   HealthStatus,
   InviteStudentBody,
   ListInvoicesParams,
@@ -71,6 +72,7 @@ import type {
   StudentProfileUpdate,
   StudentRemovalConfirmation,
   SuccessResponse,
+  TutorCalendarFeed,
   TutorEducation,
   TutorInvoiceSummary,
   TutorLessonOfferInput,
@@ -2408,6 +2410,371 @@ export const useDeleteTutorUnavailablePeriod = <TError = ErrorType<void>,
       > => {
       return useMutation(getDeleteTutorUnavailablePeriodMutationOptions(options), queryClient);
     }
+
+export const getGetTutorCalendarFeedUrl = (tutorId: number,) => {
+
+
+
+
+  return `/api/tutors/${tutorId}/calendar-feed`
+}
+
+/**
+ * @summary Get the tutor's private calendar subscription link
+ */
+export const getTutorCalendarFeed = async (tutorId: number, options?: Parameters<typeof customFetch>[1]): Promise<TutorCalendarFeed> => {
+
+  return customFetch<TutorCalendarFeed>(getGetTutorCalendarFeedUrl(tutorId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTutorCalendarFeedQueryKey = (tutorId: number,) => {
+    return [
+    `/api/tutors/${tutorId}/calendar-feed`
+    ] as const;
+    }
+
+
+export const getGetTutorCalendarFeedQueryOptions = <TData = Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError = ErrorType<void>>(tutorId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTutorCalendarFeedQueryKey(tutorId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTutorCalendarFeed>>> = ({ signal }) => getTutorCalendarFeed(tutorId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: tutorId !== null && tutorId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTutorCalendarFeedQueryResult = NonNullable<Awaited<ReturnType<typeof getTutorCalendarFeed>>>
+export type GetTutorCalendarFeedQueryError = ErrorType<void>
+
+
+export function useGetTutorCalendarFeed<TData = Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError = ErrorType<void>>(
+ tutorId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTutorCalendarFeed>>,
+          TError,
+          Awaited<ReturnType<typeof getTutorCalendarFeed>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTutorCalendarFeed<TData = Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError = ErrorType<void>>(
+ tutorId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTutorCalendarFeed>>,
+          TError,
+          Awaited<ReturnType<typeof getTutorCalendarFeed>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTutorCalendarFeed<TData = Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError = ErrorType<void>>(
+ tutorId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get the tutor's private calendar subscription link
+ */
+
+export function useGetTutorCalendarFeed<TData = Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError = ErrorType<void>>(
+ tutorId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarFeed>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTutorCalendarFeedQueryOptions(tutorId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getEnableTutorCalendarFeedUrl = (tutorId: number,) => {
+
+
+
+
+  return `/api/tutors/${tutorId}/calendar-feed`
+}
+
+/**
+ * @summary Create or rotate the tutor's private calendar subscription link
+ */
+export const enableTutorCalendarFeed = async (tutorId: number, options?: Parameters<typeof customFetch>[1]): Promise<TutorCalendarFeed> => {
+
+  return customFetch<TutorCalendarFeed>(getEnableTutorCalendarFeedUrl(tutorId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getEnableTutorCalendarFeedMutationKey = () => ['enableTutorCalendarFeed'] as const;
+
+export const getEnableTutorCalendarFeedMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enableTutorCalendarFeed>>, TError,EnableTutorCalendarFeedMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof enableTutorCalendarFeed>>, TError,EnableTutorCalendarFeedMutationVariables, TContext> => {
+
+const mutationKey = getEnableTutorCalendarFeedMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof enableTutorCalendarFeed>>, EnableTutorCalendarFeedMutationVariables> = (props) => {
+          const {tutorId} = props ?? {};
+
+          return  enableTutorCalendarFeed(tutorId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EnableTutorCalendarFeedMutationResult = NonNullable<Awaited<ReturnType<typeof enableTutorCalendarFeed>>>
+
+    export type EnableTutorCalendarFeedMutationError = ErrorType<void>
+    export type EnableTutorCalendarFeedMutationVariables = {tutorId: number}
+
+    /**
+ * @summary Create or rotate the tutor's private calendar subscription link
+ */
+export const useEnableTutorCalendarFeed = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof enableTutorCalendarFeed>>, TError,EnableTutorCalendarFeedMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof enableTutorCalendarFeed>>,
+        TError,
+        EnableTutorCalendarFeedMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEnableTutorCalendarFeedMutationOptions(options), queryClient);
+    }
+
+export const getDisableTutorCalendarFeedUrl = (tutorId: number,) => {
+
+
+
+
+  return `/api/tutors/${tutorId}/calendar-feed`
+}
+
+/**
+ * @summary Revoke and disable the tutor's calendar subscription link
+ */
+export const disableTutorCalendarFeed = async (tutorId: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDisableTutorCalendarFeedUrl(tutorId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisableTutorCalendarFeedMutationKey = () => ['disableTutorCalendarFeed'] as const;
+
+export const getDisableTutorCalendarFeedMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disableTutorCalendarFeed>>, TError,DisableTutorCalendarFeedMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disableTutorCalendarFeed>>, TError,DisableTutorCalendarFeedMutationVariables, TContext> => {
+
+const mutationKey = getDisableTutorCalendarFeedMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disableTutorCalendarFeed>>, DisableTutorCalendarFeedMutationVariables> = (props) => {
+          const {tutorId} = props ?? {};
+
+          return  disableTutorCalendarFeed(tutorId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisableTutorCalendarFeedMutationResult = NonNullable<Awaited<ReturnType<typeof disableTutorCalendarFeed>>>
+
+    export type DisableTutorCalendarFeedMutationError = ErrorType<void>
+    export type DisableTutorCalendarFeedMutationVariables = {tutorId: number}
+
+    /**
+ * @summary Revoke and disable the tutor's calendar subscription link
+ */
+export const useDisableTutorCalendarFeed = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disableTutorCalendarFeed>>, TError,DisableTutorCalendarFeedMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof disableTutorCalendarFeed>>,
+        TError,
+        DisableTutorCalendarFeedMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDisableTutorCalendarFeedMutationOptions(options), queryClient);
+    }
+
+export const getGetTutorCalendarIcsUrl = (tutorId: number,
+    params: GetTutorCalendarIcsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/tutors/${tutorId}/calendar.ics?${stringifiedParams}` : `/api/tutors/${tutorId}/calendar.ics`
+}
+
+/**
+ * @summary Fetch a tutor's private calendar subscription
+ */
+export const getTutorCalendarIcs = async (tutorId: number,
+    params: GetTutorCalendarIcsParams, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getGetTutorCalendarIcsUrl(tutorId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTutorCalendarIcsQueryKey = (tutorId: number,
+    params?: GetTutorCalendarIcsParams,) => {
+    return [
+    `/api/tutors/${tutorId}/calendar.ics`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTutorCalendarIcsQueryOptions = <TData = Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError = ErrorType<void>>(tutorId: number,
+    params: GetTutorCalendarIcsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTutorCalendarIcsQueryKey(tutorId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTutorCalendarIcs>>> = ({ signal }) => getTutorCalendarIcs(tutorId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: tutorId !== null && tutorId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTutorCalendarIcsQueryResult = NonNullable<Awaited<ReturnType<typeof getTutorCalendarIcs>>>
+export type GetTutorCalendarIcsQueryError = ErrorType<void>
+
+
+export function useGetTutorCalendarIcs<TData = Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError = ErrorType<void>>(
+ tutorId: number,
+    params: GetTutorCalendarIcsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTutorCalendarIcs>>,
+          TError,
+          Awaited<ReturnType<typeof getTutorCalendarIcs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTutorCalendarIcs<TData = Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError = ErrorType<void>>(
+ tutorId: number,
+    params: GetTutorCalendarIcsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTutorCalendarIcs>>,
+          TError,
+          Awaited<ReturnType<typeof getTutorCalendarIcs>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTutorCalendarIcs<TData = Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError = ErrorType<void>>(
+ tutorId: number,
+    params: GetTutorCalendarIcsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Fetch a tutor's private calendar subscription
+ */
+
+export function useGetTutorCalendarIcs<TData = Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError = ErrorType<void>>(
+ tutorId: number,
+    params: GetTutorCalendarIcsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTutorCalendarIcs>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTutorCalendarIcsQueryOptions(tutorId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getCreateTutorLessonOfferUrl = (tutorId: number,) => {
 

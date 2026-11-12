@@ -4,6 +4,7 @@ import type { Session } from "@workspace/api-client-react";
 import { Calendar as CalendarIcon, Clock3, RotateCw, ShieldAlert, Video, MapPin, ChevronRight } from "lucide-react";
 import { addDays, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
+import CalendarSubscriptionControl from "@/components/tutor/CalendarSubscriptionControl";
 import { BOOKING_TIME_ZONE } from "@/lib/bookingRequests";
 import { DayButton } from "react-day-picker";
 
@@ -169,6 +170,8 @@ export default function TutorSessionsCalendar({
           Today
         </button>
       </div>
+
+      {tutorId && <CalendarSubscriptionControl tutorId={tutorId} />}
 
       {hasScheduleError && (
         <div role="alert" className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 sm:mx-5">

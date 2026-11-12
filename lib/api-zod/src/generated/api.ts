@@ -541,6 +541,73 @@ export const DeleteTutorUnavailablePeriodResponse = zod.void()
 
 
 /**
+ * @summary Get the tutor's private calendar subscription link
+ */
+
+
+
+export const GetTutorCalendarFeedParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1)
+})
+
+export const GetTutorCalendarFeedResponse = zod.object({
+  "enabled": zod.boolean(),
+  "feedUrl": zod.string().nullable()
+})
+
+
+/**
+ * @summary Create or rotate the tutor's private calendar subscription link
+ */
+
+
+
+export const EnableTutorCalendarFeedParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1)
+})
+
+export const EnableTutorCalendarFeedResponse = zod.object({
+  "enabled": zod.boolean(),
+  "feedUrl": zod.string().nullable()
+})
+
+
+/**
+ * @summary Revoke and disable the tutor's calendar subscription link
+ */
+
+
+
+export const DisableTutorCalendarFeedParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1)
+})
+
+export const DisableTutorCalendarFeedResponse = zod.void()
+
+
+/**
+ * @summary Fetch a tutor's private calendar subscription
+ */
+
+
+
+export const GetTutorCalendarIcsParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1)
+})
+
+export const getTutorCalendarIcsQueryTokenMin = 43;
+export const getTutorCalendarIcsQueryTokenMax = 43;
+
+
+
+export const GetTutorCalendarIcsQueryParams = zod.object({
+  "token": zod.coerce.string().min(getTutorCalendarIcsQueryTokenMin).max(getTutorCalendarIcsQueryTokenMax)
+})
+
+export const GetTutorCalendarIcsResponse = zod.unknown()
+
+
+/**
  * @summary Offer an available lesson time to a student's parent
  */
 

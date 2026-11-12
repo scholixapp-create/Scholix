@@ -256,6 +256,12 @@ export interface TutorUnavailablePeriod {
   createdAt: string;
 }
 
+export interface TutorCalendarFeed {
+  enabled: boolean;
+  /** @nullable */
+  feedUrl: string | null;
+}
+
 export interface TutorUnavailablePeriodInput {
   /** YYYY-MM-DD */
   startDate: string;
@@ -822,6 +828,14 @@ export interface CreateSessionReviewBody {
 export type VerifyReapplication200 = {
   pendingApproval: boolean;
   message: string;
+};
+
+export type GetTutorCalendarIcsParams = {
+/**
+ * @minLength 43
+ * @maxLength 43
+ */
+token: string;
 };
 
 export type GetTutorAvailableSlotsParams = {

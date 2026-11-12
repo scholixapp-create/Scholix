@@ -1,10 +1,11 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { db, tutorsTable, usersTable, availabilityTable, tutorUnavailablePeriodsTable, studentsTable, sessionsTable, tutorComplianceTable, tutorRelationshipsTable } from "@workspace/db";
-import { eq, inArray, and, isNotNull, isNull, lte, gte, asc } from "drizzle-orm";
-import { UpdateTutorProfileBody, SetTutorAvailabilityBody, CreateTutorUnavailablePeriodBody, CreateTutorLessonOfferBody } from "@workspace/api-zod";
+import { eq, inArray, and, isNotNull, isNull, lte, gte, asc, sql } from "drizzle-orm";
+import { UpdateTutorProfileBody, SetTutorAvailabilityBody, CreateTutorUnavailablePeriodBody, CreateTutorLessonOfferBody, GetTutorCalendarFeedResponse, EnableTutorCalendarFeedResponse } from "@workspace/api-zod";
 import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
 import { tutorSlots } from "../lib/schedulingStore";
 import { BookingError, localDate, localTime, validDate, type LessonMode } from "../lib/scheduling";
+import { buildTutorCalendarIcs, createTutorCalendarToken, matchesTutorCalendarToken, melbourneDateKey } from "../lib/tutorCalendarFeed";
 import { lockBookableStudent } from "../lib/accountRemoval";
 import { lockBookableTutor } from "../lib/bookableTutor";
 import { createNotification } from "../lib/notify";
@@ -171,6 +172,174 @@ router.put("/tutors/:tutorId/profile", async (req, res) => {
   }
   const count = await getSessionCount(tutorId);
   res.json(tutorToJson(row.tutors, row.users, count));
+});
+
+async function calendarFeedOwner(
+  tutorId: number,
+  actor: AuthRequest["user"],
+  res: Response,
+) {
+  if (actor.role !== "tutor") {
+    res.status(403).json({ error: "Only the tutor can manage this calendar link" });
+    return null;
+  }
+  const [tutor] = await db.select().from(tutorsTable)
+    .where(eq(tutorsTable.id, tutorId)).limit(1);
+  if (!tutor) {
+    res.status(404).json({ error: "Tutor not found" });
+    return null;
+  }
+  if (tutor.userId !== actor.id) {
+    res.status(403).json({ error: "Only the tutor can manage this calendar link" });
+    return null;
+  }
+  return tutor;
+}
+
+router.get("/tutors/:tutorId/calendar-feed", requireAuth, async (req, res) => {
+  const tutorId = Number(req.params.tutorId as string);
+  const actor = (req as AuthRequest).user;
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0) {
+    res.status(400).json({ error: "Invalid tutor ID" });
+    return;
+  }
+  const tutor = await calendarFeedOwner(tutorId, actor, res);
+  if (!tutor) return;
+  if (tutor.calendarFeedEnabled && config.sessionSecret.length < 32) {
+    res.status(503).json({ error: "Calendar signing is not configured" });
+    return;
+  }
+
+  const token = tutor.calendarFeedEnabled
+    ? createTutorCalendarToken(tutor.id, tutor.calendarFeedVersion, config.sessionSecret)
+    : null;
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(GetTutorCalendarFeedResponse.parse({
+    enabled: tutor.calendarFeedEnabled,
+    feedUrl: token ? `/api/tutors/${tutor.id}/calendar.ics?token=${token}` : null,
+  }));
+});
+
+router.post("/tutors/:tutorId/calendar-feed", requireAuth, async (req, res) => {
+  const tutorId = Number(req.params.tutorId as string);
+  const actor = (req as AuthRequest).user;
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0) {
+    res.status(400).json({ error: "Invalid tutor ID" });
+    return;
+  }
+  const tutor = await calendarFeedOwner(tutorId, actor, res);
+  if (!tutor) return;
+  if (config.sessionSecret.length < 32) {
+    res.status(503).json({ error: "Calendar signing is not configured" });
+    return;
+  }
+
+  const [updated] = await db.update(tutorsTable)
+    .set({
+      calendarFeedEnabled: true,
+      calendarFeedVersion: sql`${tutorsTable.calendarFeedVersion} + 1`,
+    })
+    .where(eq(tutorsTable.id, tutorId))
+    .returning({
+      id: tutorsTable.id,
+      enabled: tutorsTable.calendarFeedEnabled,
+      version: tutorsTable.calendarFeedVersion,
+    });
+  if (!updated) {
+    res.status(404).json({ error: "Tutor not found" });
+    return;
+  }
+
+  const token = createTutorCalendarToken(updated.id, updated.version, config.sessionSecret);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(EnableTutorCalendarFeedResponse.parse({
+    enabled: updated.enabled,
+    feedUrl: `/api/tutors/${updated.id}/calendar.ics?token=${token}`,
+  }));
+});
+
+router.delete("/tutors/:tutorId/calendar-feed", requireAuth, async (req, res) => {
+  const tutorId = Number(req.params.tutorId as string);
+  const actor = (req as AuthRequest).user;
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0) {
+    res.status(400).json({ error: "Invalid tutor ID" });
+    return;
+  }
+  const tutor = await calendarFeedOwner(tutorId, actor, res);
+  if (!tutor) return;
+
+  await db.update(tutorsTable)
+    .set({
+      calendarFeedEnabled: false,
+      calendarFeedVersion: sql`${tutorsTable.calendarFeedVersion} + 1`,
+    })
+    .where(eq(tutorsTable.id, tutorId));
+  res.sendStatus(204);
+});
+
+router.get("/tutors/:tutorId/calendar.ics", async (req, res) => {
+  const tutorId = Number(req.params.tutorId as string);
+  if (!Number.isSafeInteger(tutorId) || tutorId <= 0 || config.sessionSecret.length < 32) {
+    res.sendStatus(404);
+    return;
+  }
+  const [tutor] = await db.select({
+    id: tutorsTable.id,
+    enabled: tutorsTable.calendarFeedEnabled,
+    version: tutorsTable.calendarFeedVersion,
+    isActive: usersTable.isActive,
+  }).from(tutorsTable)
+    .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
+    .where(eq(tutorsTable.id, tutorId))
+    .limit(1);
+  if (!tutor?.isActive || !tutor.enabled) {
+    res.sendStatus(404);
+    return;
+  }
+  const expectedToken = createTutorCalendarToken(tutor.id, tutor.version, config.sessionSecret);
+  if (!matchesTutorCalendarToken(req.query.token, expectedToken)) {
+    res.sendStatus(404);
+    return;
+  }
+
+  const now = new Date();
+  const today = melbourneDateKey(now);
+  const [sessions, unavailablePeriods] = await Promise.all([
+    db.select({
+      id: sessionsTable.id,
+      scheduledAt: sessionsTable.scheduledAt,
+      durationMinutes: sessionsTable.durationMinutes,
+      status: sessionsTable.status,
+      requestExpiresAt: sessionsTable.requestExpiresAt,
+    }).from(sessionsTable)
+      .where(and(
+        eq(sessionsTable.tutorId, tutorId),
+        gte(sessionsTable.scheduledAt, now),
+        inArray(sessionsTable.status, ["scheduled", "pending_confirmation", "pending_payment"]),
+      ))
+      .orderBy(asc(sessionsTable.scheduledAt)),
+    db.select({
+      id: tutorUnavailablePeriodsTable.id,
+      startDate: tutorUnavailablePeriodsTable.startDate,
+      endDate: tutorUnavailablePeriodsTable.endDate,
+    }).from(tutorUnavailablePeriodsTable)
+      .where(and(
+        eq(tutorUnavailablePeriodsTable.tutorId, tutorId),
+        gte(tutorUnavailablePeriodsTable.endDate, today),
+      ))
+      .orderBy(asc(tutorUnavailablePeriodsTable.startDate)),
+  ]);
+
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.type("text/calendar; charset=utf-8").send(buildTutorCalendarIcs({
+    tutorId,
+    sessions,
+    unavailablePeriods,
+    now,
+  }));
 });
 
 // ── Availability windows ──────────────────────────────────────────────────────
