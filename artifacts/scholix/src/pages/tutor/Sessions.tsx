@@ -10,6 +10,7 @@ import { format, parseISO } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { PROGRESS_NOTE_HEADINGS, parseGuidedProgressNotes, serializeGuidedProgressNotes, type GuidedProgressNotes } from "@/lib/guidedProgressNotes";
 import { SessionModeLocation, SessionStudentLink } from "@/components/tutor/SessionContext";
+import TutorSessionsCalendar from "@/components/tutor/TutorSessionsCalendar";
 
 function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
 
@@ -425,7 +426,7 @@ export default function TutorSessions() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-lg mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
       {invoice && (
         <InvoiceModal
           invoice={invoice}
@@ -446,6 +447,15 @@ export default function TutorSessions() {
         <p className="text-sm text-muted-foreground mt-0.5">{sessions.data?.length ?? 0} total sessions</p>
       </div>
 
+      <TutorSessionsCalendar
+        tutorId={tutorId}
+        sessions={sessions.data ?? []}
+        sessionsLoading={sessions.isLoading}
+        sessionsError={sessions.isError}
+        onRetrySessions={() => void sessions.refetch()}
+      />
+
+      <div className="max-w-lg mx-auto">
       {decision && !requests.some((r) => r.id === decision.id) && (
         <div role="status" className={`mb-4 p-3 rounded-xl text-xs font-medium animate-in fade-in slide-in-from-top-1 duration-300 ${decision.ok ? "bg-accent/10 text-accent" : "bg-destructive/10 text-destructive"}`} data-testid="text-decision-result">
           {decision.msg}
@@ -537,6 +547,7 @@ export default function TutorSessions() {
           <button
             key={f}
             onClick={() => setFilter(f)}
+            data-testid={`button-session-filter-${f}`}
             className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium capitalize transition-all ${
               filter === f ? "bg-card shadow-xs text-foreground" : "text-muted-foreground"
             }`}
@@ -630,6 +641,7 @@ export default function TutorSessions() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }
