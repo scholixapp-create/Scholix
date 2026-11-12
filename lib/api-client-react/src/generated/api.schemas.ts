@@ -555,6 +555,11 @@ export interface Session {
   subject: string;
   scheduledAt: string;
   durationMinutes: number;
+  /**
+     * Travel buffer captured for this session, in minutes.
+     * @minimum 0
+     */
+  travelBufferMinutes?: number;
   status: SessionStatus;
   isPaid: boolean;
   totalAmount: number;

@@ -630,6 +630,10 @@ export const CreateTutorLessonOfferBody = zod.object({
   "lessonMode": zod.enum(['online', 'in_person'])
 })
 
+export const createTutorLessonOfferResponseTravelBufferMinutesMin = 0;
+
+
+
 export const CreateTutorLessonOfferResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
@@ -643,6 +647,7 @@ export const CreateTutorLessonOfferResponse = zod.object({
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
+  "travelBufferMinutes": zod.number().int().min(createTutorLessonOfferResponseTravelBufferMinutesMin).optional().describe('Travel buffer captured for this session, in minutes.'),
   "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -936,6 +941,10 @@ export const ListSessionsQueryParams = zod.object({
   "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']).optional()
 })
 
+export const listSessionsResponseTravelBufferMinutesMin = 0;
+
+
+
 export const ListSessionsResponseItem = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
@@ -949,6 +958,7 @@ export const ListSessionsResponseItem = zod.object({
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
+  "travelBufferMinutes": zod.number().int().min(listSessionsResponseTravelBufferMinutesMin).optional().describe('Travel buffer captured for this session, in minutes.'),
   "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -972,6 +982,10 @@ export const CreateSessionBody = zod.object({
   "availabilitySlotId": zod.number().int().nullish()
 })
 
+export const createSessionResponseTravelBufferMinutesMin = 0;
+
+
+
 export const CreateSessionResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
@@ -985,6 +999,7 @@ export const CreateSessionResponse = zod.object({
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
+  "travelBufferMinutes": zod.number().int().min(createSessionResponseTravelBufferMinutesMin).optional().describe('Travel buffer captured for this session, in minutes.'),
   "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -1001,6 +1016,10 @@ export const GetSessionParams = zod.object({
   "sessionId": zod.coerce.number().int()
 })
 
+export const getSessionResponseTravelBufferMinutesMin = 0;
+
+
+
 export const GetSessionResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
@@ -1014,6 +1033,7 @@ export const GetSessionResponse = zod.object({
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
+  "travelBufferMinutes": zod.number().int().min(getSessionResponseTravelBufferMinutesMin).optional().describe('Travel buffer captured for this session, in minutes.'),
   "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -1030,6 +1050,10 @@ export const CompleteSessionParams = zod.object({
   "sessionId": zod.coerce.number().int()
 })
 
+export const completeSessionResponseSessionTravelBufferMinutesMin = 0;
+
+
+
 export const CompleteSessionResponse = zod.object({
   "session": zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
@@ -1044,6 +1068,7 @@ export const CompleteSessionResponse = zod.object({
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
+  "travelBufferMinutes": zod.number().int().min(completeSessionResponseSessionTravelBufferMinutesMin).optional().describe('Travel buffer captured for this session, in minutes.'),
   "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -1081,6 +1106,10 @@ export const DecideSessionRequestBody = zod.object({
   "decision": zod.enum(['accept', 'decline'])
 })
 
+export const decideSessionRequestResponseTravelBufferMinutesMin = 0;
+
+
+
 export const DecideSessionRequestResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
@@ -1094,6 +1123,7 @@ export const DecideSessionRequestResponse = zod.object({
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
+  "travelBufferMinutes": zod.number().int().min(decideSessionRequestResponseTravelBufferMinutesMin).optional().describe('Travel buffer captured for this session, in minutes.'),
   "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),
@@ -1110,6 +1140,10 @@ export const CancelSessionParams = zod.object({
   "sessionId": zod.coerce.number().int()
 })
 
+export const cancelSessionResponseTravelBufferMinutesMin = 0;
+
+
+
 export const CancelSessionResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
   "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
@@ -1123,6 +1157,7 @@ export const CancelSessionResponse = zod.object({
   "subject": zod.string(),
   "scheduledAt": zod.string(),
   "durationMinutes": zod.number().int(),
+  "travelBufferMinutes": zod.number().int().min(cancelSessionResponseTravelBufferMinutesMin).optional().describe('Travel buffer captured for this session, in minutes.'),
   "status": zod.enum(['pending_payment', 'pending_confirmation', 'scheduled', 'completed', 'cancelled']),
   "isPaid": zod.boolean(),
   "totalAmount": zod.number(),

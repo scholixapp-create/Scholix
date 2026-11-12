@@ -1,10 +1,11 @@
 import { useMemo, useState, type ComponentProps } from "react";
 import { useGetTutorAvailability, useGetTutorUnavailablePeriods, getGetTutorAvailabilityQueryKey, getGetTutorUnavailablePeriodsQueryKey } from "@workspace/api-client-react";
 import type { Session } from "@workspace/api-client-react";
-import { Calendar as CalendarIcon, Clock3, RotateCw, ShieldAlert, Video, MapPin, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock3, RotateCw, ShieldAlert, Video, MapPin } from "lucide-react";
 import { addDays, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import CalendarSubscriptionControl from "@/components/tutor/CalendarSubscriptionControl";
+import WeeklyTutorCalendarView from "@/components/tutor/WeeklyTutorCalendarView";
 import { BOOKING_TIME_ZONE } from "@/lib/bookingRequests";
 import { DayButton } from "react-day-picker";
 
@@ -88,6 +89,7 @@ export default function TutorSessionsCalendar({
   });
   const [selectedDate, setSelectedDate] = useState<Date>(() => currentMelbourneDate());
   const [month, setMonth] = useState<Date>(() => currentMelbourneDate());
+  const [viewMode, setViewMode] = useState<"month" | "week">("month");
 
   const visibleDates = useMemo(() => {
     const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
@@ -96,6 +98,10 @@ export default function TutorSessionsCalendar({
     for (let cursor = start; cursor <= end; cursor = addDays(cursor, 1)) days.push(cursor);
     return days;
   }, [month]);
+  const weekDates = useMemo(() => {
+    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+  }, [selectedDate]);
 
   const scheduledSessions = useMemo(
     () => sessions.filter((session) => session.status === "scheduled" || session.status === "completed"),
@@ -157,18 +163,73 @@ export default function TutorSessionsCalendar({
           </div>
           <p className="mt-1 pl-10 text-xs text-muted-foreground">Your lessons, weekly windows and time away · Melbourne time</p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            const today = currentMelbourneDate();
-            setSelectedDate(today);
-            setMonth(today);
-          }}
-          className="self-start rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:self-auto"
-          data-testid="button-calendar-today"
-        >
-          Today
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div role="group" aria-label="Calendar view" className="inline-flex rounded-lg border border-border bg-background p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("month")}
+              aria-pressed={viewMode === "month"}
+              className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewMode === "month" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+              data-testid="button-calendar-view-month"
+            >
+              Month
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("week")}
+              aria-pressed={viewMode === "week"}
+              className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors ${viewMode === "week" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+              data-testid="button-calendar-view-week"
+            >
+              Week
+            </button>
+          </div>
+          {viewMode === "week" && (
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = addDays(selectedDate, -7);
+                  setSelectedDate(next);
+                  setMonth(next);
+                }}
+                aria-label="Previous week"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                data-testid="button-calendar-previous-week"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <span className="min-w-[120px] text-center text-[11px] font-semibold text-foreground" data-testid="text-calendar-week-range">
+                {format(weekDates[0]!, "d MMM")}–{format(weekDates[6]!, "d MMM yyyy")}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = addDays(selectedDate, 7);
+                  setSelectedDate(next);
+                  setMonth(next);
+                }}
+                aria-label="Next week"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                data-testid="button-calendar-next-week"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              const today = currentMelbourneDate();
+              setSelectedDate(today);
+              setMonth(today);
+            }}
+            className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            data-testid="button-calendar-today"
+          >
+            Today
+          </button>
+        </div>
       </div>
 
       {tutorId && <CalendarSubscriptionControl tutorId={tutorId} />}
@@ -182,43 +243,62 @@ export default function TutorSessionsCalendar({
         </div>
       )}
 
-      <div className="grid min-w-0 gap-0 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,.85fr)]">
+      <div className={`grid min-w-0 gap-0 ${viewMode === "month" ? "lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,.85fr)]" : "grid-cols-1"}`}>
         <div className="min-w-0 p-3 sm:p-5">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => date && setSelectedDate(date)}
-            month={month}
-            onMonthChange={setMonth}
-            weekStartsOn={1}
-            modifiers={{
-              booked: bookedDates,
-              pending: pendingDates,
-              available: availableDates,
-              unavailable: unavailableDates,
-            }}
-            modifiersClassNames={{
-              booked: "bg-primary/10 font-semibold text-primary",
-              pending: "bg-amber-100/70 font-semibold text-amber-900",
-              available: "ring-1 ring-inset ring-accent/40",
-              unavailable: "bg-destructive/10 text-destructive",
-            }}
-            components={{
-              DayButton: (props) => <DayButton {...props} data-testid={dayButtonTestId(props)} />,
-            }}
-            className="mx-auto w-full max-w-[390px] rounded-xl bg-transparent p-1 [--cell-size:clamp(2.35rem,8vw,3rem)]"
-            data-testid="calendar-tutor-sessions"
-            aria-label="Tutor sessions calendar"
-          />
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-t border-border px-2 pt-3 text-[11px] text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5" data-testid="legend-calendar-booked"><i className="h-2.5 w-2.5 rounded-sm bg-primary" /> Booked lesson</span>
-            <span className="inline-flex items-center gap-1.5" data-testid="legend-calendar-pending"><i className="h-2.5 w-2.5 rounded-sm bg-amber-300" /> Pending request</span>
-            <span className="inline-flex items-center gap-1.5" data-testid="legend-calendar-available"><i className="h-2.5 w-2.5 rounded-sm border border-accent/60 bg-accent/15" /> Available window</span>
-            <span className="inline-flex items-center gap-1.5" data-testid="legend-calendar-unavailable"><i className="h-2.5 w-2.5 rounded-sm bg-destructive/20" /> Unavailable</span>
-          </div>
+          {viewMode === "month" ? (
+            <>
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                month={month}
+                onMonthChange={setMonth}
+                weekStartsOn={1}
+                modifiers={{
+                  booked: bookedDates,
+                  pending: pendingDates,
+                  available: availableDates,
+                  unavailable: unavailableDates,
+                }}
+                modifiersClassNames={{
+                  booked: "bg-primary/10 font-semibold text-primary",
+                  pending: "bg-amber-100/70 font-semibold text-amber-900",
+                  available: "ring-1 ring-inset ring-accent/40",
+                  unavailable: "bg-destructive/10 text-destructive",
+                }}
+                components={{
+                  DayButton: (props) => <DayButton {...props} data-testid={dayButtonTestId(props)} />,
+                }}
+                className="mx-auto w-full max-w-[390px] rounded-xl bg-transparent p-1 [--cell-size:clamp(2.35rem,8vw,3rem)]"
+                data-testid="calendar-tutor-sessions"
+                aria-label="Tutor sessions calendar"
+              />
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-t border-border px-2 pt-3 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5" data-testid="legend-calendar-booked"><i className="h-2.5 w-2.5 rounded-sm bg-primary" /> Booked lesson</span>
+                <span className="inline-flex items-center gap-1.5" data-testid="legend-calendar-pending"><i className="h-2.5 w-2.5 rounded-sm bg-amber-300" /> Pending request</span>
+                <span className="inline-flex items-center gap-1.5" data-testid="legend-calendar-available"><i className="h-2.5 w-2.5 rounded-sm border border-accent/60 bg-accent/15" /> Available window</span>
+                <span className="inline-flex items-center gap-1.5" data-testid="legend-calendar-unavailable"><i className="h-2.5 w-2.5 rounded-sm bg-destructive/20" /> Unavailable</span>
+              </div>
+            </>
+          ) : (
+            <WeeklyTutorCalendarView
+              days={weekDates}
+              sessions={sessions}
+              availability={availability.data ?? []}
+              unavailablePeriods={unavailable.data ?? []}
+              selectedDate={selectedDate}
+              onSelectDate={(date) => {
+                setSelectedDate(date);
+                setMonth(date);
+              }}
+            />
+          )}
         </div>
 
-        <aside className="min-w-0 border-t border-border bg-muted/25 p-4 sm:p-5 lg:border-l lg:border-t-0" aria-label="Selected date schedule">
+        <aside
+          className={`min-w-0 border-t border-border bg-muted/25 p-4 sm:p-5 ${viewMode === "month" ? "lg:border-l lg:border-t-0" : ""}`}
+          aria-label="Selected date schedule"
+        >
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">Selected day</p>

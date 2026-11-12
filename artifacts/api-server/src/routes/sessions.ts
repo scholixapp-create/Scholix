@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { lockBookableStudent } from "../lib/accountRemoval";
-import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, paymentsTable, reviewsTable } from "@workspace/db";
+import { db, sessionsTable, tutorsTable, usersTable, studentsTable, invoicesTable, paymentsTable, reviewsTable, tutorRelationshipsTable } from "@workspace/db";
 import { eq, and, ne, inArray, count } from "drizzle-orm";
 import { CreateSessionBody, ListSessionsQueryParams, DecideSessionRequestBody } from "@workspace/api-zod";
 import { createNotification } from "../lib/notify";
@@ -123,7 +123,13 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect, viewer?: Auth
   let studentName: string | null = null;
 
   const [tutorRow] = await db
-    .select({ firstName: usersTable.firstName, lastName: usersTable.lastName, userId: tutorsTable.userId })
+    .select({
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      userId: tutorsTable.userId,
+      teachingMode: tutorsTable.teachingMode,
+      travelBufferMinutes: tutorsTable.travelBufferMinutes,
+    })
     .from(tutorsTable)
     .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
     .where(eq(tutorsTable.id, s.tutorId))
@@ -138,6 +144,25 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect, viewer?: Auth
     .limit(1);
 
   if (student) studentName = student.archivedAt ? "Removed student" : `${student.firstName} ${student.lastName ?? ""}`.trim();
+  let lessonMode = s.lessonMode;
+  let travelBufferMinutes = s.travelBufferMinutes;
+  if (student?.parentId && (lessonMode == null || travelBufferMinutes == null)) {
+    const [relationship] = await db
+      .select({
+        lessonMode: tutorRelationshipsTable.lessonMode,
+        travelBufferMinutes: tutorRelationshipsTable.travelBufferMinutes,
+      })
+      .from(tutorRelationshipsTable)
+      .where(and(
+        eq(tutorRelationshipsTable.tutorId, s.tutorId),
+        eq(tutorRelationshipsTable.parentId, student.parentId),
+      ))
+      .limit(1);
+    lessonMode ??= relationship?.lessonMode ?? null;
+    travelBufferMinutes ??= relationship?.travelBufferMinutes ?? null;
+  }
+  lessonMode ??= tutorRow?.teachingMode === "online" ? "online" : "in_person";
+  travelBufferMinutes ??= tutorRow?.travelBufferMinutes ?? 0;
   const [payment] = await db.select({ status: paymentsTable.status }).from(paymentsTable).where(eq(paymentsTable.sessionId, s.id)).limit(1);
   let parentAddress: string | null = null;
   let parentActive = false;
@@ -179,8 +204,9 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect, viewer?: Auth
     subject: s.subject,
     scheduledAt: s.scheduledAt.toISOString(),
     durationMinutes: s.durationMinutes,
+    travelBufferMinutes,
     status: s.status,
-    lessonMode: s.lessonMode,
+    lessonMode,
     locationAddress,
     requestExpiresAt: s.requestExpiresAt?.toISOString() ?? null,
     tutorConfirmedAt: s.tutorConfirmedAt?.toISOString() ?? null,

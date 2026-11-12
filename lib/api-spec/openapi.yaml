@@ -1911,6 +1911,10 @@ components:
           type: string
         durationMinutes:
           type: integer
+        travelBufferMinutes:
+          type: integer
+          minimum: 0
+          description: Travel buffer captured for this session, in minutes.
         status:
           type: string
           enum: [pending_payment, pending_confirmation, scheduled, completed, cancelled]
