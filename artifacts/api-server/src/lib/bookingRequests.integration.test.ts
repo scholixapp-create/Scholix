@@ -16,7 +16,7 @@ test("development booking requests, beta holds, permissions and concurrent write
   assert.notEqual(process.env.NODE_ENV, "production");
   assert.doesNotMatch(new URL(process.env.DATABASE_URL!).hostname, /railway|rlwy\.net/i);
   const suffix = randomUUID().slice(0, 10), ids: number[] = [], tutorIds: number[] = [], childIds: number[] = [];
-  const user = async (role: "parent" | "tutor" | "admin") => {
+  const user = async (role: "parent" | "tutor" | "admin" | "student") => {
     const [row] = await db.insert(usersTable).values({
       email: `booking-${suffix}-${ids.length}@example.test`, passwordHash: "synthetic-no-login",
       firstName: "Synthetic", lastName: "Booking", role, parentApproved: true, emailNotificationsEnabled: false,
@@ -34,12 +34,15 @@ test("development booking requests, beta holds, permissions and concurrent write
   try {
     const parent = await user("parent"), outsider = await user("parent"), tutorUser = await user("tutor");
     const wrongTutor = await user("tutor"), admin = await user("admin");
+    const childUser = await user("student");
     const [tutor] = await db.insert(tutorsTable).values({
       userId: tutorUser.id, isApproved: true, verificationStatus: "verified", subjects: ["Mathematics"],
       hourlyRate: 60, teachingMode: "both", travelBufferMinutes: 15, sessionDurations: "[60,90]",
     }).returning();
     tutorIds.push(tutor.id);
-    const [child] = await db.insert(studentsTable).values({ parentId: parent.id, firstName: "Synthetic child" }).returning();
+    const [child] = await db.insert(studentsTable).values({
+      userId: childUser.id, parentId: parent.id, firstName: "Synthetic child", email: childUser.email,
+    }).returning();
     const [otherChild] = await db.insert(studentsTable).values({ parentId: outsider.id, firstName: "Other child" }).returning();
     childIds.push(child.id, otherChild.id);
     const date = localDate(new Date(Date.now() + 8 * 86_400_000));
@@ -48,6 +51,9 @@ test("development booking requests, beta holds, permissions and concurrent write
     });
     const create = (time = "16:00", token = parent.token, studentId = child.id, lessonMode = "in_person") =>
       call("/sessions", token, "POST", { tutorId: tutor.id, studentId, subject: "Mathematics",
+        scheduledAt: zonedInstant(date, time)!.toISOString(), durationMinutes: 60, lessonMode });
+    const offer = (time = "16:00", studentId = child.id, lessonMode = "in_person") =>
+      call(`/tutors/${tutor.id}/offers`, tutorUser.token, "POST", { studentId, subject: "Mathematics",
         scheduledAt: zonedInstant(date, time)!.toISOString(), durationMinutes: 60, lessonMode });
     const hold = (id: number, token = parent.token) => call("/payments/simulate", token, "POST", { sessionId: id });
     const decide = (id: number, decision = "accept", token = tutorUser.token) =>
@@ -99,6 +105,54 @@ test("development booking requests, beta holds, permissions and concurrent write
       assert.equal((await db.select().from(invoicesTable).where(eq(invoicesTable.sessionId, id))).length, 1);
       assert.equal((await db.select().from(paymentsTable).where(eq(paymentsTable.sessionId, id))).length, 1);
       assert.equal((await call("/payments", parent.token)).body.find((p: any) => p.sessionId === id).status, "paid");
+      await clearSessions();
+    });
+    await t.test("tutor offers are visible and reserve their slot across families until withdrawn", async () => {
+      await db.insert(sessionsTable).values({
+        tutorId: tutor.id, studentId: child.id, subject: "Previous lesson",
+        scheduledAt: new Date(Date.now() - 7 * 86_400_000), durationMinutes: 60,
+        status: "completed", isPaid: false, totalAmount: 60,
+      });
+
+      const offered = await offer();
+      assert.equal(offered.status, 201);
+      assert.equal(offered.body.status, "pending_payment");
+      assert.ok(offered.body.tutorConfirmedAt);
+      assert.ok(Date.parse(offered.body.requestExpiresAt) > Date.now());
+
+      const tutorOffers = await call("/sessions?status=pending_payment", tutorUser.token);
+      assert.ok(tutorOffers.body.some((session: any) => session.id === offered.body.id && session.tutorConfirmedAt));
+
+      const otherFamilySlots = await call(
+        `/tutors/${tutor.id}/available-slots?date=${date}&duration=60&lessonMode=in_person`,
+        outsider.token,
+      );
+      assert.equal(otherFamilySlots.status, 200);
+      assert.ok(!otherFamilySlots.body.slots.includes("16:00"));
+      assert.equal((await create("16:00", outsider.token, otherChild.id)).status, 409);
+
+      const notifications = await db.select().from(notificationsTable).where(inArray(notificationsTable.userId, [parent.id, childUser.id]));
+      assert.ok(notifications.some((n) => n.userId === parent.id && n.title === "Your tutor offered a lesson time"));
+      assert.ok(notifications.some((n) => n.userId === childUser.id && n.title === "Your tutor suggested a lesson time"));
+
+      const withdrawn = await call(`/sessions/${offered.body.id}/cancel`, parent.token, "POST");
+      assert.equal(withdrawn.status, 200);
+      const availableAgain = await call(
+        `/tutors/${tutor.id}/available-slots?date=${date}&duration=60&lessonMode=in_person`,
+        outsider.token,
+      );
+      assert.ok(availableAgain.body.slots.includes("16:00"));
+
+      const concurrent = await Promise.all([
+        offer("17:15", child.id, "in_person"),
+        create("17:15", outsider.token, otherChild.id, "in_person"),
+      ]);
+      assert.equal(concurrent.filter((response) => response.status === 201).length, 1);
+      for (const [index, response] of concurrent.entries()) {
+        if (response.status === 201) {
+          await call(`/sessions/${response.body.id}/cancel`, index === 0 ? parent.token : outsider.token, "POST");
+        }
+      }
       await clearSessions();
     });
     await t.test("decline, withdrawal and expiry release holds and restore availability", async () => {

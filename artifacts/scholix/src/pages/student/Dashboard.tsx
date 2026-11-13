@@ -6,9 +6,10 @@ import StatusBadge from "@/components/StatusBadge";
 import {
   Calendar, BookOpen, Clock, GraduationCap,
   ChevronRight, CheckCircle2, XCircle, Inbox,
-  BarChart2, Bell,
+  BarChart2, Bell, Hourglass,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { formatInZone, lessonModeLabel } from "@/lib/bookingRequests";
 
 function getToken() { return localStorage.getItem("scholix_token") ?? ""; }
 
@@ -24,6 +25,9 @@ interface Session {
   totalAmount: number;
   tutorName: string;
   studentName: string;
+  lessonMode?: string | null;
+  requestExpiresAt?: string | null;
+  tutorConfirmedAt?: string | null;
 }
 
 function CountdownBadge({ scheduledAt }: { scheduledAt: string }) {
@@ -122,6 +126,35 @@ function HistoryCard({ session }: { session: Session }) {
   );
 }
 
+function TutorOfferCard({ session }: { session: Session }) {
+  return (
+    <article className="rounded-xl border border-amber-200 bg-card p-4" data-testid={`card-student-tutor-offer-${session.id}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100">
+          <Hourglass size={15} className="text-amber-800" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-foreground">Your tutor suggested a lesson time</p>
+            <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">Needs parent review</span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">With {session.tutorName} · {session.subject}</p>
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            <span className="inline-flex items-center gap-1"><Calendar size={11} />{formatInZone(session.scheduledAt)}</span>
+            <span className="inline-flex items-center gap-1"><Clock size={11} />{session.durationMinutes} min</span>
+            <span>{lessonModeLabel(session.lessonMode)}</span>
+          </p>
+          {session.requestExpiresAt && (
+            <p className="mt-2 text-[11px] text-amber-800">
+              This time is held until {formatInZone(session.requestExpiresAt)}. Ask your parent or guardian to review the offer in their dashboard.
+            </p>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function RequestSessionCard({ studentName: _studentName, parentId }: { studentName: string; parentId: number | null }) {
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
 
@@ -208,7 +241,9 @@ export default function StudentDashboard() {
   const [tab, setTab] = useState<Tab>("upcoming");
 
   const allStudents = useListStudents();
-  const allSessions = useListSessions(undefined);
+  const allSessions = useListSessions(undefined, {
+    query: { refetchInterval: 30_000, refetchOnMount: "always", refetchOnWindowFocus: true },
+  });
 
   const myStudent = allStudents.data?.find((s) => s.userId === user?.id) ?? null;
 
@@ -220,8 +255,14 @@ export default function StudentDashboard() {
     .filter((s) => s.status === "scheduled")
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
+  const tutorOffers = mySessions
+    .filter((s) => s.status === "pending_payment" && !!s.tutorConfirmedAt && !!s.requestExpiresAt
+      && Date.parse(s.requestExpiresAt) > Date.now())
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  const activeOfferIds = new Set(tutorOffers.map((s) => s.id));
+
   const history = mySessions
-    .filter((s) => s.status !== "scheduled")
+    .filter((s) => s.status !== "scheduled" && !activeOfferIds.has(s.id))
     .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
 
   const totalHours = mySessions
@@ -305,6 +346,16 @@ export default function StudentDashboard() {
           parentId={myStudent?.parentId ?? null}
         />
         </div>
+      )}
+
+      {tutorOffers.length > 0 && (
+        <section className="mb-5 space-y-2" aria-labelledby="student-tutor-offers-heading">
+          <h2 id="student-tutor-offers-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            Lesson offers
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">{tutorOffers.length}</span>
+          </h2>
+          {tutorOffers.map((session) => <TutorOfferCard key={session.id} session={session} />)}
+        </section>
       )}
 
       {/* Tabs */}

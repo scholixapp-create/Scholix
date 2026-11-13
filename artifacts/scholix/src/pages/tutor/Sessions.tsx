@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useListTutors, useListSessions, useCompleteSession, useCancelSession, useDecideSessionRequest } from "@workspace/api-client-react";
 import { getListSessionsQueryKey } from "@workspace/api-client-react";
-import { invalidateBookingQueries, apiErrorMessage, formatInZone, timeLeft } from "@/lib/bookingRequests";
+import { invalidateBookingQueries, apiErrorMessage, formatInZone, lessonModeLabel, timeLeft } from "@/lib/bookingRequests";
 import { useQueryClient } from "@tanstack/react-query";
 import StatusBadge from "@/components/StatusBadge";
 import { Calendar, Hourglass, CheckCircle, X, Download, FileText, Sparkles, TrendingUp, Star, ClipboardList } from "lucide-react";
@@ -366,6 +366,15 @@ export default function TutorSessions() {
       refetchOnMount: "always",
     },
   });
+  const offerSessions = useListSessions({ status: "pending_payment" }, {
+    query: {
+      enabled: !!tutorId,
+      queryKey: getListSessionsQueryKey({ status: "pending_payment" }),
+      refetchInterval: 30_000,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+    },
+  });
   const decideMutation = useDecideSessionRequest();
   const [decidingId, setDecidingId] = useState<number | null>(null);
   const [decision, setDecision] = useState<{ id: number; ok: boolean; msg: string } | null>(null);
@@ -374,10 +383,15 @@ export default function TutorSessions() {
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [progressSession, setProgressSession] = useState<{ id: number; studentName: string } | null>(null);
   const [filter, setFilter] = useState<"all" | "scheduled" | "completed">("all");
+  const [withdrawingOfferId, setWithdrawingOfferId] = useState<number | null>(null);
+  const [offerError, setOfferError] = useState("");
 
   const requests = (sessions.data ?? [])
     .filter((s) => s.status === "pending_confirmation")
     .sort((a, b) => new Date(a.requestExpiresAt ?? a.scheduledAt).getTime() - new Date(b.requestExpiresAt ?? b.scheduledAt).getTime());
+  const tutorOffers = (offerSessions.data ?? [])
+    .filter((s) => !!s.tutorConfirmedAt && !!s.requestExpiresAt && Date.parse(s.requestExpiresAt) > Date.now())
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
   const handleDecide = (sessionId: number, d: "accept" | "decline") => {
     if (d === "decline" && !confirm("Decline this request? The parent's simulated hold will be released.")) return;
@@ -418,6 +432,17 @@ export default function TutorSessions() {
     });
   };
 
+  const handleWithdrawOffer = (sessionId: number) => {
+    if (!confirm("Withdraw this lesson offer? The time will become available to other families.")) return;
+    setOfferError("");
+    setWithdrawingOfferId(sessionId);
+    cancelMutation.mutate({ sessionId }, {
+      onSuccess: () => invalidateBookingQueries(qc),
+      onError: (err) => setOfferError(apiErrorMessage(err, "Could not withdraw this offer. Refresh and try again.")),
+      onSettled: () => setWithdrawingOfferId(null),
+    });
+  };
+
   const handleLogProgress = () => {
     if (!invoice) return;
     const s = sessions.data?.find((s) => s.id === invoice.sessionId);
@@ -454,6 +479,85 @@ export default function TutorSessions() {
         sessionsError={sessions.isError}
         onRetrySessions={() => void sessions.refetch()}
       />
+
+      <div className="max-w-lg mx-auto mb-6" id="offers" data-testid="section-tutor-offers">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <Hourglass size={14} className="text-amber-700" /> Offers awaiting a family
+            {tutorOffers.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                {tutorOffers.length}
+              </span>
+            )}
+          </h2>
+          <span className="text-[11px] text-muted-foreground">Refreshes every 30s</span>
+        </div>
+        {offerSessions.isLoading ? (
+          <div role="status" className="rounded-xl border border-border bg-card p-4 text-xs text-muted-foreground">
+            Checking for your active offers…
+          </div>
+        ) : offerSessions.isError ? (
+          <div className="rounded-xl border border-border bg-card p-4 text-center">
+            <p className="text-xs text-muted-foreground">We could not load your lesson offers.</p>
+            <button
+              type="button"
+              onClick={() => void offerSessions.refetch()}
+              className="mt-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+            >
+              Try again
+            </button>
+          </div>
+        ) : tutorOffers.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-card p-4 text-center text-xs text-muted-foreground">
+            Offers you send from Students appear here until the family accepts, declines, or the offer expires.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {tutorOffers.map((session) => {
+              const left = timeLeft(session.requestExpiresAt);
+              const busy = withdrawingOfferId === session.id;
+              return (
+                <article key={session.id} className="rounded-xl border border-amber-200 bg-card p-4" data-testid={`card-tutor-offer-${session.id}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{session.subject}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Student: {session.studentName ?? "Student"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatInZone(session.scheduledAt)} · {session.durationMinutes} min · {lessonModeLabel(session.lessonMode)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">
+                      Awaiting family
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+                    <p className="text-[11px] text-muted-foreground">
+                      Held until {session.requestExpiresAt ? formatInZone(session.requestExpiresAt) : "expiry"}{left ? ` · ${left}` : ""}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleWithdrawOffer(session.id)}
+                      disabled={busy}
+                      className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive disabled:opacity-60"
+                      data-testid={`button-withdraw-offer-${session.id}`}
+                    >
+                      {busy ? "Withdrawing…" : "Withdraw offer"}
+                    </button>
+                  </div>
+                  {offerError && withdrawingOfferId === session.id && (
+                    <p className="mt-2 text-xs text-destructive" role="alert">{offerError}</p>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+        {offerError && withdrawingOfferId === null && (
+          <p className="mt-2 text-xs text-destructive" role="alert">{offerError}</p>
+        )}
+      </div>
 
       <div className="max-w-lg mx-auto">
       {decision && !requests.some((r) => r.id === decision.id) && (

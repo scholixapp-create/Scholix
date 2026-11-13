@@ -187,7 +187,7 @@ export default function ParentDashboard() {
       {requests.length > 0 && (
         <div className="mb-6" data-testid="section-requests">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-foreground">Requests awaiting a decision</h2>
+            <h2 className="text-sm font-semibold text-foreground">Tutor offers and booking requests</h2>
             <span className="text-xs text-muted-foreground">Updates every 30 seconds</span>
           </div>
           <div className="space-y-2">

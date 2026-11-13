@@ -9,7 +9,7 @@ import { buildTutorCalendarIcs, createTutorCalendarToken, matchesTutorCalendarTo
 import { lockBookableStudent } from "../lib/accountRemoval";
 import { lockBookableTutor } from "../lib/bookableTutor";
 import { createNotification } from "../lib/notify";
-import { bookingStatusEmailHtml } from "../lib/email";
+import { bookingStatusEmailHtml, sendEmail } from "../lib/email";
 import { config } from "../lib/config";
 
 const router = Router();
@@ -517,12 +517,19 @@ router.post("/tutors/:tutorId/offers", requireAuth, async (req, res) => {
         throw new BookingError("This tutor or student account is inactive or unavailable", 403);
       }
       const [currentTutor] = await tx.select().from(tutorsTable).where(eq(tutorsTable.id, tutorId)).limit(1);
-      const [student] = await tx.select({ id: studentsTable.id, parentId: studentsTable.parentId })
+      const [student] = await tx.select({
+        id: studentsTable.id,
+        parentId: studentsTable.parentId,
+        firstName: studentsTable.firstName,
+        lastName: studentsTable.lastName,
+        email: studentsTable.email,
+        userId: studentsTable.userId,
+      })
         .from(studentsTable).where(eq(studentsTable.id, parsed.data.studentId)).limit(1);
       if (!currentTutor || !student?.parentId) throw new BookingError("Student not found", 404);
       const [parent] = await tx.select({
         role: usersTable.role, isActive: usersTable.isActive, archivedAt: usersTable.archivedAt,
-        parentApproved: usersTable.parentApproved,
+        parentApproved: usersTable.parentApproved, email: usersTable.email,
       }).from(usersTable).where(eq(usersTable.id, student.parentId)).limit(1);
       if (!parent || parent.role !== "parent" || !parent.isActive || parent.archivedAt || !parent.parentApproved) {
         throw new BookingError("The student's parent must have an active approved account to receive an offer", 403);
@@ -552,7 +559,14 @@ router.post("/tutors/:tutorId/offers", requireAuth, async (req, res) => {
         tutorConfirmedAt: now,
         requestExpiresAt: expiresAt,
       }).returning();
-      return { created, parentId: student.parentId };
+      return {
+        created,
+        parentId: student.parentId,
+        parentEmail: parent.email,
+        studentUserId: student.userId,
+        studentEmail: student.email,
+        studentName: `${student.firstName} ${student.lastName ?? ""}`.trim(),
+      };
     });
     const title = "Your tutor offered a lesson time";
     const message = `${subject} on ${localDate(session.created.scheduledAt)} at ${localTime(session.created.scheduledAt)}. Accept by ${session.created.requestExpiresAt?.toLocaleString("en-AU", { timeZone: "Australia/Melbourne" })}. It will be confirmed when you accept; beta payment is simulated and no money is taken.`;
@@ -570,6 +584,55 @@ router.post("/tutors/:tutorId/offers", requireAuth, async (req, res) => {
         actionUrl: new URL("/parent/dashboard", config.frontendUrl).toString(),
       }),
     });
+
+    const studentTitle = "Your tutor suggested a lesson time";
+    const studentMessage = `${session.studentName} has been offered ${subject} on ${localDate(session.created.scheduledAt)} at ${localTime(session.created.scheduledAt)} for ${session.created.durationMinutes} minutes. Ask your parent or guardian to review it in their Scholix dashboard. The time is held until ${session.created.requestExpiresAt?.toLocaleString("en-AU", { timeZone: "Australia/Melbourne" })}.`;
+    const studentActionUrl = new URL("/student/dashboard", config.frontendUrl).toString();
+    let studentAccountEmail: string | null = null;
+    if (session.studentUserId) {
+      const [studentAccount] = await db.select({
+        role: usersTable.role,
+        isActive: usersTable.isActive,
+        email: usersTable.email,
+      }).from(usersTable).where(eq(usersTable.id, session.studentUserId)).limit(1);
+      if (studentAccount?.role === "student" && studentAccount.isActive) {
+        studentAccountEmail = studentAccount.email;
+        await createNotification({
+          userId: session.studentUserId,
+          type: "action_confirm_session",
+          title: studentTitle,
+          message: studentMessage,
+          actionUrl: "/student/dashboard",
+          actionLabel: "View lesson offer",
+          emailSubject: studentTitle,
+          emailHtml: bookingStatusEmailHtml({
+            title: studentTitle,
+            message: studentMessage,
+            actionUrl: studentActionUrl,
+          }),
+        });
+      }
+    }
+
+    const studentContactEmail = session.studentEmail?.trim();
+    const validEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (
+      studentContactEmail
+      && validEmail(studentContactEmail)
+      && studentContactEmail.toLowerCase() !== session.parentEmail.toLowerCase()
+      && studentContactEmail.toLowerCase() !== studentAccountEmail?.toLowerCase()
+      && (!session.studentUserId || studentAccountEmail)
+    ) {
+      await sendEmail({
+        to: studentContactEmail,
+        subject: studentTitle,
+        html: bookingStatusEmailHtml({
+          title: studentTitle,
+          message: studentMessage,
+          actionUrl: session.studentUserId ? studentActionUrl : new URL("/parent/dashboard", config.frontendUrl).toString(),
+        }),
+      });
+    }
     res.status(201).json(session.created);
   } catch (error) {
     if (error instanceof BookingError) { res.status(error.statusCode).json({ error: error.message }); return; }
