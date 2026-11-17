@@ -218,6 +218,22 @@ test("development booking requests, beta holds, permissions and concurrent write
       assert.ok(rows.filter((n) => n.userId === parent.id && n.type !== "whatsapp_connect")
         .every((n) => n.actionUrl === "/parent/dashboard"));
       assert.ok(rows.some((n) => n.title === "Booking request expired"));
+      const studentUpdates = rows.filter((n) => n.userId === childUser.id && [
+        "Your lesson is confirmed",
+        "Your tutor declined the lesson request",
+        "Your lesson was cancelled",
+        "Your lesson offer expired",
+      ].includes(n.title));
+      for (const title of [
+        "Your lesson is confirmed",
+        "Your tutor declined the lesson request",
+        "Your lesson was cancelled",
+        "Your lesson offer expired",
+      ]) {
+        assert.ok(studentUpdates.some((n) => n.title === title), `missing student update: ${title}`);
+      }
+      assert.ok(studentUpdates.every((n) => n.actionUrl === "/student/dashboard"));
+      assert.ok(studentUpdates.every((n) => n.message.includes("Mathematics") && n.message.includes("Synthetic")));
       assert.doesNotMatch(rows.map((n) => n.message).join("\n"), /Bearer |synthetic-no-login/);
     });
   } finally {

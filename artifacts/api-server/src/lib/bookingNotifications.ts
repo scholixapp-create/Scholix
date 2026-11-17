@@ -42,6 +42,46 @@ export async function notifyBookingState(session: typeof sessionsTable.$inferSel
       }),
     });
   }
+  if (event !== "requested" && student.userId) {
+    const [studentAccount] = await db.select({
+      role: usersTable.role,
+      isActive: usersTable.isActive,
+    }).from(usersTable).where(eq(usersTable.id, student.userId)).limit(1);
+    if (studentAccount?.role === "student" && studentAccount.isActive) {
+      const studentTitles = {
+        accepted: "Your lesson is confirmed",
+        declined: "Your tutor declined the lesson request",
+        withdrawn: "Your lesson was cancelled",
+        expired: "Your lesson offer expired",
+      };
+      const studentDetail = `${session.subject} with ${tutor.firstName} ${tutor.lastName}, `
+        + `${localDate(session.scheduledAt)} at ${localTime(session.scheduledAt)} (Australia/Melbourne), `
+        + `${session.durationMinutes} minutes.`;
+      const studentMessages = {
+        accepted: `Your lesson is confirmed. ${studentDetail} ${paymentMessage}`,
+        declined: `Your tutor declined this lesson request. ${studentDetail} ${paymentMessage}`,
+        withdrawn: `This lesson was cancelled. ${studentDetail} ${paymentMessage}`,
+        expired: `This lesson offer expired before it was confirmed. ${studentDetail} ${paymentMessage}`,
+      };
+      const title = studentTitles[event];
+      const actionPath = "/student/dashboard";
+      const message = studentMessages[event];
+      await createNotification({
+        userId: student.userId,
+        type: event === "accepted" ? "session_booked" : "session_cancelled",
+        title,
+        message,
+        actionUrl: actionPath,
+        actionLabel: "View your lessons",
+        emailSubject: title,
+        emailHtml: bookingStatusEmailHtml({
+          title,
+          message,
+          actionUrl: new URL(actionPath, config.frontendUrl).toString(),
+        }),
+      });
+    }
+  }
   // Preserve the existing post-confirmation introduction links.
   if (event === "accepted") {
     const [parent] = await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, student.parentId));
