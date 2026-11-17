@@ -13,6 +13,7 @@ export const studentsTable = pgTable("students", {
   school: text("school"),
   subjects: text("subjects"),
   goals: text("goals"),
+  address: text("address"),
   parentId: integer("parent_id"),
   archivedAt: timestamp("archived_at"),
   dateOfBirth: text("date_of_birth"),

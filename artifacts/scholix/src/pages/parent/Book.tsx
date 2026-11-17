@@ -134,6 +134,7 @@ export default function BookSession() {
   const tutorSubjects = tutor.data?.subjects ?? [];
   const otherSubjects = VICTORIAN_SUBJECTS.filter((s) => !tutorSubjects.includes(s));
   const selectedStudent = myStudents.find((s) => s.id === selectedStudentId);
+  const missingInPersonAddress = lessonMode === "in_person" && !selectedStudent?.address?.trim();
 
   const totalAmount = tutor.data
     ? (tutor.data.hourlyRate * (selectedDuration || 60)) / 60
@@ -146,6 +147,7 @@ export default function BookSession() {
     if (!selectedStudentId) { setError("Please select a student"); return; }
     if (!subject) { setError("Please select a subject"); return; }
     if (!lessonMode) { setError("Please choose online or in-person"); return; }
+    if (missingInPersonAddress) { setError("Add the student's lesson address before requesting an in-person session."); return; }
     setStep("duration");
   };
 
@@ -823,6 +825,14 @@ export default function BookSession() {
               </button>
             ))}
           </div>
+        </div>
+      )}
+      {missingInPersonAddress && selectedStudent && (
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          Add a lesson address before requesting an in-person session. It stays private and is shared only with this tutor for an active booking.{" "}
+          <Link href={`/parent/students?student=${selectedStudent.id}&edit=address`} className="font-semibold underline underline-offset-2">
+            Add address
+          </Link>
         </div>
       )}
 

@@ -14,4 +14,5 @@
 - [Review integrity](review-integrity.md) — serialized review writes avoid a new migration; future writers must share the lock or plan a history-preserving constraint.
 - [Approval policy](account-approval-policy.md) — new parents need manual approval; tutor qualification proposals must not revoke existing tutor verification.
 - [Scheduling policy](scheduling-policy.md) — quarter-hour starts for longer lessons; retain travel time when an in-person lesson precedes an online lesson.
+- [Student lesson addresses](student-lesson-addresses.md) — keep lesson addresses on each student; never silently copy a parent profile address into a child's record.
 - [Drizzle SQL composition](drizzle-query-composition.md) — arrays need explicit SQL typing; correlated selects must preserve outer-table qualification.

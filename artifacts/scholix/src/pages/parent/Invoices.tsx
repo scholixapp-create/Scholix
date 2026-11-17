@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { Link } from "wouter";
 import { FileText, Download, Receipt } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -7,6 +8,8 @@ interface ParentInvoice {
   id: number;
   invoiceNumber: string;
   sessionId: number;
+  studentId: number;
+  tutorId: number;
   totalAmount: number;
   generatedAt: string;
   tutorName: string;
@@ -98,7 +101,9 @@ export default function ParentInvoices() {
                       {inv.subject}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {inv.studentName} · {inv.tutorName}
+                      <Link href={`/parent/students?student=${inv.studentId}#student-${inv.studentId}`} className="hover:text-primary hover:underline">{inv.studentName}</Link>
+                      {" · "}
+                      <Link href={`/tutor/${inv.tutorId}`} className="hover:text-primary hover:underline">{inv.tutorName}</Link>
                     </p>
                     {inv.scheduledAt && (
                       <p className="text-xs text-muted-foreground mt-0.5">

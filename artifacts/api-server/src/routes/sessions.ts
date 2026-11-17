@@ -164,13 +164,20 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect, viewer?: Auth
   lessonMode ??= tutorRow?.teachingMode === "online" ? "online" : "in_person";
   travelBufferMinutes ??= tutorRow?.travelBufferMinutes ?? 0;
   const [payment] = await db.select({ status: paymentsTable.status }).from(paymentsTable).where(eq(paymentsTable.sessionId, s.id)).limit(1);
-  let parentAddress: string | null = null;
+  let lessonAddress: string | null = null;
   let parentActive = false;
   let parentApproved = false;
-  if (viewer?.role === "tutor" && student && !student.archivedAt && student.parentId && s.lessonMode === "in_person"
-    && (s.status === "scheduled" || s.status === "completed")) {
+  let parentId: number | null = null;
+  let parentName: string | null = null;
+  let parentEmail: string | null = null;
+  let parentPhone: string | null = null;
+  if (viewer?.role === "tutor" && tutorRow?.userId === viewer.id && student && !student.archivedAt && student.parentId
+    && ["pending_payment", "pending_confirmation", "scheduled"].includes(s.status)) {
     const [parent] = await db.select({
-      address: usersTable.address,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      email: usersTable.email,
+      phone: usersTable.phone,
       role: usersTable.role,
       isActive: usersTable.isActive,
       archivedAt: usersTable.archivedAt,
@@ -178,9 +185,15 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect, viewer?: Auth
     })
       .from(usersTable).where(eq(usersTable.id, student.parentId)).limit(1);
     if (parent?.role === "parent" && parent.isActive && !parent.archivedAt && parent.parentApproved) {
-      parentAddress = parent.address;
       parentActive = true;
       parentApproved = true;
+      parentId = student.parentId;
+      parentName = `${parent.firstName} ${parent.lastName}`.trim();
+      parentEmail = parent.email;
+      parentPhone = parent.phone ?? null;
+      if (lessonMode === "in_person") {
+        lessonAddress = student.address;
+      }
     }
   }
   const locationAddress = viewer
@@ -189,8 +202,8 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect, viewer?: Auth
         viewerId: viewer.id,
         tutorUserId: tutorRow?.userId ?? null,
         status: s.status,
-        lessonMode: s.lessonMode,
-        parentAddress,
+        lessonMode,
+        lessonAddress,
         studentActive: Boolean(student && !student.archivedAt),
         parentActive,
         parentApproved,
@@ -217,6 +230,10 @@ async function sessionToJson(s: typeof sessionsTable.$inferSelect, viewer?: Auth
     isCommissionFree: s.isCommissionFree,
     tutorName,
     studentName,
+    parentId,
+    parentName,
+    parentEmail,
+    parentPhone,
     createdAt: s.createdAt.toISOString(),
   };
 }
@@ -395,6 +412,11 @@ router.post("/sessions", requireAuth, async (req, res) => {
         throw new BookingError("This family or tutor is inactive or no longer approved", 403);
       }
       const [currentTutor] = await tx.select().from(tutorsTable).where(eq(tutorsTable.id, tutor.id));
+      const [bookedStudent] = await tx.select({ address: studentsTable.address }).from(studentsTable)
+        .where(eq(studentsTable.id, parsed.data.studentId)).limit(1);
+      if (parsed.data.lessonMode === "in_person" && !bookedStudent?.address?.trim()) {
+        throw new BookingError("Add the student's lesson address before requesting an in-person booking", 409);
+      }
       const slots = await tutorSlots(tx, currentTutor, actor.id, localDate(newStart),
         parsed.data.durationMinutes, parsed.data.lessonMode);
       if (slots.slotInstants[localTime(newStart)] !== newStart.toISOString()) {
@@ -567,6 +589,14 @@ router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
     .from(studentsTable)
     .where(eq(studentsTable.id, updated.studentId))
     .limit(1);
+  const [parentContact] = student?.parentId
+    ? await db.select({
+        firstName: usersTable.firstName,
+        lastName: usersTable.lastName,
+        email: usersTable.email,
+        phone: usersTable.phone,
+      }).from(usersTable).where(eq(usersTable.id, student.parentId)).limit(1)
+    : [];
 
   const dateStr = format(updated.scheduledAt, "EEE, MMM d 'at' h:mm a");
   const tutorName = tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "Your tutor";
@@ -656,6 +686,7 @@ router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
     invoice: {
       id: invoice.id,
       sessionId: invoice.sessionId,
+      studentId: updated.studentId,
       totalAmount: invoice.totalAmount,
       platformCommission: invoice.platformCommission,
       tutorEarnings: invoice.tutorEarnings,
@@ -665,6 +696,9 @@ router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
       generatedAt: invoice.generatedAt.toISOString(),
       tutorName: tutorRow ? `${tutorRow.firstName} ${tutorRow.lastName}` : "",
       studentName: student ? `${student.firstName} ${student.lastName}` : "",
+      parentName: parentContact ? `${parentContact.firstName} ${parentContact.lastName}`.trim() : null,
+      parentEmail: parentContact?.email ?? null,
+      parentPhone: parentContact?.phone ?? null,
       subject: updated.subject,
       durationMinutes: updated.durationMinutes,
     },

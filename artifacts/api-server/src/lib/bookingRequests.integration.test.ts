@@ -42,15 +42,30 @@ test("development booking requests, beta holds, permissions and concurrent write
     tutorIds.push(tutor.id);
     const [child] = await db.insert(studentsTable).values({
       userId: childUser.id, parentId: parent.id, firstName: "Synthetic child", email: childUser.email,
+      address: "10 Synthetic Street, Melbourne VIC 3000",
     }).returning();
-    const [otherChild] = await db.insert(studentsTable).values({ parentId: outsider.id, firstName: "Other child" }).returning();
+    const [otherChild] = await db.insert(studentsTable).values({
+      parentId: outsider.id, firstName: "Other child", address: "12 Example Road, Melbourne VIC 3000",
+    }).returning();
     childIds.push(child.id, otherChild.id);
     const date = localDate(new Date(Date.now() + 8 * 86_400_000));
     await db.insert(availabilityTable).values({
       tutorId: tutor.id, dayOfWeek: dayOfWeek(date), startTime: "16:00", endTime: "18:15", timezone: "Australia/Melbourne",
     });
+    const [addresslessChild] = await db.insert(studentsTable).values({
+      parentId: parent.id, firstName: "Addressless child",
+    }).returning();
+    childIds.push(addresslessChild.id);
+    await db.insert(sessionsTable).values({
+      tutorId: tutor.id, studentId: addresslessChild.id, subject: "Previous lesson",
+      scheduledAt: new Date(Date.now() - 7 * 86_400_000), durationMinutes: 60,
+      status: "completed", isPaid: false, totalAmount: 60,
+    });
     const create = (time = "16:00", token = parent.token, studentId = child.id, lessonMode = "in_person") =>
       call("/sessions", token, "POST", { tutorId: tutor.id, studentId, subject: "Mathematics",
+        scheduledAt: zonedInstant(date, time)!.toISOString(), durationMinutes: 60, lessonMode });
+    const createFor = (time: string, studentId: number, lessonMode = "in_person") =>
+      call("/sessions", parent.token, "POST", { tutorId: tutor.id, studentId, subject: "Mathematics",
         scheduledAt: zonedInstant(date, time)!.toISOString(), durationMinutes: 60, lessonMode });
     const offer = (time = "16:00", studentId = child.id, lessonMode = "in_person") =>
       call(`/tutors/${tutor.id}/offers`, tutorUser.token, "POST", { studentId, subject: "Mathematics",
@@ -77,6 +92,20 @@ test("development booking requests, beta holds, permissions and concurrent write
       assert.equal((await create("16:00", outsider.token)).status, 403);
       assert.equal((await create("15:45")).status, 409);
       assert.equal((await call(`/tutors/${tutor.id}/available-slots?date=2026-02-30&duration=60`)).status, 400);
+    });
+    await t.test("lesson addresses are requested from parents and required only for in-person bookings", async () => {
+      const request = `/students/${addresslessChild.id}/address-request`;
+      assert.equal((await call(request, parent.token, "POST")).status, 403);
+      assert.equal((await call(request, wrongTutor.token, "POST")).status, 403);
+      assert.equal((await call(request, tutorUser.token, "POST")).body.requested, true);
+      assert.equal((await call(request, tutorUser.token, "POST")).body.requested, true);
+      const addressRequests = await db.select().from(notificationsTable).where(eq(notificationsTable.userId, parent.id));
+      assert.equal(addressRequests.filter((row) => row.type === "student_address_requested").length, 1);
+      assert.match(addressRequests.find((row) => row.type === "student_address_requested")?.actionUrl ?? "", /student=.*edit=address/);
+
+      assert.equal((await createFor("16:00", addresslessChild.id, "in_person")).status, 409);
+      assert.equal((await createFor("16:00", addresslessChild.id, "online")).status, 201);
+      await clearSessions();
     });
     await t.test("hold does not confirm, capture or invoice; only owning tutor can accept", async () => {
       const created = await create();

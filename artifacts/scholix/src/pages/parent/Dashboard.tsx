@@ -200,7 +200,11 @@ export default function ParentDashboard() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground">{session.subject}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">with {session.tutorName} · {session.studentName}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        with <Link href={`/tutor/${session.tutorId}`} className="hover:text-primary hover:underline">{session.tutorName}</Link>
+                        {" · "}
+                        <Link href={`/parent/students?student=${session.studentId}#student-${session.studentId}`} className="hover:text-primary hover:underline">{session.studentName}</Link>
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatInZone(session.scheduledAt)} · {session.durationMinutes}min · {lessonModeLabel(session.lessonMode)}
                       </p>
@@ -280,7 +284,11 @@ export default function ParentDashboard() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground">{session.subject}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">with {session.tutorName}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      with <Link href={`/tutor/${session.tutorId}`} className="hover:text-primary hover:underline">{session.tutorName}</Link>
+                      {" · "}
+                      <Link href={`/parent/students?student=${session.studentId}#student-${session.studentId}`} className="hover:text-primary hover:underline">{session.studentName}</Link>
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {formatInZone(session.scheduledAt)} · {session.durationMinutes}min
                     </p>
@@ -306,7 +314,9 @@ export default function ParentDashboard() {
                 <div className="flex items-start gap-2.5 min-w-0">
                   <XCircle size={15} className="text-muted-foreground shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{session.subject} with {session.tutorName}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {session.subject} with <Link href={`/tutor/${session.tutorId}`} className="hover:text-primary hover:underline">{session.tutorName}</Link>
+                    </p>
                     <p className="text-xs text-muted-foreground mt-0.5">{formatInZone(session.scheduledAt)}</p>
                     <p className="text-xs text-muted-foreground mt-1">{session.cancellationReason ?? "Cancelled"}</p>
                   </div>
@@ -359,7 +369,7 @@ export default function ParentDashboard() {
               <div key={session.id} className="bg-card border border-card-border rounded-xl p-4 flex items-center justify-between gap-3" data-testid={`card-completed-session-${session.id}`}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{session.subject}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">with {session.tutorName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">with <Link href={`/tutor/${session.tutorId}`} className="hover:text-primary hover:underline">{session.tutorName}</Link></p>
                   <p className="text-xs text-muted-foreground mt-1">{formatInZone(session.scheduledAt)}</p>
                 </div>
                 {reviewTargetIds.has(session.id) ? (

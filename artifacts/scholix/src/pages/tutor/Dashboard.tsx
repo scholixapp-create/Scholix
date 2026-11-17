@@ -7,7 +7,7 @@ import GetMoreStudents from "@/components/tutor/GetMoreStudents";
 import TutorReviewsSection from "@/components/tutor/TutorReviewsSection";
 import { Link } from "wouter";
 import StatusBadge from "@/components/StatusBadge";
-import { SessionModeLocation, SessionStudentLink } from "@/components/tutor/SessionContext";
+import { SessionModeLocation, SessionParentContact, SessionStudentLink } from "@/components/tutor/SessionContext";
 import {
   Calendar, Users, DollarSign, Clock, ChevronRight, Zap, BarChart2, Star, BookOpen,
   Shield, AlertCircle, Hourglass, AlertTriangle, XCircle, Bell, TrendingUp, Layers, Wallet,
@@ -438,6 +438,9 @@ export default function TutorDashboard() {
                     <p className="text-xs text-muted-foreground mt-0.5">
                       <SessionStudentLink studentId={session.studentId} studentName={session.studentName} />
                     </p>
+                    <div className="mt-1">
+                      <SessionParentContact studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
+                    </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {formatInZone(session.scheduledAt)} · {session.durationMinutes}min
                     </p>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useListStudents, useCreateStudent, useUpdateStudent, useRemoveStudent } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { getListStudentsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -78,6 +78,7 @@ function EditStudentModal({ student, onClose, onSaved }: { student: CardStudent;
   const [subjects, setSubjects] = useState<string[]>(student.subjects ? student.subjects.split(",").map((x) => x.trim()).filter(Boolean) : []);
   const [goals, setGoals] = useState(student.goals ?? "");
   const [dateOfBirth, setDateOfBirth] = useState(student.dateOfBirth ? student.dateOfBirth.slice(0, 10) : "");
+  const [address, setAddress] = useState(student.address ?? "");
   const [error, setError] = useState("");
   const toggle = (sub: string) => setSubjects((p) => (p.includes(sub) ? p.filter((x) => x !== sub) : [...p, sub]));
   const subjectOptions = Array.from(new Set([...SUBJECT_OPTIONS, ...subjects]));
@@ -96,6 +97,7 @@ function EditStudentModal({ student, onClose, onSaved }: { student: CardStudent;
           subjects: subjects.length ? subjects.join(", ") : null,
           goals: goals.trim() || null,
           dateOfBirth: dateOfBirth || null,
+          address: address.trim(),
         },
       },
       {
@@ -147,6 +149,11 @@ function EditStudentModal({ student, onClose, onSaved }: { student: CardStudent;
         <label className="block">
           <span className="block text-xs font-medium text-foreground mb-1.5">Learning goals</span>
           <textarea value={goals} onChange={(e) => setGoals(e.target.value)} maxLength={2000} rows={2} className={`${inputCls} resize-none`} data-testid="input-edit-goals" />
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-foreground mb-1.5">Lesson address</span>
+          <textarea value={address} onChange={(e) => setAddress(e.target.value)} required maxLength={500} rows={2} className={`${inputCls} resize-none`} data-testid="input-edit-student-address" />
+          <span className="mt-1 block text-[10px] text-muted-foreground">Private. Shared only with this student's assigned tutor for active in-person bookings.</span>
         </label>
         <label className="block">
           <span className="block text-xs font-medium text-foreground mb-1.5">Date of birth</span>
@@ -343,14 +350,25 @@ interface StudentCardProps {
     subjects?: string | null;
     goals?: string | null;
     dateOfBirth?: string | null;
+    address?: string | null;
     isIdentityVerified?: boolean;
     createdAt: string;
   };
 }
 
-function StudentCard({ student, onChanged }: StudentCardProps & { onChanged: (msg: string, studentId: number) => void }) {
+function StudentCard({ student, onChanged, openAddressEditor, onAddressEditorHandled }: StudentCardProps & {
+  onChanged: (msg: string, studentId: number) => void;
+  openAddressEditor?: boolean;
+  onAddressEditorHandled?: () => void;
+}) {
   const [showProgress, setShowProgress] = useState(false);
   const [mode, setMode] = useState<"edit" | "remove" | null>(null);
+  useEffect(() => {
+    if (openAddressEditor) {
+      setMode("edit");
+      onAddressEditorHandled?.();
+    }
+  }, [openAddressEditor, onAddressEditorHandled]);
   const initials = student.lastName
     ? `${student.firstName[0]}${student.lastName[0]}`.toUpperCase()
     : student.firstName.slice(0, 2).toUpperCase();
@@ -363,7 +381,7 @@ function StudentCard({ student, onChanged }: StudentCardProps & { onChanged: (ms
     : [];
 
   return (
-    <div className="bg-card border border-card-border rounded-xl overflow-hidden">
+    <div id={`student-${student.id}`} className="bg-card border border-card-border rounded-xl overflow-hidden">
       {mode === "edit" && (
         <EditStudentModal student={student} onClose={() => setMode(null)} onSaved={(m) => { setMode(null); onChanged(m, student.id); }} />
       )}
@@ -376,7 +394,9 @@ function StudentCard({ student, onChanged }: StudentCardProps & { onChanged: (ms
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-sm font-semibold text-foreground">{displayName}</p>
+            <Link href={`/parent/students?student=${student.id}#student-${student.id}`} className="text-sm font-semibold text-foreground hover:text-primary hover:underline">
+              {displayName}
+            </Link>
             {student.isIdentityVerified && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-accent/10 text-accent text-[10px] font-semibold">
                 <Shield size={9} /> Verified
@@ -421,6 +441,11 @@ function StudentCard({ student, onChanged }: StudentCardProps & { onChanged: (ms
           </p>
         </div>
       )}
+      {!student.address?.trim() && (
+        <div className="mx-4 mb-3 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-900">
+          Add a lesson address before requesting in-person sessions. Tutors cannot see it until an active in-person booking.
+        </div>
+      )}
 
       {showProgress && (
         <div className="px-4 pb-4 border-t border-border pt-3">
@@ -461,6 +486,7 @@ function AddStudentModal({
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [goals, setGoals] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [address, setAddress] = useState("");
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
 
@@ -484,8 +510,9 @@ function AddStudentModal({
           subjects: selectedSubjects.length > 0 ? selectedSubjects.join(", ") : undefined,
           goals: goals.trim() || undefined,
           dateOfBirth: dateOfBirth || undefined,
+          address: address.trim(),
           parentId,
-        } as any,
+        },
       },
       {
         onSuccess: async (newStudent) => {
@@ -583,6 +610,12 @@ function AddStudentModal({
                 <option key={g} value={g}>{g}</option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1.5">Lesson address</label>
+            <textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, suburb, state and postcode" required maxLength={500} rows={2} className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" data-testid="input-new-student-address" />
+            <p className="text-[10px] text-muted-foreground mt-1">Private. Shared only with this student's assigned tutor for active in-person bookings.</p>
           </div>
 
           <div>
@@ -701,11 +734,25 @@ function AddStudentModal({
 
 export default function ParentStudents() {
   const { user } = useAuth();
+  const search = useSearch();
+  const [, navigate] = useLocation();
   const qc = useQueryClient();
   const students = useListStudents();
   const [showModal, setShowModal] = useState(false);
   const [justAdded, setJustAdded] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [addressEditStudentId, setAddressEditStudentId] = useState<number | null>(() => {
+    const params = new URLSearchParams(search);
+    const id = params.get("student");
+    return params.get("edit") === "address" && id && /^[1-9]\d*$/.test(id) ? Number(id) : null;
+  });
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const id = params.get("student");
+    if (params.get("edit") === "address" && id && /^[1-9]\d*$/.test(id)) {
+      setAddressEditStudentId(Number(id));
+    }
+  }, [search]);
 
   const handleChanged = async (msg: string, studentId: number) => {
     await Promise.all([
@@ -813,7 +860,16 @@ export default function ParentStudents() {
       ) : (
         <div className="space-y-3">
           {myStudents.map((student) => (
-            <StudentCard key={student.id} student={student as any} onChanged={handleChanged} />
+            <StudentCard
+              key={student.id}
+              student={student as any}
+              onChanged={handleChanged}
+              openAddressEditor={addressEditStudentId === student.id}
+              onAddressEditorHandled={() => {
+                setAddressEditStudentId(null);
+                navigate("/parent/students");
+              }}
+            />
           ))}
           <button
             onClick={() => setShowModal(true)}

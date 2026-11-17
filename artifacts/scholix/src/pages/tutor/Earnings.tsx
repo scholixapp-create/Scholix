@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
+import { Link } from "wouter";
 import { useTutorInvoices } from "@/hooks/useTutorInvoices";
 import { useListSessions, useListTutors } from "@workspace/api-client-react";
 import {
@@ -364,7 +365,11 @@ export default function TutorEarnings() {
                           <p className="text-sm font-semibold text-foreground">{s.subject}</p>
                           {isFree && <Sparkles size={11} className="text-accent" />}
                         </div>
-                        <p className="text-xs text-muted-foreground">{s.studentName} · {s.durationMinutes}m</p>
+                        <p className="text-xs text-muted-foreground">
+                          <Link href={`/tutor/students?student=${s.studentId}`} className="hover:text-primary hover:underline">{s.studentName}</Link>
+                          {" · "}{s.durationMinutes}m
+                        </p>
+                        {s.parentName && <Link href={`/tutor/students?student=${s.studentId}#family`} className="mt-0.5 block text-[11px] text-primary hover:underline">{s.parentName}</Link>}
                         <p className="text-[11px] text-muted-foreground mt-0.5">
                           {format(parseISO(s.scheduledAt), "MMM d, yyyy")}
                         </p>
@@ -417,7 +422,8 @@ export default function TutorEarnings() {
                           {format(parseISO(s.scheduledAt), "MMM d, yyyy")}
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-xs font-medium text-foreground">{s.studentName}</p>
+                          <Link href={`/tutor/students?student=${s.studentId}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline">{s.studentName}</Link>
+                          {s.parentName && <Link href={`/tutor/students?student=${s.studentId}#family`} className="block text-[11px] text-primary hover:underline">{s.parentName}</Link>}
                           <p className="text-[11px] text-muted-foreground">{s.subject}</p>
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{s.durationMinutes}m</td>

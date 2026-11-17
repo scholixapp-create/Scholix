@@ -702,6 +702,30 @@ paths:
                 items:
                   $ref: "#/components/schemas/TutorStudent"
 
+  /students/{studentId}/address-request:
+    post:
+      operationId: requestStudentAddress
+      tags: [students]
+      summary: Ask a student's parent to provide the lesson address
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Address request created or already pending
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentAddressRequestResult"
+        "403":
+          description: Only the student's tutor can request the address
+        "404":
+          description: Student not found
+
   /tutors/{tutorId}/relationships:
     get:
       operationId: getTutorRelationships
@@ -857,7 +881,7 @@ paths:
     get:
       operationId: getStudent
       tags: [students]
-      summary: Get a student by ID
+      summary: Get a student profile visible to the authenticated account
       parameters:
         - name: studentId
           in: path
@@ -877,6 +901,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not allowed to view this profile
 
   /students/{studentId}/invite:
     post:
@@ -1766,6 +1792,12 @@ components:
         subjects: { type: [string, "null"], maxLength: 1000 }
         goals: { type: [string, "null"], maxLength: 2000 }
         dateOfBirth: { type: [string, "null"], format: date }
+        address: { type: string, minLength: 1, maxLength: 500 }
+    StudentAddressRequestResult:
+      type: object
+      properties:
+        requested: { type: boolean }
+      required: [requested]
     StudentRemovalConfirmation:
       type: object
       additionalProperties: false
@@ -1805,7 +1837,7 @@ components:
         reviewNotes: { type: [string, "null"] }
     TutorStudent:
       type: object
-      description: Student profile fields available only to the assigned tutor or an admin.
+      description: Student profile and parent contact fields available only to the assigned tutor or an admin. The lesson address is never included here.
       properties:
         id: { type: integer }
         userId: { type: ["integer", "null"] }
@@ -1817,11 +1849,16 @@ components:
         subjects: { type: ["string", "null"] }
         goals: { type: ["string", "null"] }
         parentId: { type: ["integer", "null"] }
+        parentName: { type: ["string", "null"] }
+        parentEmail: { type: ["string", "null"] }
+        parentPhone: { type: ["string", "null"] }
+        hasLessonAddress: { type: boolean }
         createdAt: { type: string }
       required: [id, firstName, createdAt]
 
     Student:
       type: object
+      description: The address is returned only to the student's owning parent or an administrator, never to tutors through student-profile endpoints.
       properties:
         id:
           type: integer
@@ -1848,6 +1885,9 @@ components:
         goals:
           type: string
           nullable: true
+        address:
+          type: string
+          nullable: true
         parentId:
           type: integer
           nullable: true
@@ -1862,9 +1902,12 @@ components:
 
     CreateStudentBody:
       type: object
+      additionalProperties: false
       properties:
         firstName:
           type: string
+          minLength: 1
+          maxLength: 100
         lastName:
           type: string
         email:
@@ -1879,9 +1922,14 @@ components:
           type: string
         dateOfBirth:
           type: string
+          format: date
+        address:
+          type: string
+          minLength: 1
+          maxLength: 500
         parentId:
           type: integer
-      required: [firstName]
+      required: [firstName, address]
 
     InviteStudentBody:
       type: object
@@ -1894,7 +1942,7 @@ components:
       type: object
       properties:
         lessonMode: { type: [string, "null"], enum: [online, in_person, null] }
-        locationAddress: { type: [string, "null"], description: "Only returned to the assigned tutor for a scheduled or completed in-person lesson." }
+        locationAddress: { type: [string, "null"], description: "Only returned to the assigned tutor for an active in-person booking request or scheduled lesson; never returned in student profiles or invoices." }
         tutorConfirmedAt: { type: ["string", "null"] }
         requestExpiresAt: { type: [string, "null"] }
         cancellationReason: { type: [string, "null"] }
@@ -1928,6 +1976,15 @@ components:
         studentName:
           type: string
           nullable: true
+        parentId:
+          type: ["integer", "null"]
+        parentName:
+          type: ["string", "null"]
+        parentEmail:
+          type: ["string", "null"]
+        parentPhone:
+          type: ["string", "null"]
+          description: Returned only to the assigned tutor for this session.
         createdAt:
           type: string
       required: [id, tutorId, studentId, subject, scheduledAt, durationMinutes, status, isPaid, totalAmount, createdAt]
@@ -1974,6 +2031,8 @@ components:
           type: integer
         sessionId:
           type: integer
+        studentId:
+          type: integer
         totalAmount:
           type: number
         platformCommission:
@@ -1988,11 +2047,17 @@ components:
           type: string
         studentName:
           type: string
+        parentName:
+          type: ["string", "null"]
+        parentEmail:
+          type: ["string", "null"]
+        parentPhone:
+          type: ["string", "null"]
         subject:
           type: string
         durationMinutes:
           type: integer
-      required: [id, sessionId, totalAmount, platformCommission, tutorEarnings, commissionRate, generatedAt, tutorName, studentName, subject, durationMinutes]
+      required: [id, sessionId, studentId, totalAmount, platformCommission, tutorEarnings, commissionRate, generatedAt, tutorName, studentName, subject, durationMinutes]
 
     ParentInvoiceSummary:
       type: object
@@ -2002,6 +2067,10 @@ components:
         invoiceNumber:
           type: string
         sessionId:
+          type: integer
+        studentId:
+          type: integer
+        tutorId:
           type: integer
         totalAmount:
           type: number
@@ -2017,7 +2086,7 @@ components:
           type: string
         durationMinutes:
           type: integer
-      required: [id, invoiceNumber, sessionId, totalAmount, generatedAt, tutorName, studentName, subject, scheduledAt, durationMinutes]
+      required: [id, invoiceNumber, sessionId, studentId, tutorId, totalAmount, generatedAt, tutorName, studentName, subject, scheduledAt, durationMinutes]
 
     TutorInvoiceSummary:
       type: object
@@ -2028,6 +2097,14 @@ components:
           type: string
         sessionId:
           type: integer
+        studentId:
+          type: integer
+        parentName:
+          type: ["string", "null"]
+        parentEmail:
+          type: ["string", "null"]
+        parentPhone:
+          type: ["string", "null"]
         totalAmount:
           type: number
         platformCommission:
@@ -2048,7 +2125,7 @@ components:
           type: string
         durationMinutes:
           type: integer
-      required: [id, invoiceNumber, sessionId, totalAmount, platformCommission, tutorEarnings, commissionRate, commissionTier, generatedAt, studentName, subject, scheduledAt, durationMinutes]
+      required: [id, invoiceNumber, sessionId, studentId, totalAmount, platformCommission, tutorEarnings, commissionRate, commissionTier, generatedAt, studentName, subject, scheduledAt, durationMinutes]
 
     Payment:
       type: object

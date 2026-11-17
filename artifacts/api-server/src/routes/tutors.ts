@@ -524,9 +524,13 @@ router.post("/tutors/:tutorId/offers", requireAuth, async (req, res) => {
         lastName: studentsTable.lastName,
         email: studentsTable.email,
         userId: studentsTable.userId,
+        address: studentsTable.address,
       })
         .from(studentsTable).where(eq(studentsTable.id, parsed.data.studentId)).limit(1);
       if (!currentTutor || !student?.parentId) throw new BookingError("Student not found", 404);
+      if (parsed.data.lessonMode === "in_person" && !student.address?.trim()) {
+        throw new BookingError("Ask the parent to add the student's lesson address before offering an in-person time", 409);
+      }
       const [parent] = await tx.select({
         role: usersTable.role, isActive: usersTable.isActive, archivedAt: usersTable.archivedAt,
         parentApproved: usersTable.parentApproved, email: usersTable.email,
@@ -725,8 +729,30 @@ router.get("/tutors/:tutorId/students", requireAuth, async (req, res) => {
   }
 
   const students = await db
-    .select()
+    .select({
+      id: studentsTable.id,
+      userId: studentsTable.userId,
+      firstName: studentsTable.firstName,
+      lastName: studentsTable.lastName,
+      email: studentsTable.email,
+      gradeLevel: studentsTable.gradeLevel,
+      school: studentsTable.school,
+      subjects: studentsTable.subjects,
+      goals: studentsTable.goals,
+      parentId: studentsTable.parentId,
+      address: studentsTable.address,
+      createdAt: studentsTable.createdAt,
+      parentFirstName: usersTable.firstName,
+      parentLastName: usersTable.lastName,
+      parentEmail: usersTable.email,
+      parentPhone: usersTable.phone,
+      parentRole: usersTable.role,
+      parentIsActive: usersTable.isActive,
+      parentArchivedAt: usersTable.archivedAt,
+      parentApproved: usersTable.parentApproved,
+    })
     .from(studentsTable)
+    .leftJoin(usersTable, eq(usersTable.id, studentsTable.parentId))
     .where(and(inArray(studentsTable.id, studentIds), isNull(studentsTable.archivedAt)));
 
   res.json(
@@ -741,6 +767,16 @@ router.get("/tutors/:tutorId/students", requireAuth, async (req, res) => {
       subjects: s.subjects ?? null,
       goals: s.goals ?? null,
       parentId: s.parentId ?? null,
+      parentName: s.parentRole === "parent" && s.parentIsActive && !s.parentArchivedAt && s.parentApproved
+        ? `${s.parentFirstName ?? ""} ${s.parentLastName ?? ""}`.trim() || null
+        : null,
+      parentEmail: s.parentRole === "parent" && s.parentIsActive && !s.parentArchivedAt && s.parentApproved
+        ? s.parentEmail ?? null
+        : null,
+      parentPhone: s.parentRole === "parent" && s.parentIsActive && !s.parentArchivedAt && s.parentApproved
+        ? s.parentPhone ?? null
+        : null,
+      hasLessonAddress: Boolean(s.address?.trim()),
       createdAt: s.createdAt.toISOString(),
     }))
   );

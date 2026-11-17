@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { useAuth } from "@/context/AuthContext";
-import { useListTutors, useGetTutorStudents, useListSessions, useGetTutorRelationships, useUpsertTutorRelationship } from "@workspace/api-client-react";
+import { useListTutors, useGetTutorStudents, useListSessions, useGetTutorRelationships, useUpsertTutorRelationship, useRequestStudentAddress } from "@workspace/api-client-react";
 import { getGetTutorRelationshipsQueryKey } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Users, GraduationCap, BookOpen, Target, Settings2, Check, ChevronDown, ChevronUp, CalendarPlus } from "lucide-react";
+import { Users, GraduationCap, BookOpen, Target, Settings2, Check, ChevronDown, ChevronUp, CalendarPlus, Mail, Phone, MapPin } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import { SessionModeLocation } from "@/components/tutor/SessionContext";
@@ -189,7 +189,7 @@ export default function TutorStudents() {
   const tutorId = tutorProfile?.id;
 
   const students = useGetTutorStudents(tutorId ?? 0, {
-    query: { enabled: !!tutorId } as any,
+    query: { enabled: !!tutorId, refetchInterval: 30_000, refetchOnMount: "always" } as any,
   });
 
   const sessions = useListSessions(tutorId ? { tutorId } : undefined, {
@@ -202,6 +202,9 @@ export default function TutorStudents() {
 
   const [expandedPrefs, setExpandedPrefs] = useState<Set<number>>(new Set());
   const [offeringStudentId, setOfferingStudentId] = useState<number | null>(null);
+  const [addressRequestsSent, setAddressRequestsSent] = useState<Set<number>>(new Set());
+  const [addressRequestError, setAddressRequestError] = useState<string | null>(null);
+  const addressRequest = useRequestStudentAddress();
 
   const togglePrefs = (parentId: number) => {
     setExpandedPrefs((prev) => {
@@ -274,7 +277,9 @@ export default function TutorStudents() {
                     <span className="text-sm font-bold text-primary">{initials}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{displayName}</p>
+                    <Link href={`/tutor/students?student=${student.id}`} className="text-sm font-semibold text-foreground hover:text-primary hover:underline">
+                      {displayName}
+                    </Link>
                     {student.yearLevel && (
                       <span className="inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-medium">
                         {student.yearLevel}
@@ -299,6 +304,52 @@ export default function TutorStudents() {
                       <div className="flex items-start gap-1.5 mt-2">
                         <Target size={11} className="text-muted-foreground mt-0.5 shrink-0" />
                         <p className="text-[11px] text-muted-foreground leading-relaxed">{student.goals}</p>
+                      </div>
+                    )}
+
+                    {(student.parentName || student.parentEmail || student.parentPhone) && (
+                      <div id={selectedStudentId === student.id ? "family" : `family-${student.parentId}`} className="mt-3 rounded-lg bg-muted/40 p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Parent / guardian</p>
+                        {student.parentName && (
+                          <Link href={`/tutor/students?student=${student.id}#family-${student.parentId}`} className="block text-xs font-semibold text-foreground hover:text-primary hover:underline">
+                            {student.parentName}
+                          </Link>
+                        )}
+                        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                          {student.parentEmail && <a href={`mailto:${student.parentEmail}`} className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"><Mail size={11} />{student.parentEmail}</a>}
+                          {student.parentPhone && <a href={`tel:${student.parentPhone}`} className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"><Phone size={11} />{student.parentPhone}</a>}
+                        </div>
+                      </div>
+                    )}
+
+                    {!student.hasLessonAddress && (
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <div className="flex items-start gap-2">
+                          <MapPin size={13} className="mt-0.5 shrink-0 text-amber-700" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-amber-900">Lesson address not provided</p>
+                            <p className="text-[11px] text-amber-800 mt-0.5">Address stays private and is only shown for an active in-person booking.</p>
+                            {parentId && (
+                              <button
+                                type="button"
+                                disabled={addressRequest.isPending || addressRequestsSent.has(student.id)}
+                                onClick={() => {
+                                  setAddressRequestError(null);
+                                  addressRequest.mutate({ studentId: student.id }, {
+                                    onSuccess: (result) => {
+                                      if (result.requested) setAddressRequestsSent((current) => new Set(current).add(student.id));
+                                    },
+                                    onError: () => setAddressRequestError("Could not send the request. Please try again."),
+                                  });
+                                }}
+                                className="mt-2 rounded-md bg-amber-900 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-amber-800 disabled:opacity-60"
+                              >
+                                {addressRequestsSent.has(student.id) ? "Request sent" : addressRequest.isPending ? "Sending…" : "Request from parent"}
+                              </button>
+                            )}
+                            {addressRequestError && <p className="mt-1 text-[11px] text-destructive" role="alert">{addressRequestError}</p>}
+                          </div>
+                        </div>
                       </div>
                     )}
 

@@ -8,7 +8,7 @@ const inPersonLesson = {
   tutorUserId: 12,
   status: "scheduled",
   lessonMode: "in_person",
-  parentAddress: "10 Example Street, Melbourne",
+  lessonAddress: "10 Example Street, Melbourne",
   studentActive: true,
   parentActive: true,
   parentApproved: true,
@@ -16,12 +16,15 @@ const inPersonLesson = {
 
 test("assigned tutor can see the address for a scheduled in-person lesson", () => {
   assert.equal(visibleSessionLocation(inPersonLesson), "10 Example Street, Melbourne");
+  assert.equal(visibleSessionLocation({ ...inPersonLesson, status: "pending_payment" }), "10 Example Street, Melbourne");
+  assert.equal(visibleSessionLocation({ ...inPersonLesson, status: "pending_confirmation" }), "10 Example Street, Melbourne");
 });
 
-test("address stays private for other viewers, online lessons, and unconfirmed requests", () => {
+test("address stays private for other viewers, online lessons, and inactive sessions", () => {
   assert.equal(visibleSessionLocation({ ...inPersonLesson, viewerId: 13 }), null);
   assert.equal(visibleSessionLocation({ ...inPersonLesson, viewerRole: "parent" }), null);
-  assert.equal(visibleSessionLocation({ ...inPersonLesson, status: "pending_confirmation" }), null);
+  assert.equal(visibleSessionLocation({ ...inPersonLesson, status: "cancelled" }), null);
+  assert.equal(visibleSessionLocation({ ...inPersonLesson, status: "completed" }), null);
   assert.equal(visibleSessionLocation({ ...inPersonLesson, lessonMode: "online" }), null);
   assert.equal(visibleSessionLocation({ ...inPersonLesson, studentActive: false }), null);
   assert.equal(visibleSessionLocation({ ...inPersonLesson, parentActive: false }), null);
@@ -29,5 +32,5 @@ test("address stays private for other viewers, online lessons, and unconfirmed r
 });
 
 test("missing addresses stay unavailable rather than returning a blank location", () => {
-  assert.equal(visibleSessionLocation({ ...inPersonLesson, parentAddress: " " }), null);
+  assert.equal(visibleSessionLocation({ ...inPersonLesson, lessonAddress: " " }), null);
 });

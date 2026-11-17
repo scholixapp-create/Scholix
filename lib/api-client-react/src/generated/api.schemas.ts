@@ -387,6 +387,15 @@ export interface StudentProfileUpdate {
   goals?: string | null;
   /** @nullable */
   dateOfBirth?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  address?: string;
+}
+
+export interface StudentAddressRequestResult {
+  requested: boolean;
 }
 
 export interface StudentRemovalConfirmation {
@@ -446,7 +455,7 @@ export interface AccountDeletionRequest {
 }
 
 /**
- * Student profile fields available only to the assigned tutor or an admin.
+ * Student profile and parent contact fields available only to the assigned tutor or an admin. The lesson address is never included here.
  */
 export interface TutorStudent {
   id: number;
@@ -467,9 +476,19 @@ export interface TutorStudent {
   goals?: string | null;
   /** @nullable */
   parentId?: number | null;
+  /** @nullable */
+  parentName?: string | null;
+  /** @nullable */
+  parentEmail?: string | null;
+  /** @nullable */
+  parentPhone?: string | null;
+  hasLessonAddress?: boolean;
   createdAt: string;
 }
 
+/**
+ * The address is returned only to the student's owning parent or an administrator, never to tutors through student-profile endpoints.
+ */
 export interface Student {
   id: number;
   /** @nullable */
@@ -488,6 +507,8 @@ export interface Student {
   /** @nullable */
   goals?: string | null;
   /** @nullable */
+  address?: string | null;
+  /** @nullable */
   parentId?: number | null;
   /** @nullable */
   dateOfBirth?: string | null;
@@ -496,6 +517,10 @@ export interface Student {
 }
 
 export interface CreateStudentBody {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
   firstName: string;
   lastName?: string;
   email?: string;
@@ -504,6 +529,11 @@ export interface CreateStudentBody {
   subjects?: string;
   goals?: string;
   dateOfBirth?: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  address: string;
   parentId?: number;
 }
 
@@ -537,7 +567,7 @@ export interface Session {
   /** @nullable */
   lessonMode?: SessionLessonMode;
   /**
-     * Only returned to the assigned tutor for a scheduled or completed in-person lesson.
+     * Only returned to the assigned tutor for an active in-person booking request or scheduled lesson; never returned in student profiles or invoices.
      * @nullable
      */
   locationAddress?: string | null;
@@ -567,6 +597,17 @@ export interface Session {
   tutorName?: string | null;
   /** @nullable */
   studentName?: string | null;
+  /** @nullable */
+  parentId?: number | null;
+  /** @nullable */
+  parentName?: string | null;
+  /** @nullable */
+  parentEmail?: string | null;
+  /**
+     * Returned only to the assigned tutor for this session.
+     * @nullable
+     */
+  parentPhone?: string | null;
   createdAt: string;
 }
 
@@ -604,6 +645,7 @@ export interface SessionDecisionInput {
 export interface Invoice {
   id: number;
   sessionId: number;
+  studentId: number;
   totalAmount: number;
   platformCommission: number;
   tutorEarnings: number;
@@ -611,6 +653,12 @@ export interface Invoice {
   generatedAt: string;
   tutorName: string;
   studentName: string;
+  /** @nullable */
+  parentName?: string | null;
+  /** @nullable */
+  parentEmail?: string | null;
+  /** @nullable */
+  parentPhone?: string | null;
   subject: string;
   durationMinutes: number;
 }
@@ -624,6 +672,8 @@ export interface ParentInvoiceSummary {
   id: number;
   invoiceNumber: string;
   sessionId: number;
+  studentId: number;
+  tutorId: number;
   totalAmount: number;
   generatedAt: string;
   tutorName: string;
@@ -637,6 +687,13 @@ export interface TutorInvoiceSummary {
   id: number;
   invoiceNumber: string;
   sessionId: number;
+  studentId: number;
+  /** @nullable */
+  parentName?: string | null;
+  /** @nullable */
+  parentEmail?: string | null;
+  /** @nullable */
+  parentPhone?: string | null;
   totalAmount: number;
   platformCommission: number;
   tutorEarnings: number;

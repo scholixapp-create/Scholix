@@ -69,6 +69,7 @@ import type {
   SignupBody,
   SimulatePaymentBody,
   Student,
+  StudentAddressRequestResult,
   StudentProfileUpdate,
   StudentRemovalConfirmation,
   SuccessResponse,
@@ -3082,6 +3083,80 @@ export function useGetTutorStudents<TData = Awaited<ReturnType<typeof getTutorSt
 
 
 
+export const getRequestStudentAddressUrl = (studentId: number,) => {
+
+
+
+
+  return `/api/students/${studentId}/address-request`
+}
+
+/**
+ * @summary Ask a student's parent to provide the lesson address
+ */
+export const requestStudentAddress = async (studentId: number, options?: Parameters<typeof customFetch>[1]): Promise<StudentAddressRequestResult> => {
+
+  return customFetch<StudentAddressRequestResult>(getRequestStudentAddressUrl(studentId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRequestStudentAddressMutationKey = () => ['requestStudentAddress'] as const;
+
+export const getRequestStudentAddressMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestStudentAddress>>, TError,RequestStudentAddressMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestStudentAddress>>, TError,RequestStudentAddressMutationVariables, TContext> => {
+
+const mutationKey = getRequestStudentAddressMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestStudentAddress>>, RequestStudentAddressMutationVariables> = (props) => {
+          const {studentId} = props ?? {};
+
+          return  requestStudentAddress(studentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestStudentAddressMutationResult = NonNullable<Awaited<ReturnType<typeof requestStudentAddress>>>
+
+    export type RequestStudentAddressMutationError = ErrorType<void>
+    export type RequestStudentAddressMutationVariables = {studentId: number}
+
+    /**
+ * @summary Ask a student's parent to provide the lesson address
+ */
+export const useRequestStudentAddress = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestStudentAddress>>, TError,RequestStudentAddressMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestStudentAddress>>,
+        TError,
+        RequestStudentAddressMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestStudentAddressMutationOptions(options), queryClient);
+    }
+
 export const getGetTutorRelationshipsUrl = (tutorId: number,) => {
 
 
@@ -3759,7 +3834,7 @@ export const getGetStudentUrl = (studentId: number,) => {
 }
 
 /**
- * @summary Get a student by ID
+ * @summary Get a student profile visible to the authenticated account
  */
 export const getStudent = async (studentId: number, options?: Parameters<typeof customFetch>[1]): Promise<Student> => {
 
@@ -3783,7 +3858,7 @@ export const getGetStudentQueryKey = (studentId: number,) => {
     }
 
 
-export const getGetStudentQueryOptions = <TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<ErrorResponse>>(studentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudent>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getGetStudentQueryOptions = <TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<void | ErrorResponse>>(studentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudent>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -3802,10 +3877,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetStudentQueryResult = NonNullable<Awaited<ReturnType<typeof getStudent>>>
-export type GetStudentQueryError = ErrorType<ErrorResponse>
+export type GetStudentQueryError = ErrorType<void | ErrorResponse>
 
 
-export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<ErrorResponse>>(
+export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<void | ErrorResponse>>(
  studentId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudent>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof getStudent>>,
@@ -3815,7 +3890,7 @@ export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TE
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<ErrorResponse>>(
+export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<void | ErrorResponse>>(
  studentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudent>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof getStudent>>,
@@ -3825,15 +3900,15 @@ export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TE
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<ErrorResponse>>(
+export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<void | ErrorResponse>>(
  studentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudent>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Get a student by ID
+ * @summary Get a student profile visible to the authenticated account
  */
 
-export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<ErrorResponse>>(
+export function useGetStudent<TData = Awaited<ReturnType<typeof getStudent>>, TError = ErrorType<void | ErrorResponse>>(
  studentId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getStudent>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

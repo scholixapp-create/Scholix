@@ -14,6 +14,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "invoice_generated",
   "verification_info_requested",
   "commission_tier",
+  "student_address_requested",
 ]);
 
 export const notificationsTable = pgTable("notifications", {

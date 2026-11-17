@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { Mail, Phone } from "lucide-react";
 import { Info, MapPin, Monitor } from "lucide-react";
 
 type SessionContextProps = {
@@ -22,6 +23,32 @@ export function SessionStudentLink({ studentId, studentName }: Pick<SessionConte
     >
       {name}
     </Link>
+  );
+}
+
+export function SessionParentContact({
+  studentId,
+  parentName,
+  parentEmail,
+  parentPhone,
+}: {
+  studentId: number;
+  parentName?: string | null;
+  parentEmail?: string | null;
+  parentPhone?: string | null;
+}) {
+  if (!parentName && !parentEmail && !parentPhone) return null;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+      <span>Parent:</span>
+      {parentName && (
+        <Link href={`/tutor/students?student=${studentId}#family`} className="font-medium text-foreground hover:text-primary hover:underline">
+          {parentName}
+        </Link>
+      )}
+      {parentEmail && <a href={`mailto:${parentEmail}`} className="inline-flex items-center gap-1 text-primary hover:underline"><Mail size={10} />Email</a>}
+      {parentPhone && <a href={`tel:${parentPhone}`} className="inline-flex items-center gap-1 text-primary hover:underline"><Phone size={10} />Call</a>}
+    </span>
   );
 }
 

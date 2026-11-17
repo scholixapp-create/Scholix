@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { db, studentsTable, usersTable, accountDeletionRequestsTable, accountLifecycleActionsTable } from "@workspace/db";
+import { db, studentsTable, usersTable, notificationsTable, accountDeletionRequestsTable, accountLifecycleActionsTable } from "@workspace/db";
 import { UpdateStudentBody, RemoveStudentBody, ReviewDeletionRequestBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin, type AuthRequest } from "../lib/authMiddleware";
 import { AccountRemovalError, lockManagedStudent, removeStudentAccount, reviewAccountDeletion } from "../lib/accountRemoval";
+import { cleanStudentAddress } from "../lib/studentAddress";
 
 const router = Router();
 const validId = (id: number) => Number.isInteger(id) && id > 0 && id <= 2_147_483_647;
@@ -26,6 +27,7 @@ router.patch("/students/:studentId", requireAuth, async (req, res) => {
       && rawBirthDate <= new Date().toISOString().slice(0, 10));
   if (!validId(studentId) || !body.success || !Object.keys(body.data).length
     || (body.data.firstName !== undefined && !body.data.firstName.trim())
+    || (body.data.address !== undefined && !cleanStudentAddress(body.data.address))
     || !validBirthDate) {
     res.status(400).json({ error: "Enter a valid profile update and a non-future date of birth" }); return;
   }
@@ -36,16 +38,26 @@ router.patch("/students/:studentId", requireAuth, async (req, res) => {
       const values = {
         ...fields,
         ...(fields.firstName !== undefined ? { firstName: fields.firstName.trim() } : {}),
+        ...(fields.address !== undefined ? { address: cleanStudentAddress(fields.address)! } : {}),
         ...(yearLevel !== undefined ? { gradeLevel: yearLevel } : {}),
         ...(dateOfBirth !== undefined ? { dateOfBirth: rawBirthDate as string | null } : {}),
         ...(dateOfBirth !== undefined && rawBirthDate !== student.dateOfBirth ? { isIdentityVerified: false } : {}),
       };
       const [row] = await tx.update(studentsTable).set(values).where(eq(studentsTable.id, studentId)).returning();
+      if (body.data.address !== undefined && student.parentId) {
+        const actionUrl = `/parent/students?student=${studentId}&edit=address`;
+        await tx.update(notificationsTable).set({ isRead: true }).where(and(
+          eq(notificationsTable.userId, student.parentId),
+          eq(notificationsTable.type, "student_address_requested"),
+          eq(notificationsTable.actionUrl, actionUrl),
+          eq(notificationsTable.isRead, false),
+        ));
+      }
       await tx.insert(accountLifecycleActionsTable).values({ actorUserId: (req as AuthRequest).user.id, studentId, targetUserId: student.userId, action: "student_updated" });
       return row;
     });
     const { studentToJson } = await import("./students");
-    res.json(studentToJson(updated));
+    res.json(studentToJson(updated, ["parent", "admin"].includes((req as AuthRequest).user.role)));
   } catch (error) { handleError(error, res); }
 });
 router.delete("/students/:studentId", requireAuth, async (req, res) => {

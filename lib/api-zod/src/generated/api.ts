@@ -636,7 +636,7 @@ export const createTutorLessonOfferResponseTravelBufferMinutesMin = 0;
 
 export const CreateTutorLessonOfferResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
-  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for an active in-person booking request or scheduled lesson; never returned in student profiles or invoices.'),
   "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
@@ -653,6 +653,10 @@ export const CreateTutorLessonOfferResponse = zod.object({
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
   "studentName": zod.string().nullish(),
+  "parentId": zod.number().int().nullish(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish().describe('Returned only to the assigned tutor for this session.'),
   "createdAt": zod.string()
 })
 
@@ -703,9 +707,28 @@ export const GetTutorStudentsResponseItem = zod.object({
   "subjects": zod.string().nullish(),
   "goals": zod.string().nullish(),
   "parentId": zod.number().int().nullish(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish(),
+  "hasLessonAddress": zod.boolean().optional(),
   "createdAt": zod.string()
-}).describe('Student profile fields available only to the assigned tutor or an admin.')
+}).describe('Student profile and parent contact fields available only to the assigned tutor or an admin. The lesson address is never included here.')
 export const GetTutorStudentsResponse = zod.array(GetTutorStudentsResponseItem)
+
+
+/**
+ * @summary Ask a student's parent to provide the lesson address
+ */
+
+
+
+export const RequestStudentAddressParams = zod.object({
+  "studentId": zod.coerce.number().int().min(1)
+})
+
+export const RequestStudentAddressResponse = zod.object({
+  "requested": zod.boolean()
+})
 
 
 /**
@@ -783,26 +806,34 @@ export const ListStudentsResponseItem = zod.object({
   "school": zod.string().nullish(),
   "subjects": zod.string().nullish(),
   "goals": zod.string().nullish(),
+  "address": zod.string().nullish(),
   "parentId": zod.number().int().nullish(),
   "dateOfBirth": zod.string().nullish(),
   "isIdentityVerified": zod.boolean(),
   "createdAt": zod.string()
-})
+}).describe('The address is returned only to the student\'s owning parent or an administrator, never to tutors through student-profile endpoints.')
 export const ListStudentsResponse = zod.array(ListStudentsResponseItem)
 
 
 /**
  * @summary Create a new student
  */
+export const createStudentBodyFirstNameMax = 100;
+
+export const createStudentBodyAddressMax = 500;
+
+
+
 export const CreateStudentBody = zod.object({
-  "firstName": zod.string(),
+  "firstName": zod.string().min(1).max(createStudentBodyFirstNameMax),
   "lastName": zod.string().optional(),
   "email": zod.string().optional(),
   "yearLevel": zod.string().optional(),
   "school": zod.string().optional(),
   "subjects": zod.string().optional(),
   "goals": zod.string().optional(),
-  "dateOfBirth": zod.string().optional(),
+  "dateOfBirth": zod.coerce.date().optional(),
+  "address": zod.string().min(1).max(createStudentBodyAddressMax),
   "parentId": zod.number().int().optional()
 })
 
@@ -816,11 +847,12 @@ export const CreateStudentResponse = zod.object({
   "school": zod.string().nullish(),
   "subjects": zod.string().nullish(),
   "goals": zod.string().nullish(),
+  "address": zod.string().nullish(),
   "parentId": zod.number().int().nullish(),
   "dateOfBirth": zod.string().nullish(),
   "isIdentityVerified": zod.boolean(),
   "createdAt": zod.string()
-})
+}).describe('The address is returned only to the student\'s owning parent or an administrator, never to tutors through student-profile endpoints.')
 
 
 /**
@@ -842,6 +874,8 @@ export const updateStudentBodySubjectsMax = 1000;
 
 export const updateStudentBodyGoalsMax = 2000;
 
+export const updateStudentBodyAddressMax = 500;
+
 
 
 export const UpdateStudentBody = zod.object({
@@ -851,7 +885,8 @@ export const UpdateStudentBody = zod.object({
   "school": zod.string().max(updateStudentBodySchoolMax).nullish(),
   "subjects": zod.string().max(updateStudentBodySubjectsMax).nullish(),
   "goals": zod.string().max(updateStudentBodyGoalsMax).nullish(),
-  "dateOfBirth": zod.coerce.date().nullish()
+  "dateOfBirth": zod.coerce.date().nullish(),
+  "address": zod.string().min(1).max(updateStudentBodyAddressMax).optional()
 })
 
 export const UpdateStudentResponse = zod.object({
@@ -864,11 +899,12 @@ export const UpdateStudentResponse = zod.object({
   "school": zod.string().nullish(),
   "subjects": zod.string().nullish(),
   "goals": zod.string().nullish(),
+  "address": zod.string().nullish(),
   "parentId": zod.number().int().nullish(),
   "dateOfBirth": zod.string().nullish(),
   "isIdentityVerified": zod.boolean(),
   "createdAt": zod.string()
-})
+}).describe('The address is returned only to the student\'s owning parent or an administrator, never to tutors through student-profile endpoints.')
 
 
 /**
@@ -895,7 +931,7 @@ export const RemoveStudentResponse = zod.object({
 
 
 /**
- * @summary Get a student by ID
+ * @summary Get a student profile visible to the authenticated account
  */
 export const GetStudentParams = zod.object({
   "studentId": zod.coerce.number().int()
@@ -911,11 +947,12 @@ export const GetStudentResponse = zod.object({
   "school": zod.string().nullish(),
   "subjects": zod.string().nullish(),
   "goals": zod.string().nullish(),
+  "address": zod.string().nullish(),
   "parentId": zod.number().int().nullish(),
   "dateOfBirth": zod.string().nullish(),
   "isIdentityVerified": zod.boolean(),
   "createdAt": zod.string()
-})
+}).describe('The address is returned only to the student\'s owning parent or an administrator, never to tutors through student-profile endpoints.')
 
 
 /**
@@ -947,7 +984,7 @@ export const listSessionsResponseTravelBufferMinutesMin = 0;
 
 export const ListSessionsResponseItem = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
-  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for an active in-person booking request or scheduled lesson; never returned in student profiles or invoices.'),
   "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
@@ -964,6 +1001,10 @@ export const ListSessionsResponseItem = zod.object({
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
   "studentName": zod.string().nullish(),
+  "parentId": zod.number().int().nullish(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish().describe('Returned only to the assigned tutor for this session.'),
   "createdAt": zod.string()
 })
 export const ListSessionsResponse = zod.array(ListSessionsResponseItem)
@@ -988,7 +1029,7 @@ export const createSessionResponseTravelBufferMinutesMin = 0;
 
 export const CreateSessionResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
-  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for an active in-person booking request or scheduled lesson; never returned in student profiles or invoices.'),
   "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
@@ -1005,6 +1046,10 @@ export const CreateSessionResponse = zod.object({
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
   "studentName": zod.string().nullish(),
+  "parentId": zod.number().int().nullish(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish().describe('Returned only to the assigned tutor for this session.'),
   "createdAt": zod.string()
 })
 
@@ -1022,7 +1067,7 @@ export const getSessionResponseTravelBufferMinutesMin = 0;
 
 export const GetSessionResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
-  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for an active in-person booking request or scheduled lesson; never returned in student profiles or invoices.'),
   "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
@@ -1039,6 +1084,10 @@ export const GetSessionResponse = zod.object({
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
   "studentName": zod.string().nullish(),
+  "parentId": zod.number().int().nullish(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish().describe('Returned only to the assigned tutor for this session.'),
   "createdAt": zod.string()
 })
 
@@ -1057,7 +1106,7 @@ export const completeSessionResponseSessionTravelBufferMinutesMin = 0;
 export const CompleteSessionResponse = zod.object({
   "session": zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
-  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for an active in-person booking request or scheduled lesson; never returned in student profiles or invoices.'),
   "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
@@ -1074,11 +1123,16 @@ export const CompleteSessionResponse = zod.object({
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
   "studentName": zod.string().nullish(),
+  "parentId": zod.number().int().nullish(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish().describe('Returned only to the assigned tutor for this session.'),
   "createdAt": zod.string()
 }),
   "invoice": zod.object({
   "id": zod.number().int(),
   "sessionId": zod.number().int(),
+  "studentId": zod.number().int(),
   "totalAmount": zod.number(),
   "platformCommission": zod.number(),
   "tutorEarnings": zod.number(),
@@ -1086,6 +1140,9 @@ export const CompleteSessionResponse = zod.object({
   "generatedAt": zod.string(),
   "tutorName": zod.string(),
   "studentName": zod.string(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish(),
   "subject": zod.string(),
   "durationMinutes": zod.number().int()
 })
@@ -1112,7 +1169,7 @@ export const decideSessionRequestResponseTravelBufferMinutesMin = 0;
 
 export const DecideSessionRequestResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
-  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for an active in-person booking request or scheduled lesson; never returned in student profiles or invoices.'),
   "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
@@ -1129,6 +1186,10 @@ export const DecideSessionRequestResponse = zod.object({
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
   "studentName": zod.string().nullish(),
+  "parentId": zod.number().int().nullish(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish().describe('Returned only to the assigned tutor for this session.'),
   "createdAt": zod.string()
 })
 
@@ -1146,7 +1207,7 @@ export const cancelSessionResponseTravelBufferMinutesMin = 0;
 
 export const CancelSessionResponse = zod.object({
   "lessonMode": zod.union([zod.literal('online'),zod.literal('in_person'),zod.literal(null)]).nullish(),
-  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for a scheduled or completed in-person lesson.'),
+  "locationAddress": zod.string().nullish().describe('Only returned to the assigned tutor for an active in-person booking request or scheduled lesson; never returned in student profiles or invoices.'),
   "tutorConfirmedAt": zod.string().nullish(),
   "requestExpiresAt": zod.string().nullish(),
   "cancellationReason": zod.string().nullish(),
@@ -1163,6 +1224,10 @@ export const CancelSessionResponse = zod.object({
   "totalAmount": zod.number(),
   "tutorName": zod.string().nullish(),
   "studentName": zod.string().nullish(),
+  "parentId": zod.number().int().nullish(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish().describe('Returned only to the assigned tutor for this session.'),
   "createdAt": zod.string()
 })
 
@@ -1180,6 +1245,8 @@ export const ListInvoicesResponseItem = zod.union([zod.object({
   "id": zod.number().int(),
   "invoiceNumber": zod.string(),
   "sessionId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "tutorId": zod.number().int(),
   "totalAmount": zod.number(),
   "generatedAt": zod.string(),
   "tutorName": zod.string(),
@@ -1191,6 +1258,10 @@ export const ListInvoicesResponseItem = zod.union([zod.object({
   "id": zod.number().int(),
   "invoiceNumber": zod.string(),
   "sessionId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "parentName": zod.string().nullish(),
+  "parentEmail": zod.string().nullish(),
+  "parentPhone": zod.string().nullish(),
   "totalAmount": zod.number(),
   "platformCommission": zod.number(),
   "tutorEarnings": zod.number(),

@@ -1,11 +1,16 @@
 import { Router } from "express";
-import { db, studentsTable, tutorsTable, sessionsTable } from "@workspace/db";
-import { eq, inArray, and, isNull } from "drizzle-orm";
+import { db, studentsTable, tutorsTable, sessionsTable, usersTable, notificationsTable } from "@workspace/db";
+import { eq, inArray, and, isNull, desc } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../lib/authMiddleware";
+import { CreateStudentBody, RequestStudentAddressParams } from "@workspace/api-zod";
+import { createNotification } from "../lib/notify";
+import { bookingStatusEmailHtml } from "../lib/email";
+import { config } from "../lib/config";
+import { cleanStudentAddress } from "../lib/studentAddress";
 
 const router = Router();
 
-export function studentToJson(s: typeof studentsTable.$inferSelect) {
+export function studentToJson(s: typeof studentsTable.$inferSelect, includePrivateFields = false) {
   return {
     id: s.id,
     userId: s.userId ?? null,
@@ -16,8 +21,9 @@ export function studentToJson(s: typeof studentsTable.$inferSelect) {
     school: s.school ?? null,
     subjects: s.subjects ?? null,
     goals: s.goals ?? null,
+    ...(includePrivateFields ? { address: s.address ?? null } : {}),
     parentId: s.parentId ?? null,
-    dateOfBirth: s.dateOfBirth ?? null,
+    ...(includePrivateFields ? { dateOfBirth: s.dateOfBirth ?? null } : {}),
     isIdentityVerified: s.isIdentityVerified ?? false,
     createdAt: s.createdAt.toISOString(),
   };
@@ -28,7 +34,7 @@ router.get("/students", requireAuth, async (req, res) => {
 
   if (user.role === "admin") {
     const students = await db.select().from(studentsTable);
-    res.json(students.map(studentToJson));
+    res.json(students.map((student) => studentToJson(student, true)));
     return;
   }
 
@@ -37,7 +43,7 @@ router.get("/students", requireAuth, async (req, res) => {
       .select()
       .from(studentsTable)
       .where(and(eq(studentsTable.parentId, user.id), isNull(studentsTable.archivedAt)));
-    res.json(students.map(studentToJson));
+    res.json(students.map((student) => studentToJson(student, true)));
     return;
   }
 
@@ -60,7 +66,7 @@ router.get("/students", requireAuth, async (req, res) => {
       .select()
       .from(studentsTable)
       .where(and(inArray(studentsTable.id, studentIds), isNull(studentsTable.archivedAt)));
-    res.json(students.map(studentToJson));
+    res.json(students.map((student) => studentToJson(student)));
     return;
   }
 
@@ -69,7 +75,7 @@ router.get("/students", requireAuth, async (req, res) => {
       .select()
       .from(studentsTable)
       .where(and(eq(studentsTable.userId, user.id), isNull(studentsTable.archivedAt)));
-    res.json(students.map(studentToJson));
+    res.json(students.map((student) => studentToJson(student)));
     return;
   }
 
@@ -84,12 +90,12 @@ router.post("/students", requireAuth, async (req, res) => {
     return;
   }
 
-  const { firstName, lastName, yearLevel, school, subjects, goals, dateOfBirth, parentId: bodyParentId } = req.body ?? {};
-
-  if (!firstName || typeof firstName !== "string" || firstName.trim() === "") {
-    res.status(400).json({ error: "firstName is required" });
+  const parsed = CreateStudentBody.safeParse(req.body);
+  if (!parsed.success || !cleanStudentAddress(parsed.data.address)) {
+    res.status(400).json({ error: "Enter the student's name and lesson address" });
     return;
   }
+  const { firstName, lastName, yearLevel, school, subjects, goals, dateOfBirth, address, parentId: bodyParentId } = parsed.data;
 
   const parentId = user.role === "admin"
     ? (bodyParentId ?? null)
@@ -111,6 +117,7 @@ router.post("/students", requireAuth, async (req, res) => {
       school: school ? String(school).trim() : null,
       subjects: subjects ? String(subjects).trim() : null,
       goals: goals ? String(goals).trim() : null,
+      address: cleanStudentAddress(address)!,
       dateOfBirth: dateOfBirth ? String(dateOfBirth).trim() : null,
       parentId,
     })
@@ -119,7 +126,7 @@ router.post("/students", requireAuth, async (req, res) => {
   });
   if (!student) { res.status(409).json({ error: "The parent account is unavailable" }); return; }
 
-  res.status(201).json(studentToJson(student));
+  res.status(201).json(studentToJson(student, user.role === "parent" || user.role === "admin"));
 });
 
 router.get("/students/:studentId", requireAuth, async (req, res) => {
@@ -146,12 +153,12 @@ router.get("/students/:studentId", requireAuth, async (req, res) => {
   }
 
   if (user.role === "admin") {
-    res.json(studentToJson(student));
+    res.json(studentToJson(student, true));
     return;
   }
 
   if (user.role === "parent" && student.parentId === user.id) {
-    res.json(studentToJson(student));
+    res.json(studentToJson(student, true));
     return;
   }
 
@@ -183,6 +190,62 @@ router.get("/students/:studentId", requireAuth, async (req, res) => {
   }
 
   res.status(403).json({ error: "Access denied" });
+});
+
+router.post("/students/:studentId/address-request", requireAuth, async (req, res) => {
+  const params = RequestStudentAddressParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: "Invalid student ID" }); return; }
+  const actor = (req as AuthRequest).user;
+  if (actor.role !== "tutor") { res.status(403).json({ error: "Only the student's tutor can request their lesson address" }); return; }
+
+  const [tutor] = await db.select({ id: tutorsTable.id }).from(tutorsTable)
+    .where(eq(tutorsTable.userId, actor.id)).limit(1);
+  if (!tutor) { res.status(403).json({ error: "Tutor profile not found" }); return; }
+  const [student] = await db.select({
+    id: studentsTable.id, firstName: studentsTable.firstName, address: studentsTable.address,
+    parentId: studentsTable.parentId, archivedAt: studentsTable.archivedAt,
+  }).from(studentsTable).where(eq(studentsTable.id, params.data.studentId)).limit(1);
+  if (!student || student.archivedAt || !student.parentId) { res.status(404).json({ error: "Student not found" }); return; }
+
+  const [relationship] = await db.select({ id: sessionsTable.id }).from(sessionsTable)
+    .where(and(eq(sessionsTable.tutorId, tutor.id), eq(sessionsTable.studentId, student.id))).limit(1);
+  if (!relationship) { res.status(403).json({ error: "You can only request details for a student in your tutoring relationship" }); return; }
+  if (student.address?.trim()) { res.json({ requested: false }); return; }
+
+  const [parent] = await db.select({
+    id: usersTable.id, role: usersTable.role, email: usersTable.email, firstName: usersTable.firstName,
+    isActive: usersTable.isActive, archivedAt: usersTable.archivedAt, parentApproved: usersTable.parentApproved,
+  }).from(usersTable).where(eq(usersTable.id, student.parentId)).limit(1);
+  if (!parent || parent.role !== "parent" || !parent.isActive || parent.archivedAt || !parent.parentApproved) {
+    res.status(409).json({ error: "The student's parent account is not active and approved" }); return;
+  }
+
+  const actionUrl = `/parent/students?student=${student.id}&edit=address`;
+  const [existing] = await db.select({ id: notificationsTable.id }).from(notificationsTable)
+    .where(and(
+      eq(notificationsTable.userId, parent.id),
+      eq(notificationsTable.type, "student_address_requested"),
+      eq(notificationsTable.actionUrl, actionUrl),
+      eq(notificationsTable.isRead, false),
+    )).orderBy(desc(notificationsTable.createdAt)).limit(1);
+  if (existing) { res.json({ requested: true }); return; }
+
+  const message = `${actor.firstName} ${actor.lastName} needs the lesson address for ${student.firstName} before an in-person booking can be arranged.`;
+  await createNotification({
+    userId: parent.id,
+    type: "student_address_requested",
+    title: "Add a lesson address",
+    message,
+    actionUrl,
+    actionLabel: "Update student profile",
+    emailSubject: `Lesson address needed for ${student.firstName}`,
+    emailHtml: bookingStatusEmailHtml({
+      title: "Add a lesson address",
+      message: `${message} The address is shared only with this student's assigned tutor for an active in-person booking.`,
+      actionUrl: new URL(actionUrl, config.frontendUrl).toString(),
+    }),
+  });
+  res.json({ requested: true });
 });
 
 router.post("/students/:studentId/verify-identity", requireAuth, async (req, res) => {

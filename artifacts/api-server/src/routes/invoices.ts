@@ -61,10 +61,18 @@ router.get("/invoices", requireAuth, async (req, res) => {
     const students = studentIds.length
       ? await db.select().from(studentsTable).where(inArray(studentsTable.id, studentIds))
       : [];
+    const parentIds = [...new Set(students.map((student) => student.parentId).filter((id): id is number => id !== null))];
+    const parents = parentIds.length
+      ? await db.select({
+          id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName,
+          email: usersTable.email, phone: usersTable.phone,
+        }).from(usersTable).where(inArray(usersTable.id, parentIds))
+      : [];
 
     const result = invoices.map((inv) => {
       const session = sessions.find((s) => s.id === inv.sessionId);
       const student = session ? students.find((s) => s.id === session.studentId) : undefined;
+      const parent = student?.parentId ? parents.find((row) => row.id === student.parentId) : undefined;
       const studentName = student
         ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
         : "";
@@ -76,6 +84,10 @@ router.get("/invoices", requireAuth, async (req, res) => {
         id: inv.id,
         invoiceNumber,
         sessionId: inv.sessionId,
+        studentId: student?.id ?? session?.studentId ?? 0,
+        parentName: parent ? `${parent.firstName} ${parent.lastName}`.trim() : null,
+        parentEmail: parent?.email ?? null,
+        parentPhone: parent?.phone ?? null,
         totalAmount: inv.totalAmount,
         platformCommission: inv.platformCommission,
         tutorEarnings: inv.tutorEarnings,
@@ -145,6 +157,8 @@ router.get("/invoices", requireAuth, async (req, res) => {
         id: inv.id,
         invoiceNumber,
         sessionId: inv.sessionId,
+        studentId: student?.id ?? session?.studentId ?? 0,
+        tutorId: session?.tutorId ?? 0,
         totalAmount: inv.totalAmount,
         generatedAt: inv.generatedAt.toISOString(),
         tutorName,
@@ -193,7 +207,7 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
     return;
   }
 
-  let parentFirstName = "", parentLastName = "", parentEmail = "", parentPhone = "", parentAddress = "";
+  let parentFirstName = "", parentLastName = "", parentEmail = "", parentPhone = "";
   const [payment] = await db.select({ provider: paymentsTable.provider }).from(paymentsTable)
     .where(eq(paymentsTable.sessionId, session.id)).limit(1);
   const betaPayment = (payment?.provider ?? "beta") === "beta";
@@ -204,7 +218,6 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
         lastName: usersTable.lastName,
         email: usersTable.email,
         phone: usersTable.phone,
-        address: usersTable.address,
       })
       .from(usersTable)
       .where(eq(usersTable.id, student.parentId))
@@ -214,7 +227,6 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
       parentLastName = parentRow.lastName;
       parentEmail = parentRow.email;
       parentPhone = parentRow.phone ?? "";
-      parentAddress = parentRow.address ?? "";
     }
   }
 
@@ -262,9 +274,9 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
     .text(`${session.durationMinutes} minutes`, 360, y)
     .text(session.status === "cancelled" ? "CANCELLED" : betaPayment ? "BETA" : "PAID", 460, y, { width: 60 });
 
-  // FROM / TO boxes — taller to fit phone + address
+  // FROM / TO boxes — phone and email only; residential address is private.
   y += 40;
-  const BOX_H = 120;
+  const BOX_H = 100;
   doc.rect(50, y, 230, BOX_H).fill(LIGHT_CREAM);
   doc.rect(310, y, 230, BOX_H).fill(LIGHT_CREAM);
 
@@ -286,10 +298,6 @@ router.get("/invoices/:invoiceId/pdf", requireAuth, async (req, res) => {
 
   if (parentPhone) {
     doc.fontSize(8).fillColor("#374151").font("Helvetica").text(parentPhone, 324, y + 60);
-  }
-  if (parentAddress) {
-    doc.fontSize(7.5).fillColor("#374151").font("Helvetica")
-      .text(parentAddress, 324, y + (parentPhone ? 74 : 60), { width: 200 });
   }
 
   // Description table

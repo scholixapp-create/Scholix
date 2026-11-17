@@ -17,6 +17,7 @@ type Tab = "upcoming" | "history";
 
 interface Session {
   id: number;
+  tutorId: number;
   subject: string;
   scheduledAt: string;
   durationMinutes: number;
@@ -67,7 +68,7 @@ function UpcomingCard({ session }: { session: Session }) {
               <p className="text-sm font-semibold text-foreground">{session.subject}</p>
               <CountdownBadge scheduledAt={session.scheduledAt} />
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">with {session.tutorName}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">with <Link href={`/tutor/${session.tutorId}`} className="hover:text-primary hover:underline">{session.tutorName}</Link></p>
             <div className="flex items-center gap-3 mt-2">
               <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                 <Calendar size={11} />
@@ -102,7 +103,7 @@ function HistoryCard({ session }: { session: Session }) {
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-sm font-semibold text-foreground">{session.subject}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">with {session.tutorName}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">with <Link href={`/tutor/${session.tutorId}`} className="hover:text-primary hover:underline">{session.tutorName}</Link></p>
             </div>
             {isCompleted && (
               <span className="text-sm font-semibold text-foreground shrink-0">
@@ -138,7 +139,7 @@ function TutorOfferCard({ session }: { session: Session }) {
             <p className="text-sm font-semibold text-foreground">Your tutor suggested a lesson time</p>
             <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-semibold text-amber-800">Needs parent review</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">With {session.tutorName} · {session.subject}</p>
+          <p className="mt-1 text-xs text-muted-foreground">With <Link href={`/tutor/${session.tutorId}`} className="hover:text-primary hover:underline">{session.tutorName}</Link> · {session.subject}</p>
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1"><Calendar size={11} />{formatInZone(session.scheduledAt)}</span>
             <span className="inline-flex items-center gap-1"><Clock size={11} />{session.durationMinutes} min</span>

@@ -1,4 +1,5 @@
 import { useMemo, useState, type ComponentProps } from "react";
+import { Link } from "wouter";
 import { useGetTutorAvailability, useGetTutorUnavailablePeriods, getGetTutorAvailabilityQueryKey, getGetTutorUnavailablePeriodsQueryKey } from "@workspace/api-client-react";
 import type { Session } from "@workspace/api-client-react";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock3, RotateCw, ShieldAlert, Video, MapPin } from "lucide-react";
@@ -8,6 +9,7 @@ import CalendarSubscriptionControl from "@/components/tutor/CalendarSubscription
 import WeeklyTutorCalendarView from "@/components/tutor/WeeklyTutorCalendarView";
 import { BOOKING_TIME_ZONE } from "@/lib/bookingRequests";
 import { DayButton } from "react-day-picker";
+import { SessionParentContact } from "@/components/tutor/SessionContext";
 
 const MELBOURNE_DATE = new Intl.DateTimeFormat("en-CA", {
   timeZone: BOOKING_TIME_ZONE,
@@ -326,7 +328,12 @@ export default function TutorSessionsCalendar({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-foreground">{session.subject}</p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">{session.studentName ?? "Student"}</p>
+                      <Link href={`/tutor/students?student=${session.studentId}`} className="mt-0.5 block truncate text-xs text-muted-foreground hover:text-primary hover:underline">
+                        {session.studentName ?? "Student"}
+                      </Link>
+                      <div className="mt-1">
+                        <SessionParentContact studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
+                      </div>
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${sessionStatus(session).className}`}>
                       {sessionStatus(session).label}

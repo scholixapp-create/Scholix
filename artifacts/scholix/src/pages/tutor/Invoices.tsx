@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { Link } from "wouter";
 import { FileText, Download, Receipt, TrendingUp } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
@@ -7,6 +8,10 @@ interface TutorInvoice {
   id: number;
   invoiceNumber: string;
   sessionId: number;
+  studentId: number;
+  parentName: string | null;
+  parentEmail: string | null;
+  parentPhone: string | null;
   totalAmount: number;
   platformCommission: number;
   tutorEarnings: number;
@@ -127,7 +132,16 @@ export default function TutorInvoices() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground">{inv.subject}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{inv.studentName}</p>
+                      <Link href={`/tutor/students?student=${inv.studentId}`} className="mt-0.5 block text-xs text-muted-foreground hover:text-primary hover:underline">
+                        {inv.studentName}
+                      </Link>
+                      {(inv.parentName || inv.parentEmail || inv.parentPhone) && (
+                        <div className="mt-1 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
+                          {inv.parentName && <Link href={`/tutor/students?student=${inv.studentId}#family`} className="hover:text-primary hover:underline">{inv.parentName}</Link>}
+                          {inv.parentEmail && <a href={`mailto:${inv.parentEmail}`} className="text-primary hover:underline">{inv.parentEmail}</a>}
+                          {inv.parentPhone && <a href={`tel:${inv.parentPhone}`} className="text-primary hover:underline">{inv.parentPhone}</a>}
+                        </div>
+                      )}
                       {inv.scheduledAt && (
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {format(parseISO(inv.scheduledAt), "EEE, MMM d 'at' h:mm a")} · {inv.durationMinutes}min
