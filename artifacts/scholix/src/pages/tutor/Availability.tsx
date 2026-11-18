@@ -6,6 +6,7 @@ import { getGetTutorAvailabilityQueryKey, getListTutorsQueryKey } from "@workspa
 import { CheckCircle, DollarSign, BookOpen, AlertCircle, Clock, MapPin, Wifi } from "lucide-react";
 import { VICTORIAN_SUBJECTS } from "@/lib/subjects";
 import UnavailablePeriodsCard from "@/components/tutor/UnavailablePeriodsCard";
+import SpecificAvailabilityCard from "@/components/tutor/SpecificAvailabilityCard";
 
 type TeachingMode = "online" | "in_person" | "both";
 
@@ -181,10 +182,11 @@ export default function TutorAvailability() {
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-foreground">Availability</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Set your weekly availability windows and session lengths</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Set weekly hours, one-off date changes and session lengths</p>
       </div>
 
       {tutorId && <UnavailablePeriodsCard tutorId={tutorId} />}
+      {tutorId && <SpecificAvailabilityCard tutorId={tutorId} />}
 
       {/* ── Weekly availability windows ─────────────────────────────────── */}
       <div className="bg-card border border-card-border rounded-2xl overflow-hidden mb-4">

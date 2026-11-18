@@ -1,7 +1,7 @@
 import { Router, type Response } from "express";
-import { db, tutorsTable, usersTable, availabilityTable, tutorUnavailablePeriodsTable, studentsTable, sessionsTable, tutorComplianceTable, tutorRelationshipsTable } from "@workspace/db";
-import { eq, inArray, and, isNotNull, isNull, lte, gte, asc, sql } from "drizzle-orm";
-import { UpdateTutorProfileBody, SetTutorAvailabilityBody, CreateTutorUnavailablePeriodBody, CreateTutorLessonOfferBody, GetTutorCalendarFeedResponse, EnableTutorCalendarFeedResponse } from "@workspace/api-zod";
+import { db, tutorsTable, usersTable, availabilityTable, tutorAvailabilityOverridesTable, tutorUnavailablePeriodsTable, studentsTable, sessionsTable, invoicesTable, tutorComplianceTable, tutorRelationshipsTable } from "@workspace/db";
+import { eq, inArray, and, isNotNull, isNull, lte, gte, asc, desc, sql } from "drizzle-orm";
+import { UpdateTutorProfileBody, SetTutorAvailabilityBody, CreateTutorUnavailablePeriodBody, CreateTutorLessonOfferBody, GetTutorCalendarFeedResponse, EnableTutorCalendarFeedResponse, GetTutorParentProfileParams, GetTutorParentProfileResponse, GetTutorAvailabilityOverridesParams, GetTutorAvailabilityOverridesResponse, UpsertTutorAvailabilityOverrideParams, UpsertTutorAvailabilityOverrideBody, UpsertTutorAvailabilityOverrideResponse, DeleteTutorAvailabilityOverrideParams } from "@workspace/api-zod";
 import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
 import { tutorSlots } from "../lib/schedulingStore";
 import { BookingError, localDate, localTime, validDate, type LessonMode } from "../lib/scheduling";
@@ -11,6 +11,7 @@ import { lockBookableTutor } from "../lib/bookableTutor";
 import { createNotification } from "../lib/notify";
 import { bookingStatusEmailHtml, sendEmail } from "../lib/email";
 import { config } from "../lib/config";
+import { canTutorViewParentProfile } from "../lib/tutorParentProfile";
 
 const router = Router();
 
@@ -390,6 +391,105 @@ router.put("/tutors/:tutorId/availability", requireAuth, async (req, res) => {
     .where(and(eq(availabilityTable.tutorId, tutorId), isNotNull(availabilityTable.dayOfWeek)));
 
   res.json(windows.map(windowToJson));
+});
+
+router.get("/tutors/:tutorId/availability-overrides", async (req, res): Promise<void> => {
+  const params = GetTutorAvailabilityOverridesParams.safeParse(req.params);
+  if (!params.success || !await isPublicTutor(params.data.tutorId)) {
+    res.status(404).json({ error: "Tutor is unavailable" });
+    return;
+  }
+  const today = localDate(new Date());
+  const overrides = await db.select().from(tutorAvailabilityOverridesTable)
+    .where(and(
+      eq(tutorAvailabilityOverridesTable.tutorId, params.data.tutorId),
+      gte(tutorAvailabilityOverridesTable.date, today),
+    ))
+    .orderBy(asc(tutorAvailabilityOverridesTable.date));
+  res.setHeader("Cache-Control", "no-store");
+  res.json(GetTutorAvailabilityOverridesResponse.parse(overrides));
+});
+
+router.put("/tutors/:tutorId/availability-overrides/:date", requireAuth, async (req, res): Promise<void> => {
+  const actor = (req as AuthRequest).user;
+  const params = UpsertTutorAvailabilityOverrideParams.safeParse(req.params);
+  const body = UpsertTutorAvailabilityOverrideBody.safeParse(req.body);
+  if (!params.success || !body.success || !validDate(params.data.date)
+    || params.data.date < localDate(new Date()) || body.data.startTime >= body.data.endTime) {
+    res.status(400).json({ error: "Choose a future date and a valid end time after the start time" });
+    return;
+  }
+
+  const [owner] = await db.select({ userId: tutorsTable.userId }).from(tutorsTable)
+    .where(eq(tutorsTable.id, params.data.tutorId)).limit(1);
+  if (!owner || (actor.role !== "admin" && (actor.role !== "tutor" || owner.userId !== actor.id))) {
+    res.status(403).json({ error: "Only this tutor or an admin can update availability" });
+    return;
+  }
+
+  try {
+    const saved = await db.transaction(async (tx) => {
+      await tx.select({ id: tutorsTable.id }).from(tutorsTable)
+        .where(eq(tutorsTable.id, params.data.tutorId)).for("update");
+      const blocked = await tx.select({ id: tutorUnavailablePeriodsTable.id })
+        .from(tutorUnavailablePeriodsTable)
+        .where(and(
+          eq(tutorUnavailablePeriodsTable.tutorId, params.data.tutorId),
+          lte(tutorUnavailablePeriodsTable.startDate, params.data.date),
+          gte(tutorUnavailablePeriodsTable.endDate, params.data.date),
+        )).limit(1);
+      if (blocked.length) {
+        throw new BookingError("This date is already marked unavailable. Remove the blocked date first.", 409);
+      }
+      const [row] = await tx.insert(tutorAvailabilityOverridesTable).values({
+        tutorId: params.data.tutorId,
+        date: params.data.date,
+        startTime: body.data.startTime,
+        endTime: body.data.endTime,
+        timezone: "Australia/Melbourne",
+      }).onConflictDoUpdate({
+        target: [tutorAvailabilityOverridesTable.tutorId, tutorAvailabilityOverridesTable.date],
+        set: { startTime: body.data.startTime, endTime: body.data.endTime, timezone: "Australia/Melbourne" },
+      }).returning();
+      return row;
+    });
+    res.setHeader("Cache-Control", "no-store");
+    res.json(UpsertTutorAvailabilityOverrideResponse.parse(saved));
+  } catch (error) {
+    if (error instanceof BookingError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.delete("/tutors/:tutorId/availability-overrides/:date", requireAuth, async (req, res): Promise<void> => {
+  const actor = (req as AuthRequest).user;
+  const params = DeleteTutorAvailabilityOverrideParams.safeParse(req.params);
+  if (!params.success || !validDate(params.data.date)) {
+    res.status(400).json({ error: "Invalid override date" });
+    return;
+  }
+  const [owner] = await db.select({ userId: tutorsTable.userId }).from(tutorsTable)
+    .where(eq(tutorsTable.id, params.data.tutorId)).limit(1);
+  if (!owner || (actor.role !== "admin" && (actor.role !== "tutor" || owner.userId !== actor.id))) {
+    res.status(403).json({ error: "Only this tutor or an admin can update availability" });
+    return;
+  }
+  const deleted = await db.transaction(async (tx) => {
+    await tx.select({ id: tutorsTable.id }).from(tutorsTable)
+      .where(eq(tutorsTable.id, params.data.tutorId)).for("update");
+    return tx.delete(tutorAvailabilityOverridesTable).where(and(
+      eq(tutorAvailabilityOverridesTable.tutorId, params.data.tutorId),
+      eq(tutorAvailabilityOverridesTable.date, params.data.date),
+    )).returning({ id: tutorAvailabilityOverridesTable.id });
+  });
+  if (!deleted.length) {
+    res.status(404).json({ error: "Date-specific availability not found" });
+    return;
+  }
+  res.sendStatus(204);
 });
 
 router.get("/tutors/:tutorId/unavailable-periods", requireAuth, async (req, res) => {
@@ -780,6 +880,150 @@ router.get("/tutors/:tutorId/students", requireAuth, async (req, res) => {
       createdAt: s.createdAt.toISOString(),
     }))
   );
+});
+
+router.get("/tutors/parents/:parentId", requireAuth, async (req, res): Promise<void> => {
+  const actor = (req as AuthRequest).user;
+  const params = GetTutorParentProfileParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid parent ID" });
+    return;
+  }
+  if (actor.role !== "tutor") {
+    res.status(403).json({ error: "Only the assigned tutor can view this parent profile" });
+    return;
+  }
+
+  const [tutor] = await db.select({ id: tutorsTable.id, userId: tutorsTable.userId })
+    .from(tutorsTable).where(eq(tutorsTable.userId, actor.id)).limit(1);
+  if (!tutor) {
+    res.status(403).json({ error: "Tutor profile not found" });
+    return;
+  }
+
+  const [parent] = await db.select({
+    id: usersTable.id,
+    firstName: usersTable.firstName,
+    lastName: usersTable.lastName,
+    email: usersTable.email,
+    phone: usersTable.phone,
+    createdAt: usersTable.createdAt,
+    role: usersTable.role,
+    isActive: usersTable.isActive,
+    archivedAt: usersTable.archivedAt,
+    parentApproved: usersTable.parentApproved,
+  }).from(usersTable).where(eq(usersTable.id, params.data.parentId)).limit(1);
+  if (!parent) {
+    res.status(404).json({ error: "Parent profile not found" });
+    return;
+  }
+
+  const tutorSessions = await db.select({
+    sessionId: sessionsTable.id,
+    studentId: studentsTable.id,
+  }).from(sessionsTable)
+    .innerJoin(studentsTable, eq(studentsTable.id, sessionsTable.studentId))
+    .where(and(
+      eq(sessionsTable.tutorId, tutor.id),
+      eq(studentsTable.parentId, parent.id),
+    ));
+
+  const allowed = canTutorViewParentProfile({
+    actorRole: actor.role,
+    actorUserId: actor.id,
+    tutorUserId: tutor.userId,
+    parentRole: parent.role,
+    parentActive: parent.isActive,
+    parentArchivedAt: parent.archivedAt,
+    parentApproved: parent.parentApproved,
+    hasTutorHistory: tutorSessions.length > 0,
+  });
+  if (!allowed) {
+    res.status(404).json({ error: "Parent profile not found" });
+    return;
+  }
+
+  const connectedStudentIds = [...new Set(tutorSessions.map((session) => session.studentId))];
+  const connectedStudents = await db.select({
+    id: studentsTable.id,
+    firstName: studentsTable.firstName,
+    lastName: studentsTable.lastName,
+    gradeLevel: studentsTable.gradeLevel,
+    school: studentsTable.school,
+    subjects: studentsTable.subjects,
+    goals: studentsTable.goals,
+    address: studentsTable.address,
+    createdAt: studentsTable.createdAt,
+  }).from(studentsTable)
+    .where(and(
+      eq(studentsTable.parentId, parent.id),
+      inArray(studentsTable.id, connectedStudentIds),
+      isNull(studentsTable.archivedAt),
+    ))
+    .orderBy(asc(studentsTable.firstName), asc(studentsTable.lastName));
+
+  const invoiceRows = await db.select({
+    id: invoicesTable.id,
+    sessionId: sessionsTable.id,
+    studentId: studentsTable.id,
+    studentFirstName: studentsTable.firstName,
+    studentLastName: studentsTable.lastName,
+    subject: sessionsTable.subject,
+    scheduledAt: sessionsTable.scheduledAt,
+    durationMinutes: sessionsTable.durationMinutes,
+    totalAmount: invoicesTable.totalAmount,
+    platformCommission: invoicesTable.platformCommission,
+    tutorEarnings: invoicesTable.tutorEarnings,
+    commissionRate: invoicesTable.commissionRate,
+    commissionTier: invoicesTable.commissionTier,
+    generatedAt: invoicesTable.generatedAt,
+  }).from(invoicesTable)
+    .innerJoin(sessionsTable, eq(sessionsTable.id, invoicesTable.sessionId))
+    .innerJoin(studentsTable, eq(studentsTable.id, sessionsTable.studentId))
+    .where(and(
+      eq(sessionsTable.tutorId, tutor.id),
+      eq(studentsTable.parentId, parent.id),
+    ))
+    .orderBy(desc(invoicesTable.generatedAt));
+
+  const response = {
+    parent: {
+      id: parent.id,
+      firstName: parent.firstName,
+      lastName: parent.lastName,
+      email: parent.email,
+      phone: parent.phone ?? null,
+      createdAt: parent.createdAt.toISOString(),
+    },
+    students: connectedStudents.map((student) => ({
+      id: student.id,
+      firstName: student.firstName,
+      lastName: student.lastName ?? null,
+      yearLevel: student.gradeLevel ?? null,
+      school: student.school ?? null,
+      subjects: student.subjects ?? null,
+      goals: student.goals ?? null,
+      hasLessonAddress: Boolean(student.address?.trim()),
+      createdAt: student.createdAt.toISOString(),
+    })),
+    invoices: invoiceRows.map((invoice) => ({
+      id: invoice.id,
+      sessionId: invoice.sessionId,
+      studentId: invoice.studentId,
+      studentName: `${invoice.studentFirstName}${invoice.studentLastName ? ` ${invoice.studentLastName}` : ""}`,
+      subject: invoice.subject,
+      scheduledAt: invoice.scheduledAt.toISOString(),
+      durationMinutes: invoice.durationMinutes,
+      totalAmount: invoice.totalAmount,
+      platformCommission: invoice.platformCommission,
+      tutorEarnings: invoice.tutorEarnings,
+      commissionRate: invoice.commissionRate,
+      commissionTier: invoice.commissionTier,
+      generatedAt: invoice.generatedAt.toISOString(),
+    })),
+  };
+
+  res.json(GetTutorParentProfileResponse.parse(response));
 });
 
 // ── Per-parent relationship preferences ──────────────────────────────────────

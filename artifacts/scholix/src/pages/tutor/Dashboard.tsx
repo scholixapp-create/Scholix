@@ -439,7 +439,7 @@ export default function TutorDashboard() {
                       <SessionStudentLink studentId={session.studentId} studentName={session.studentName} />
                     </p>
                     <div className="mt-1">
-                      <SessionParentContact studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
+                      <SessionParentContact parentId={session.parentId} studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {formatInZone(session.scheduledAt)} · {session.durationMinutes}min

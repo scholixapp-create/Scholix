@@ -24,6 +24,12 @@ type UnavailablePeriod = {
   endDate: string;
 };
 
+type AvailabilityOverride = {
+  date: string;
+  startTime: string;
+  endTime: string;
+};
+
 function sessionMinute(iso: string) {
   const parts = TIME_PARTS.formatToParts(new Date(iso));
   const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "0";
@@ -63,6 +69,7 @@ export default function WeeklyTutorCalendarView({
   days,
   sessions,
   availability,
+  availabilityOverrides,
   unavailablePeriods,
   selectedDate,
   onSelectDate,
@@ -70,15 +77,23 @@ export default function WeeklyTutorCalendarView({
   days: Date[];
   sessions: Session[];
   availability: AvailabilityWindow[];
+  availabilityOverrides: AvailabilityOverride[];
   unavailablePeriods: UnavailablePeriod[];
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
 }) {
   const dayData = days.map((date) => {
     const key = calendarDateKey(date);
+    const dateOverrides = availabilityOverrides.filter((window) => window.date === key);
     const windows = unavailableOnDate(key, unavailablePeriods)
       ? []
-      : availability.filter((window) => window.dayOfWeek === mondayFirstWeekday(date));
+      : dateOverrides.length
+        ? dateOverrides.map((window) => ({
+            dayOfWeek: mondayFirstWeekday(date),
+            startTime: window.startTime,
+            endTime: window.endTime,
+          }))
+        : availability.filter((window) => window.dayOfWeek === mondayFirstWeekday(date));
     return {
       date,
       key,

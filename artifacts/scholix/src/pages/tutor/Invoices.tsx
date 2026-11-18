@@ -9,6 +9,7 @@ interface TutorInvoice {
   invoiceNumber: string;
   sessionId: number;
   studentId: number;
+  parentId: number | null;
   parentName: string | null;
   parentEmail: string | null;
   parentPhone: string | null;
@@ -137,7 +138,9 @@ export default function TutorInvoices() {
                       </Link>
                       {(inv.parentName || inv.parentEmail || inv.parentPhone) && (
                         <div className="mt-1 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
-                          {inv.parentName && <Link href={`/tutor/students?student=${inv.studentId}#family`} className="hover:text-primary hover:underline">{inv.parentName}</Link>}
+                          {inv.parentName && inv.parentId
+                            ? <Link href={`/tutor/parents/${inv.parentId}`} className="hover:text-primary hover:underline">{inv.parentName}</Link>
+                            : inv.parentName && <span>{inv.parentName}</span>}
                           {inv.parentEmail && <a href={`mailto:${inv.parentEmail}`} className="text-primary hover:underline">{inv.parentEmail}</a>}
                           {inv.parentPhone && <a href={`tel:${inv.parentPhone}`} className="text-primary hover:underline">{inv.parentPhone}</a>}
                         </div>

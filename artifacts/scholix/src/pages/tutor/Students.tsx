@@ -311,7 +311,7 @@ export default function TutorStudents() {
                       <div id={selectedStudentId === student.id ? "family" : `family-${student.parentId}`} className="mt-3 rounded-lg bg-muted/40 p-3">
                         <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Parent / guardian</p>
                         {student.parentName && (
-                          <Link href={`/tutor/students?student=${student.id}#family-${student.parentId}`} className="block text-xs font-semibold text-foreground hover:text-primary hover:underline">
+                          <Link href={`/tutor/parents/${student.parentId}`} className="block text-xs font-semibold text-foreground hover:text-primary hover:underline">
                             {student.parentName}
                           </Link>
                         )}

@@ -27,11 +27,13 @@ export function SessionStudentLink({ studentId, studentName }: Pick<SessionConte
 }
 
 export function SessionParentContact({
+  parentId,
   studentId,
   parentName,
   parentEmail,
   parentPhone,
 }: {
+  parentId?: number | null;
   studentId: number;
   parentName?: string | null;
   parentEmail?: string | null;
@@ -41,11 +43,11 @@ export function SessionParentContact({
   return (
     <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
       <span>Parent:</span>
-      {parentName && (
-        <Link href={`/tutor/students?student=${studentId}#family`} className="font-medium text-foreground hover:text-primary hover:underline">
+      {parentName && parentId ? (
+        <Link href={`/tutor/parents/${parentId}`} className="font-medium text-foreground hover:text-primary hover:underline">
           {parentName}
         </Link>
-      )}
+      ) : parentName ? <span className="font-medium text-foreground">{parentName}</span> : null}
       {parentEmail && <a href={`mailto:${parentEmail}`} className="inline-flex items-center gap-1 text-primary hover:underline"><Mail size={10} />Email</a>}
       {parentPhone && <a href={`tel:${parentPhone}`} className="inline-flex items-center gap-1 text-primary hover:underline"><Phone size={10} />Call</a>}
     </span>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useRoute, Link } from "wouter";
 import {
-  useGetTutor, useGetTutorAvailability, useListStudents, useCreateSession, useSimulatePayment,
+  useGetTutor, useGetTutorAvailability, useGetTutorAvailabilityOverrides, useListStudents, useCreateSession, useSimulatePayment,
   useGetTutorRelationshipForParent, useGetTutorAvailableSlots, getGetTutorAvailableSlotsQueryKey, useCancelSession, getSession,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -52,6 +52,9 @@ export default function BookSession() {
 
   const tutor = useGetTutor(tutorId);
   const tutorAvailability = useGetTutorAvailability(tutorId);
+  const tutorAvailabilityOverrides = useGetTutorAvailabilityOverrides(tutorId, {
+    query: { enabled: tutorId > 0, staleTime: 15_000 },
+  });
   const allStudents = useListStudents();
   const createSession = useCreateSession();
   const simulatePayment = useSimulatePayment();
@@ -89,6 +92,10 @@ export default function BookSession() {
     const windows = tutorAvailability.data ?? [];
     return new Set(windows.map((w) => w.dayOfWeek));
   }, [tutorAvailability.data]);
+  const oneOffDates = useMemo(
+    () => new Set((tutorAvailabilityOverrides.data ?? []).map((override) => override.date)),
+    [tutorAvailabilityOverrides.data],
+  );
 
   // Allowed session durations: from tutor profile, or default [60, 90]
   const allowedDurations = useMemo(() => {
@@ -128,7 +135,7 @@ export default function BookSession() {
   function isDateAvailable(date: Date): boolean {
     if (isBefore(date, today)) return false;
     const dow = jsDayToDow(date.getDay());
-    return availableDows.has(dow);
+    return availableDows.has(dow) || oneOffDates.has(format(date, "yyyy-MM-dd"));
   }
 
   const tutorSubjects = tutor.data?.subjects ?? [];
@@ -633,14 +640,17 @@ export default function BookSession() {
             {blanksBefore.map((_, i) => <div key={`blank-${i}`} />)}
             {calendarDays.map((date) => {
               const available = isDateAvailable(date);
-              const isSelected = selectedDate === format(date, "yyyy-MM-dd");
+              const dateKey = format(date, "yyyy-MM-dd");
+              const hasOneOffAvailability = oneOffDates.has(dateKey);
+              const isSelected = selectedDate === dateKey;
               const dateNum = format(date, "d");
               return (
                 <button
                   key={date.toISOString()}
                   onClick={() => available && handleSelectDate(date)}
                   disabled={!available}
-                  className={`aspect-square flex items-center justify-center rounded-xl text-sm font-medium transition-all ${
+                  title={hasOneOffAvailability ? "One-off availability for this date" : undefined}
+                  className={`relative aspect-square flex items-center justify-center rounded-xl text-sm font-medium transition-all ${
                     isSelected
                       ? "bg-primary text-white ring-2 ring-primary ring-offset-1"
                       : available
@@ -649,6 +659,9 @@ export default function BookSession() {
                   }`}
                 >
                   {dateNum}
+                  {hasOneOffAvailability && (
+                    <span className={`absolute bottom-1 h-1 w-1 rounded-full ${isSelected ? "bg-white" : "bg-amber-600"}`} />
+                  )}
                 </button>
               );
             })}
@@ -659,12 +672,15 @@ export default function BookSession() {
               <span className="w-3 h-3 rounded bg-primary/20 inline-block" /> Available
             </span>
             <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-600 inline-block" /> One-off hours
+            </span>
+            <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-muted inline-block" /> Unavailable
             </span>
           </div>
         </div>
 
-        {availableDows.size === 0 && !tutorAvailability.isLoading && (
+        {availableDows.size === 0 && oneOffDates.size === 0 && !tutorAvailability.isLoading && !tutorAvailabilityOverrides.isLoading && (
           <p className="text-sm text-muted-foreground text-center mt-4">
             {tutor.data!.firstName} hasn't set any availability yet. Check back later.
           </p>

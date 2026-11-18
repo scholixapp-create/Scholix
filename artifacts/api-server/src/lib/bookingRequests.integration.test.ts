@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { eq, inArray } from "drizzle-orm";
 import {
-  db, usersTable, tutorsTable, studentsTable, sessionsTable, availabilityTable,
+  db, usersTable, tutorsTable, studentsTable, sessionsTable, availabilityTable, tutorAvailabilityOverridesTable,
   paymentsTable, invoicesTable, notificationsTable, tutorRelationshipsTable, pool,
 } from "@workspace/db";
 import { issueAccessToken } from "./authTokens";
@@ -92,6 +92,34 @@ test("development booking requests, beta holds, permissions and concurrent write
       assert.equal((await create("16:00", outsider.token)).status, 403);
       assert.equal((await create("15:45")).status, 409);
       assert.equal((await call(`/tutors/${tutor.id}/available-slots?date=2026-02-30&duration=60`)).status, 400);
+
+      const followingWeekDate = new Date(`${date}T12:00:00.000Z`);
+      followingWeekDate.setUTCDate(followingWeekDate.getUTCDate() + 7);
+      const followingWeek = followingWeekDate.toISOString().slice(0, 10);
+      const overridePath = `/tutors/${tutor.id}/availability-overrides/${date}`;
+      assert.equal((await call(overridePath, undefined, "PUT", { startTime: "17:00", endTime: "20:00" })).status, 401);
+      assert.equal((await call(overridePath, parent.token, "PUT", { startTime: "17:00", endTime: "20:00" })).status, 403);
+      assert.equal((await call(overridePath, tutorUser.token, "PUT", { startTime: "20:00", endTime: "17:00" })).status, 400);
+      assert.equal((await call(overridePath, tutorUser.token, "PUT", { startTime: "17:00", endTime: "20:00" })).status, 200);
+
+      const publicOverrides = await call(`/tutors/${tutor.id}/availability-overrides`);
+      assert.equal(publicOverrides.status, 200);
+      assert.ok(publicOverrides.body.some((override: { date: string }) => override.date === date));
+      const changedDaySlots = await call(`/tutors/${tutor.id}/available-slots?date=${date}&duration=60&lessonMode=in_person`, parent.token);
+      assert.equal(changedDaySlots.status, 200);
+      assert.ok(changedDaySlots.body.slots.length > 0);
+      assert.equal(changedDaySlots.body.slots.some((time: string) => time < "17:00"), false);
+      const followingWeekSlots = await call(`/tutors/${tutor.id}/available-slots?date=${followingWeek}&duration=60&lessonMode=in_person`, parent.token);
+      assert.equal(followingWeekSlots.status, 200);
+      assert.ok(followingWeekSlots.body.slots.includes("16:00"));
+      assert.equal((await create("16:00")).status, 409);
+
+      const validBooking = await create("17:00");
+      assert.equal(validBooking.status, 201);
+      await db.delete(sessionsTable).where(eq(sessionsTable.id, validBooking.body.id));
+      assert.equal((await call(overridePath, tutorUser.token, "DELETE")).status, 204);
+      const restoredDaySlots = await call(`/tutors/${tutor.id}/available-slots?date=${date}&duration=60&lessonMode=in_person`, parent.token);
+      assert.ok(restoredDaySlots.body.slots.includes("16:00"));
     });
     await t.test("lesson addresses are requested from parents and required only for in-person bookings", async () => {
       const request = `/students/${addresslessChild.id}/address-request`;
@@ -275,6 +303,7 @@ test("development booking requests, beta holds, permissions and concurrent write
         await db.delete(sessionsTable).where(inArray(sessionsTable.id, sessionIds));
       }
       await db.delete(availabilityTable).where(inArray(availabilityTable.tutorId, tutorIds));
+      await db.delete(tutorAvailabilityOverridesTable).where(inArray(tutorAvailabilityOverridesTable.tutorId, tutorIds));
       await db.delete(tutorRelationshipsTable).where(inArray(tutorRelationshipsTable.tutorId, tutorIds));
     }
     if (childIds.length) await db.delete(studentsTable).where(inArray(studentsTable.id, childIds));

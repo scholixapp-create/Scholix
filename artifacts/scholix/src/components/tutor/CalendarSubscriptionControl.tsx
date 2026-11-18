@@ -75,7 +75,7 @@ export default function CalendarSubscriptionControl({ tutorId }: { tutorId: numb
             <h3 className="text-sm font-semibold text-foreground">Connect Google or Apple Calendar</h3>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Subscribe to upcoming Scholix lessons and unavailable dates. Weekly availability stays in Scholix.
+            Subscribe to upcoming Scholix lessons and unavailable dates. Availability schedules stay in Scholix.
             Student names, subjects, and addresses are not included.
           </p>
         </div>

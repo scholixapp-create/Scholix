@@ -1,6 +1,6 @@
 import { useMemo, useState, type ComponentProps } from "react";
 import { Link } from "wouter";
-import { useGetTutorAvailability, useGetTutorUnavailablePeriods, getGetTutorAvailabilityQueryKey, getGetTutorUnavailablePeriodsQueryKey } from "@workspace/api-client-react";
+import { useGetTutorAvailability, useGetTutorAvailabilityOverrides, useGetTutorUnavailablePeriods, getGetTutorAvailabilityQueryKey, getGetTutorAvailabilityOverridesQueryKey, getGetTutorUnavailablePeriodsQueryKey } from "@workspace/api-client-react";
 import type { Session } from "@workspace/api-client-react";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock3, RotateCw, ShieldAlert, Video, MapPin } from "lucide-react";
 import { addDays, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek } from "date-fns";
@@ -89,6 +89,12 @@ export default function TutorSessionsCalendar({
       queryKey: getGetTutorUnavailablePeriodsQueryKey(tutorId ?? 0),
     },
   });
+  const overrides = useGetTutorAvailabilityOverrides(tutorId ?? 0, {
+    query: {
+      enabled: !!tutorId,
+      queryKey: getGetTutorAvailabilityOverridesQueryKey(tutorId ?? 0),
+    },
+  });
   const [selectedDate, setSelectedDate] = useState<Date>(() => currentMelbourneDate());
   const [month, setMonth] = useState<Date>(() => currentMelbourneDate());
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
@@ -123,13 +129,14 @@ export default function TutorSessionsCalendar({
   }, [pendingSessions, visibleDates]);
   const availableDates = useMemo(() => {
     const dayIndexes = new Set((availability.data ?? []).map((slot) => slot.dayOfWeek));
+    const oneOffDateKeys = new Set((overrides.data ?? []).map((override) => override.date));
     const periods = unavailable.data ?? [];
     return visibleDates.filter((date) => {
       const key = dateKey(date);
-      return dayIndexes.has(mondayFirstWeekday(key))
+      return (dayIndexes.has(mondayFirstWeekday(key)) || oneOffDateKeys.has(key))
         && !periods.some((period) => key >= period.startDate && key <= period.endDate);
     });
-  }, [availability.data, unavailable.data, visibleDates]);
+  }, [availability.data, overrides.data, unavailable.data, visibleDates]);
   const unavailableDates = useMemo(() => {
     const periods = unavailable.data ?? [];
     return visibleDates.filter((date) => {
@@ -143,13 +150,18 @@ export default function TutorSessionsCalendar({
     .filter((session) => MELBOURNE_DATE.format(new Date(session.scheduledAt)) === selectedKey)
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
   const selectedWeekday = mondayFirstWeekday(selectedKey);
-  const selectedWindows = (availability.data ?? []).filter((slot) => slot.dayOfWeek === selectedWeekday);
+  const selectedOverrides = (overrides.data ?? []).filter((override) => override.date === selectedKey);
+  const selectedWindows = selectedOverrides.length
+    ? selectedOverrides.map((override) => ({ id: override.id, startTime: override.startTime, endTime: override.endTime, oneOff: true }))
+    : (availability.data ?? []).filter((slot) => slot.dayOfWeek === selectedWeekday)
+      .map((slot) => ({ id: slot.id, startTime: slot.startTime, endTime: slot.endTime, oneOff: false }));
   const selectedPeriods = (unavailable.data ?? []).filter((period) => selectedKey >= period.startDate && selectedKey <= period.endDate);
 
-  const isScheduleLoading = availability.isLoading || unavailable.isLoading;
-  const hasScheduleError = availability.isError || unavailable.isError;
+  const isScheduleLoading = availability.isLoading || overrides.isLoading || unavailable.isLoading;
+  const hasScheduleError = availability.isError || overrides.isError || unavailable.isError;
   const retrySchedule = () => {
     if (availability.isError) void availability.refetch();
+    if (overrides.isError) void overrides.refetch();
     if (unavailable.isError) void unavailable.refetch();
   };
 
@@ -163,7 +175,7 @@ export default function TutorSessionsCalendar({
             </span>
             <h2 id="sessions-calendar-heading" className="text-base font-bold text-foreground">Session calendar</h2>
           </div>
-          <p className="mt-1 pl-10 text-xs text-muted-foreground">Your lessons, weekly windows and time away · Melbourne time</p>
+          <p className="mt-1 pl-10 text-xs text-muted-foreground">Your lessons, weekly and one-off hours, and time away · Melbourne time</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div role="group" aria-label="Calendar view" className="inline-flex rounded-lg border border-border bg-background p-0.5">
@@ -287,6 +299,7 @@ export default function TutorSessionsCalendar({
               days={weekDates}
               sessions={sessions}
               availability={availability.data ?? []}
+              availabilityOverrides={overrides.data ?? []}
               unavailablePeriods={unavailable.data ?? []}
               selectedDate={selectedDate}
               onSelectDate={(date) => {
@@ -332,7 +345,7 @@ export default function TutorSessionsCalendar({
                         {session.studentName ?? "Student"}
                       </Link>
                       <div className="mt-1">
-                        <SessionParentContact studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
+                        <SessionParentContact parentId={session.parentId} studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
                       </div>
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${sessionStatus(session).className}`}>
@@ -353,10 +366,12 @@ export default function TutorSessionsCalendar({
           )}
 
           <div className="mt-4 border-t border-border pt-4">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">Weekly availability</p>
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[.14em] text-muted-foreground">
+              {selectedOverrides.length ? "One-off availability" : "Weekly availability"}
+            </p>
             {isScheduleLoading ? (
               <div className="h-12 animate-pulse rounded-xl bg-muted" role="status" aria-label="Loading weekly availability" />
-            ) : availability.isError ? (
+              ) : availability.isError || overrides.isError ? (
               <p className="text-xs text-muted-foreground">Availability windows are unavailable right now.</p>
             ) : selectedWindows.length ? (
               <div className="space-y-1.5">
@@ -364,13 +379,13 @@ export default function TutorSessionsCalendar({
                   <div key={slot.id} className="flex items-center justify-between gap-2 rounded-lg border border-accent/20 bg-accent/5 px-3 py-2 text-xs" data-testid={`row-calendar-window-${slot.id}`}>
                     <span className="font-medium text-foreground">{formatWindowTime(slot.startTime)}–{formatWindowTime(slot.endTime)}</span>
                      <span className={`text-[10px] ${selectedPeriods.length ? "text-destructive" : "text-accent"}`}>
-                       {selectedPeriods.length ? "Unavailable today" : "Available"}
+                       {selectedPeriods.length ? "Unavailable today" : slot.oneOff ? "One-off hours" : "Available"}
                      </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="rounded-lg bg-background/70 px-3 py-2.5 text-xs text-muted-foreground" data-testid="empty-calendar-windows">No recurring windows for this weekday.</p>
+              <p className="rounded-lg bg-background/70 px-3 py-2.5 text-xs text-muted-foreground" data-testid="empty-calendar-windows">No availability window for this date.</p>
             )}
           </div>
 
@@ -402,10 +417,10 @@ export default function TutorSessionsCalendar({
         </aside>
       </div>
 
-      {!isScheduleLoading && !hasScheduleError && (availability.data?.length ?? 0) === 0 && (unavailable.data?.length ?? 0) === 0 && (
+      {!isScheduleLoading && !hasScheduleError && (availability.data?.length ?? 0) === 0 && (overrides.data?.length ?? 0) === 0 && (unavailable.data?.length ?? 0) === 0 && (
         <div className="flex items-center gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5" data-testid="empty-calendar-schedule">
           <ChevronRight size={14} className="text-accent" />
-          No weekly windows or blocked dates yet. Your booked lessons will still appear here.
+          No weekly windows, one-off hours or blocked dates yet. Your booked lessons will still appear here.
         </div>
       )}
     </section>

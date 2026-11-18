@@ -1,12 +1,30 @@
-import { db, tutorsTable, availabilityTable, tutorUnavailablePeriodsTable, sessionsTable, tutorRelationshipsTable, studentsTable } from "@workspace/db";
+import { db, tutorsTable, availabilityTable, tutorAvailabilityOverridesTable, tutorUnavailablePeriodsTable, sessionsTable, tutorRelationshipsTable, studentsTable } from "@workspace/db";
 import { and, eq, inArray, lte, gte } from "drizzle-orm";
-import { BookingError, generateSlots, validDate, type LessonMode } from "./scheduling";
+import { BookingError, dayOfWeek, generateSlots, validDate, type LessonMode, type WeeklyWindow } from "./scheduling";
 
 type Store = Pick<typeof db, "select">;
 type Tutor = typeof tutorsTable.$inferSelect;
 
 export function isDateUnavailable(date: string, periods: ReadonlyArray<{ startDate: string; endDate: string }>) {
   return periods.some((period) => period.startDate <= date && date <= period.endDate);
+}
+
+export function windowsForDate(
+  date: string,
+  recurring: readonly WeeklyWindow[],
+  overrides: ReadonlyArray<{ date: string; startTime: string; endTime: string }>,
+  unavailable: boolean,
+): WeeklyWindow[] {
+  if (unavailable) return [];
+  const dateOverrides = overrides.filter((window) => window.date === date);
+  if (dateOverrides.length) {
+    return dateOverrides.map((window) => ({
+      dayOfWeek: dayOfWeek(date),
+      startTime: window.startTime,
+      endTime: window.endTime,
+    }));
+  }
+  return [...recurring];
 }
 
 export async function tutorSlots(store: Store, tutor: Tutor, parentId: number | null,
@@ -27,6 +45,10 @@ export async function tutorSlots(store: Store, tutor: Tutor, parentId: number | 
   }
   const buffer = Math.max(0, relationship?.travelBufferMinutes ?? tutor.travelBufferMinutes ?? 0);
   const windows = await store.select().from(availabilityTable).where(eq(availabilityTable.tutorId, tutor.id));
+  const overrides = await store.select().from(tutorAvailabilityOverridesTable).where(and(
+    eq(tutorAvailabilityOverridesTable.tutorId, tutor.id),
+    eq(tutorAvailabilityOverridesTable.date, date),
+  ));
   const unavailable = await store.select().from(tutorUnavailablePeriodsTable).where(and(
     eq(tutorUnavailablePeriodsTable.tutorId, tutor.id),
     lte(tutorUnavailablePeriodsTable.startDate, date),
@@ -48,5 +70,16 @@ export async function tutorSlots(store: Store, tutor: Tutor, parentId: number | 
       lessonMode: (s.lessonMode ?? legacyMode ?? (tutor.teachingMode === "online" ? "online" : "in_person")) as LessonMode,
       travelBufferMinutes: s.travelBufferMinutes ?? legacyBuffer ?? tutor.travelBufferMinutes ?? 0,
     }));
-  return { ...generateSlots({ date, duration, mode, buffer, windows: isDateUnavailable(date, unavailable) ? [] : windows, booked, now }), buffer };
+  return {
+    ...generateSlots({
+      date,
+      duration,
+      mode,
+      buffer,
+      windows: windowsForDate(date, windows, overrides, isDateUnavailable(date, unavailable)),
+      booked,
+      now,
+    }),
+    buffer,
+  };
 }

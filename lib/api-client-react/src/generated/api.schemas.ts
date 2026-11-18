@@ -318,6 +318,24 @@ export interface AvailabilitySlot {
   timezone?: string;
 }
 
+export interface TutorAvailabilityOverride {
+  id: number;
+  tutorId: number;
+  /** @pattern ^\d{4}-\d{2}-\d{2}$ */
+  date: string;
+  startTime: string;
+  endTime: string;
+  timezone: string;
+  createdAt: string;
+}
+
+export interface TutorAvailabilityOverrideInput {
+  /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+  startTime: string;
+  /** @pattern ^([01][0-9]|2[0-3]):[0-5][0-9]$ */
+  endTime: string;
+}
+
 export type SetAvailabilityBodyWindowsItem = {
   /** 0=Mon … 6=Sun */
   dayOfWeek: number;
@@ -486,6 +504,60 @@ export interface TutorStudent {
   createdAt: string;
 }
 
+export interface TutorParent {
+  id: number;
+  firstName: string;
+  lastName: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  createdAt: string;
+}
+
+/**
+ * Child profile details available to the child's assigned tutor, excluding the lesson address.
+ */
+export interface TutorParentStudent {
+  id: number;
+  firstName: string;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  yearLevel?: string | null;
+  /** @nullable */
+  school?: string | null;
+  /** @nullable */
+  subjects?: string | null;
+  /** @nullable */
+  goals?: string | null;
+  hasLessonAddress: boolean;
+  createdAt: string;
+}
+
+export interface TutorParentInvoice {
+  id: number;
+  sessionId: number;
+  studentId: number;
+  studentName: string;
+  subject: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  totalAmount: number;
+  platformCommission: number;
+  tutorEarnings: number;
+  commissionRate: number;
+  /** @nullable */
+  commissionTier?: string | null;
+  generatedAt: string;
+}
+
+export interface TutorParentProfile {
+  parent: TutorParent;
+  students: TutorParentStudent[];
+  invoices: TutorParentInvoice[];
+}
+
 /**
  * The address is returned only to the student's owning parent or an administrator, never to tutors through student-profile endpoints.
  */
@@ -646,6 +718,8 @@ export interface Invoice {
   id: number;
   sessionId: number;
   studentId: number;
+  /** @nullable */
+  parentId: number | null;
   totalAmount: number;
   platformCommission: number;
   tutorEarnings: number;
@@ -688,6 +762,8 @@ export interface TutorInvoiceSummary {
   invoiceNumber: string;
   sessionId: number;
   studentId: number;
+  /** @nullable */
+  parentId: number | null;
   /** @nullable */
   parentName?: string | null;
   /** @nullable */

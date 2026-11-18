@@ -467,6 +467,81 @@ export const SetTutorAvailabilityResponse = zod.array(SetTutorAvailabilityRespon
 
 
 /**
+ * @summary List upcoming date-specific availability overrides
+ */
+
+
+
+export const GetTutorAvailabilityOverridesParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1)
+})
+
+export const getTutorAvailabilityOverridesResponseDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetTutorAvailabilityOverridesResponseItem = zod.object({
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "date": zod.string().regex(getTutorAvailabilityOverridesResponseDateRegExp),
+  "startTime": zod.string(),
+  "endTime": zod.string(),
+  "timezone": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const GetTutorAvailabilityOverridesResponse = zod.array(GetTutorAvailabilityOverridesResponseItem)
+
+
+/**
+ * @summary Set or replace availability for one date
+ */
+
+export const upsertTutorAvailabilityOverridePathDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const UpsertTutorAvailabilityOverrideParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1),
+  "date": zod.coerce.string().regex(upsertTutorAvailabilityOverridePathDateRegExp)
+})
+
+export const upsertTutorAvailabilityOverrideBodyStartTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+export const upsertTutorAvailabilityOverrideBodyEndTimeRegExp = new RegExp('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+
+
+export const UpsertTutorAvailabilityOverrideBody = zod.object({
+  "startTime": zod.string().regex(upsertTutorAvailabilityOverrideBodyStartTimeRegExp),
+  "endTime": zod.string().regex(upsertTutorAvailabilityOverrideBodyEndTimeRegExp)
+})
+
+export const upsertTutorAvailabilityOverrideResponseDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const UpsertTutorAvailabilityOverrideResponse = zod.object({
+  "id": zod.number().int(),
+  "tutorId": zod.number().int(),
+  "date": zod.string().regex(upsertTutorAvailabilityOverrideResponseDateRegExp),
+  "startTime": zod.string(),
+  "endTime": zod.string(),
+  "timezone": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a date-specific availability override
+ */
+
+export const deleteTutorAvailabilityOverridePathDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const DeleteTutorAvailabilityOverrideParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1),
+  "date": zod.coerce.string().regex(deleteTutorAvailabilityOverridePathDateRegExp)
+})
+
+export const DeleteTutorAvailabilityOverrideResponse = zod.void()
+
+
+/**
  * @summary List a tutor's blocked date ranges
  */
 
@@ -714,6 +789,54 @@ export const GetTutorStudentsResponseItem = zod.object({
   "createdAt": zod.string()
 }).describe('Student profile and parent contact fields available only to the assigned tutor or an admin. The lesson address is never included here.')
 export const GetTutorStudentsResponse = zod.array(GetTutorStudentsResponseItem)
+
+
+/**
+ * @summary Get a parent's profile and history visible to their tutor
+ */
+
+
+
+export const GetTutorParentProfileParams = zod.object({
+  "parentId": zod.coerce.number().int().min(1)
+})
+
+export const GetTutorParentProfileResponse = zod.object({
+  "parent": zod.object({
+  "id": zod.number().int(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}),
+  "students": zod.array(zod.object({
+  "id": zod.number().int(),
+  "firstName": zod.string(),
+  "lastName": zod.string().nullish(),
+  "yearLevel": zod.string().nullish(),
+  "school": zod.string().nullish(),
+  "subjects": zod.string().nullish(),
+  "goals": zod.string().nullish(),
+  "hasLessonAddress": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}).describe('Child profile details available to the child\'s assigned tutor, excluding the lesson address.')),
+  "invoices": zod.array(zod.object({
+  "id": zod.number().int(),
+  "sessionId": zod.number().int(),
+  "studentId": zod.number().int(),
+  "studentName": zod.string(),
+  "subject": zod.string(),
+  "scheduledAt": zod.coerce.date(),
+  "durationMinutes": zod.number().int(),
+  "totalAmount": zod.number(),
+  "platformCommission": zod.number(),
+  "tutorEarnings": zod.number(),
+  "commissionRate": zod.number(),
+  "commissionTier": zod.string().nullish(),
+  "generatedAt": zod.coerce.date()
+}))
+})
 
 
 /**
@@ -1133,6 +1256,7 @@ export const CompleteSessionResponse = zod.object({
   "id": zod.number().int(),
   "sessionId": zod.number().int(),
   "studentId": zod.number().int(),
+  "parentId": zod.number().int().nullable(),
   "totalAmount": zod.number(),
   "platformCommission": zod.number(),
   "tutorEarnings": zod.number(),
@@ -1259,6 +1383,7 @@ export const ListInvoicesResponseItem = zod.union([zod.object({
   "invoiceNumber": zod.string(),
   "sessionId": zod.number().int(),
   "studentId": zod.number().int(),
+  "parentId": zod.number().int().nullable(),
   "parentName": zod.string().nullish(),
   "parentEmail": zod.string().nullish(),
   "parentPhone": zod.string().nullish(),

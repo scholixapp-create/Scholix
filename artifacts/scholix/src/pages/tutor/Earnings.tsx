@@ -356,6 +356,9 @@ export default function TutorEarnings() {
                 const fee = sessionFee(s);
                 const tutorEarn = sessionEarnings(s);
                 const isFree = (s as any).isCommissionFree;
+                const invoice = invoiceBySession.get(s.id);
+                const parentId = invoice?.parentId ?? s.parentId;
+                const parentName = invoice?.parentName ?? s.parentName;
                 const { label, color } = statusLabel(s.status, s.isPaid);
                 return (
                   <div key={s.id} className="px-4 py-3">
@@ -369,7 +372,7 @@ export default function TutorEarnings() {
                           <Link href={`/tutor/students?student=${s.studentId}`} className="hover:text-primary hover:underline">{s.studentName}</Link>
                           {" · "}{s.durationMinutes}m
                         </p>
-                        {s.parentName && <Link href={`/tutor/students?student=${s.studentId}#family`} className="mt-0.5 block text-[11px] text-primary hover:underline">{s.parentName}</Link>}
+                        {parentName && parentId && <Link href={`/tutor/parents/${parentId}`} className="mt-0.5 block text-[11px] text-primary hover:underline">{parentName}</Link>}
                         <p className="text-[11px] text-muted-foreground mt-0.5">
                           {format(parseISO(s.scheduledAt), "MMM d, yyyy")}
                         </p>
@@ -415,6 +418,9 @@ export default function TutorEarnings() {
                     const fee = sessionFee(s);
                     const tutorEarn = sessionEarnings(s);
                     const isFree = (s as any).isCommissionFree;
+                    const invoice = invoiceBySession.get(s.id);
+                    const parentId = invoice?.parentId ?? s.parentId;
+                    const parentName = invoice?.parentName ?? s.parentName;
                     const { label, color } = statusLabel(s.status, s.isPaid);
                     return (
                       <tr key={s.id} className="hover:bg-muted/20 transition-colors">
@@ -423,7 +429,7 @@ export default function TutorEarnings() {
                         </td>
                         <td className="px-4 py-3">
                           <Link href={`/tutor/students?student=${s.studentId}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline">{s.studentName}</Link>
-                          {s.parentName && <Link href={`/tutor/students?student=${s.studentId}#family`} className="block text-[11px] text-primary hover:underline">{s.parentName}</Link>}
+                          {parentName && parentId && <Link href={`/tutor/parents/${parentId}`} className="block text-[11px] text-primary hover:underline">{parentName}</Link>}
                           <p className="text-[11px] text-muted-foreground">{s.subject}</p>
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{s.durationMinutes}m</td>

@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 export interface TutorInvoiceSummary {
   id: number;
   sessionId: number;
+  parentId: number | null;
+  parentName: string | null;
   totalAmount: number;
   platformCommission: number;
   tutorEarnings: number;

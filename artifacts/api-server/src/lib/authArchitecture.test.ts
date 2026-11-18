@@ -37,6 +37,40 @@ test("tutor student listings require authentication and tutor ownership before q
   assert.ok(route.indexOf("if (!ownedTutor)") < route.indexOf("const sessionRows"));
 });
 
+test("one-off availability reads publicly but writes require the tutor owner and serialize with bookings", async () => {
+  const source = await readFile(path.join(routesRoot, "tutors.ts"), "utf8");
+  const start = source.indexOf('router.get("/tutors/:tutorId/availability-overrides"');
+  const end = source.indexOf('router.get("/tutors/:tutorId/unavailable-periods"', start);
+  const route = source.slice(start, end);
+
+  assert.match(route, /router\.get\("\/tutors\/:tutorId\/availability-overrides", async/);
+  assert.match(route, /router\.put\("\/tutors\/:tutorId\/availability-overrides\/:date", requireAuth/);
+  assert.match(route, /router\.delete\("\/tutors\/:tutorId\/availability-overrides\/:date", requireAuth/);
+  assert.match(route, /actor\.role !== "admin" && \(actor\.role !== "tutor" \|\| owner\.userId !== actor\.id\)/);
+  assert.match(route, /\.for\("update"\)/);
+  assert.match(route, /tutorUnavailablePeriodsTable\.startDate/);
+  assert.match(route, /onConflictDoUpdate/);
+});
+
+test("tutor parent profiles require tutor ownership and scope invoices to the same family", async () => {
+  const source = await readFile(path.join(routesRoot, "tutors.ts"), "utf8");
+  const start = source.indexOf('router.get("/tutors/parents/:parentId"');
+  const end = source.indexOf("// ── Per-parent relationship preferences", start);
+  const route = source.slice(start, end);
+
+  assert.match(route, /"\/tutors\/parents\/:parentId", requireAuth/);
+  assert.match(route, /actor\.role !== "tutor"/);
+  assert.match(route, /eq\(tutorsTable\.userId, actor\.id\)/);
+  assert.match(route, /eq\(sessionsTable\.tutorId, tutor\.id\)/);
+  assert.match(route, /eq\(studentsTable\.parentId, parent\.id\)/);
+  assert.match(route, /canTutorViewParentProfile\(/);
+  assert.match(route, /eq\(sessionsTable\.tutorId, tutor\.id\)[\s\S]*?eq\(studentsTable\.parentId, parent\.id\)/);
+
+  const response = route.slice(route.indexOf("const response = {"));
+  assert.match(response, /hasLessonAddress: Boolean\(student\.address\?\.trim\(\)\)/);
+  assert.doesNotMatch(response, /\baddress:/);
+});
+
 test("only successful OTP verification issues a session token", async () => {
   const source = await readFile(path.join(routesRoot, "auth.ts"), "utf8");
   const verifyStart = source.indexOf('router.post("/auth/verify-otp"');

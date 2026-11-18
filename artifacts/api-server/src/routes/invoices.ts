@@ -66,6 +66,8 @@ router.get("/invoices", requireAuth, async (req, res) => {
       ? await db.select({
           id: usersTable.id, firstName: usersTable.firstName, lastName: usersTable.lastName,
           email: usersTable.email, phone: usersTable.phone,
+          role: usersTable.role, isActive: usersTable.isActive, archivedAt: usersTable.archivedAt,
+          parentApproved: usersTable.parentApproved,
         }).from(usersTable).where(inArray(usersTable.id, parentIds))
       : [];
 
@@ -73,6 +75,9 @@ router.get("/invoices", requireAuth, async (req, res) => {
       const session = sessions.find((s) => s.id === inv.sessionId);
       const student = session ? students.find((s) => s.id === session.studentId) : undefined;
       const parent = student?.parentId ? parents.find((row) => row.id === student.parentId) : undefined;
+      const visibleParent = parent?.role === "parent" && parent.isActive && !parent.archivedAt && parent.parentApproved
+        ? parent
+        : undefined;
       const studentName = student
         ? `${student.firstName}${student.lastName ? ` ${student.lastName}` : ""}`
         : "";
@@ -85,9 +90,10 @@ router.get("/invoices", requireAuth, async (req, res) => {
         invoiceNumber,
         sessionId: inv.sessionId,
         studentId: student?.id ?? session?.studentId ?? 0,
-        parentName: parent ? `${parent.firstName} ${parent.lastName}`.trim() : null,
-        parentEmail: parent?.email ?? null,
-        parentPhone: parent?.phone ?? null,
+        parentId: visibleParent?.id ?? null,
+        parentName: visibleParent ? `${visibleParent.firstName} ${visibleParent.lastName}`.trim() : null,
+        parentEmail: visibleParent?.email ?? null,
+        parentPhone: visibleParent?.phone ?? null,
         totalAmount: inv.totalAmount,
         platformCommission: inv.platformCommission,
         tutorEarnings: inv.tutorEarnings,

@@ -462,6 +462,84 @@ paths:
                 items:
                   $ref: "#/components/schemas/AvailabilitySlot"
 
+  /tutors/{tutorId}/availability-overrides:
+    get:
+      operationId: getTutorAvailabilityOverrides
+      tags: [tutors]
+      summary: List upcoming date-specific availability overrides
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Date-specific availability windows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TutorAvailabilityOverride"
+        "404":
+          description: Tutor is unavailable
+
+  /tutors/{tutorId}/availability-overrides/{date}:
+    put:
+      operationId: upsertTutorAvailabilityOverride
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Set or replace availability for one date
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: date
+          in: path
+          required: true
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TutorAvailabilityOverrideInput"
+      responses:
+        "200":
+          description: Saved date-specific availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorAvailabilityOverride"
+        "400":
+          description: Invalid date or time range
+        "403":
+          description: Only the tutor or an admin can change availability
+        "409":
+          description: The date is blocked as unavailable
+    delete:
+      operationId: deleteTutorAvailabilityOverride
+      security: [{ bearerAuth: [] }]
+      tags: [tutors]
+      summary: Remove a date-specific availability override
+      parameters:
+        - name: tutorId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: date
+          in: path
+          required: true
+          schema: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+      responses:
+        "204":
+          description: Override removed; weekly availability applies again
+        "403":
+          description: Only the tutor or an admin can change availability
+        "404":
+          description: Override not found
+
   /tutors/{tutorId}/unavailable-periods:
     get:
       operationId: getTutorUnavailablePeriods
@@ -701,6 +779,30 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/TutorStudent"
+
+  /tutors/parents/{parentId}:
+    get:
+      operationId: getTutorParentProfile
+      tags: [tutors]
+      summary: Get a parent's profile and history visible to their tutor
+      parameters:
+        - name: parentId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Parent profile, connected students, and this tutor's invoices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TutorParentProfile"
+        "403":
+          description: The authenticated account is not the tutor
+        "404":
+          description: Parent is not connected to this tutor
 
   /students/{studentId}/address-request:
     post:
@@ -1737,6 +1839,25 @@ components:
           type: string
       required: [id, tutorId, dayOfWeek, startTime, endTime]
 
+    TutorAvailabilityOverride:
+      type: object
+      properties:
+        id: { type: integer }
+        tutorId: { type: integer }
+        date: { type: string, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        startTime: { type: string }
+        endTime: { type: string }
+        timezone: { type: string }
+        createdAt: { type: string, format: date-time }
+      required: [id, tutorId, date, startTime, endTime, timezone, createdAt]
+
+    TutorAvailabilityOverrideInput:
+      type: object
+      properties:
+        startTime: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        endTime: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+      required: [startTime, endTime]
+
     SetAvailabilityBody:
       type: object
       properties:
@@ -1855,6 +1976,65 @@ components:
         hasLessonAddress: { type: boolean }
         createdAt: { type: string }
       required: [id, firstName, createdAt]
+
+    TutorParentProfile:
+      type: object
+      properties:
+        parent:
+          $ref: "#/components/schemas/TutorParent"
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/TutorParentStudent"
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/TutorParentInvoice"
+      required: [parent, students, invoices]
+
+    TutorParent:
+      type: object
+      properties:
+        id: { type: integer }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+      required: [id, firstName, lastName, createdAt]
+
+    TutorParentStudent:
+      type: object
+      description: Child profile details available to the child's assigned tutor, excluding the lesson address.
+      properties:
+        id: { type: integer }
+        firstName: { type: string }
+        lastName: { type: ["string", "null"] }
+        yearLevel: { type: ["string", "null"] }
+        school: { type: ["string", "null"] }
+        subjects: { type: ["string", "null"] }
+        goals: { type: ["string", "null"] }
+        hasLessonAddress: { type: boolean }
+        createdAt: { type: string, format: date-time }
+      required: [id, firstName, hasLessonAddress, createdAt]
+
+    TutorParentInvoice:
+      type: object
+      properties:
+        id: { type: integer }
+        sessionId: { type: integer }
+        studentId: { type: integer }
+        studentName: { type: string }
+        subject: { type: string }
+        scheduledAt: { type: string, format: date-time }
+        durationMinutes: { type: integer }
+        totalAmount: { type: number }
+        platformCommission: { type: number }
+        tutorEarnings: { type: number }
+        commissionRate: { type: number }
+        commissionTier: { type: ["string", "null"] }
+        generatedAt: { type: string, format: date-time }
+      required: [id, sessionId, studentId, studentName, subject, scheduledAt, durationMinutes, totalAmount, platformCommission, tutorEarnings, commissionRate, generatedAt]
 
     Student:
       type: object
@@ -2033,6 +2213,9 @@ components:
           type: integer
         studentId:
           type: integer
+        parentId:
+          type: integer
+          nullable: true
         totalAmount:
           type: number
         platformCommission:
@@ -2057,7 +2240,7 @@ components:
           type: string
         durationMinutes:
           type: integer
-      required: [id, sessionId, studentId, totalAmount, platformCommission, tutorEarnings, commissionRate, generatedAt, tutorName, studentName, subject, durationMinutes]
+      required: [id, sessionId, studentId, parentId, totalAmount, platformCommission, tutorEarnings, commissionRate, generatedAt, tutorName, studentName, subject, durationMinutes]
 
     ParentInvoiceSummary:
       type: object
@@ -2099,6 +2282,9 @@ components:
           type: integer
         studentId:
           type: integer
+        parentId:
+          type: integer
+          nullable: true
         parentName:
           type: ["string", "null"]
         parentEmail:
@@ -2125,7 +2311,7 @@ components:
           type: string
         durationMinutes:
           type: integer
-      required: [id, invoiceNumber, sessionId, studentId, totalAmount, platformCommission, tutorEarnings, commissionRate, commissionTier, generatedAt, studentName, subject, scheduledAt, durationMinutes]
+      required: [id, invoiceNumber, sessionId, studentId, parentId, totalAmount, platformCommission, tutorEarnings, commissionRate, commissionTier, generatedAt, studentName, subject, scheduledAt, durationMinutes]
 
     Payment:
       type: object

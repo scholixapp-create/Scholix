@@ -687,6 +687,7 @@ router.post("/sessions/:sessionId/complete", requireAuth, async (req, res) => {
       id: invoice.id,
       sessionId: invoice.sessionId,
       studentId: updated.studentId,
+      parentId: student?.parentId ?? null,
       totalAmount: invoice.totalAmount,
       platformCommission: invoice.platformCommission,
       tutorEarnings: invoice.tutorEarnings,

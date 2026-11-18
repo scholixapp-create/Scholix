@@ -19,6 +19,7 @@ interface InvoiceData {
   id: number;
   sessionId: number;
   studentId: number;
+  parentId?: number | null;
   totalAmount: number;
   platformCommission: number;
   tutorEarnings: number;
@@ -140,9 +141,13 @@ function InvoiceModal({ invoice, onClose, onLogProgress }: {
           {(invoice.parentName || invoice.parentEmail || invoice.parentPhone) && (
             <div className="mt-3 rounded-lg bg-muted/40 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Parent / guardian</p>
-              <Link href={`/tutor/students?student=${invoice.studentId}#family`} className="mt-1 block text-xs font-semibold text-foreground hover:text-primary hover:underline">
-                {invoice.parentName ?? "Contact parent"}
-              </Link>
+          {invoice.parentName && invoice.parentId ? (
+            <Link href={`/tutor/parents/${invoice.parentId}`} className="mt-1 block text-xs font-semibold text-foreground hover:text-primary hover:underline">
+              {invoice.parentName}
+            </Link>
+          ) : invoice.parentName ? (
+            <p className="mt-1 text-xs font-semibold text-foreground">{invoice.parentName}</p>
+          ) : null}
               <div className="mt-1 flex flex-wrap gap-x-3 text-[11px]">
                 {invoice.parentEmail && <a href={`mailto:${invoice.parentEmail}`} className="text-primary hover:underline">{invoice.parentEmail}</a>}
                 {invoice.parentPhone && <a href={`tel:${invoice.parentPhone}`} className="text-primary hover:underline">{invoice.parentPhone}</a>}
@@ -542,7 +547,7 @@ export default function TutorSessions() {
                         <SessionStudentLink studentId={session.studentId} studentName={session.studentName} />
                       </p>
                       <div className="mt-1">
-                        <SessionParentContact studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
+                        <SessionParentContact parentId={session.parentId} studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {formatInZone(session.scheduledAt)} · {session.durationMinutes} min · {lessonModeLabel(session.lessonMode)}
@@ -617,7 +622,7 @@ export default function TutorSessions() {
                       <SessionStudentLink studentId={session.studentId} studentName={session.studentName} />
                     </p>
                     <div className="mt-1">
-                      <SessionParentContact studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
+                      <SessionParentContact parentId={session.parentId} studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
                     </div>
                     <div className="mt-2">
                       <SessionModeLocation
@@ -713,7 +718,7 @@ export default function TutorSessions() {
                       <SessionStudentLink studentId={session.studentId} studentName={session.studentName} />
                     </p>
                     <div className="mt-1">
-                      <SessionParentContact studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
+                      <SessionParentContact parentId={session.parentId} studentId={session.studentId} parentName={session.parentName} parentEmail={session.parentEmail} parentPhone={session.parentPhone} />
                     </div>
                     <div className="mt-2">
                       <SessionModeLocation

@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, boolean, date as pgDate, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, boolean, date as pgDate, timestamp, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { tutorsTable } from "./tutors";
@@ -29,6 +29,19 @@ export const tutorUnavailablePeriodsTable = pgTable("tutor_unavailable_periods",
   index("tutor_unavailable_periods_tutor_dates_idx").on(table.tutorId, table.startDate, table.endDate),
 ]);
 
+export const tutorAvailabilityOverridesTable = pgTable("tutor_availability_overrides", {
+  id: serial("id").primaryKey(),
+  tutorId: integer("tutor_id").notNull().references(() => tutorsTable.id, { onDelete: "cascade" }),
+  date: pgDate("date", { mode: "string" }).notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  timezone: text("timezone").notNull().default("Australia/Melbourne"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("tutor_availability_overrides_tutor_date_uq").on(table.tutorId, table.date),
+]);
+
 export const insertAvailabilitySchema = createInsertSchema(availabilityTable).omit({ id: true });
 export type InsertAvailability = z.infer<typeof insertAvailabilitySchema>;
 export type Availability = typeof availabilityTable.$inferSelect;
+export type TutorAvailabilityOverride = typeof tutorAvailabilityOverridesTable.$inferSelect;
