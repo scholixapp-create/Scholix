@@ -23,6 +23,9 @@ export function localDate(date: Date, timezone = BOOKING_TIMEZONE) {
   const p = parts(date, timezone);
   return `${p.year}-${p.month}-${p.day}`;
 }
+export function isFutureBookingStart(start: Date, now = new Date()) {
+  return Number.isFinite(start.getTime()) && start.getTime() > now.getTime();
+}
 export function localTime(date: Date, timezone = BOOKING_TIMEZONE) {
   const p = parts(date, timezone);
   return `${p.hour}:${p.minute}`;
@@ -81,7 +84,7 @@ export function generateSlots(input: {
     for (let m = Math.ceil(minutes(w.startTime) / 15) * 15; m + duration <= minutes(w.endTime); m += 15) {
       const time = clock(m);
       const start = zonedInstant(date, time);
-      if (!start || start <= now || start.getTime() + duration * 60_000 > end.getTime()) continue;
+      if (!start || !isFutureBookingStart(start, now) || start.getTime() + duration * 60_000 > end.getTime()) continue;
       const range = { scheduledAt: start, durationMinutes: duration, lessonMode: mode, travelBufferMinutes: buffer };
       if (!booked.some((b) => conflicts(range, b))) slotInstants[time] = start.toISOString();
     }

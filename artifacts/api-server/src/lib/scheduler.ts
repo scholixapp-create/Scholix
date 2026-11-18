@@ -4,6 +4,7 @@ import { createNotification } from "./notify";
 import { sessionReminderEmailHtml } from "./email";
 import { logger } from "./logger";
 import { expireBookingRequests } from "./bookingRequests";
+import { cleanupExpiredTutorDateSettings } from "./availabilityMaintenance";
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString("en-GB", {
@@ -188,11 +189,19 @@ export async function checkWwccExpiry(): Promise<void> {
 
 const REMINDER_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 const WWCC_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const DATE_SETTINGS_CLEANUP_INTERVAL_MS = 60 * 1000;
 
 export function startScheduler(): void {
-  const expire = () => { void expireBookingRequests().catch((err) => logger.error({ err }, "Booking request expiry failed")); };
+  const expire = () => {
+    void expireBookingRequests().catch((err) => logger.error({ err }, "Booking request expiry failed"));
+    void cleanupExpiredTutorDateSettings().then((deleted) => {
+      if (deleted.overrides || deleted.unavailablePeriods) {
+        logger.info(deleted, "Expired tutor date settings removed");
+      }
+    }).catch((err) => logger.error({ err }, "Tutor date settings cleanup failed"));
+  };
   expire();
-  setInterval(expire, 60_000);
+  setInterval(expire, DATE_SETTINGS_CLEANUP_INTERVAL_MS);
   logger.info("Scheduler started — session reminders will check every hour");
 
   void sendSessionReminders();

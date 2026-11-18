@@ -52,6 +52,35 @@ test("one-off availability reads publicly but writes require the tutor owner and
   assert.match(route, /onConflictDoUpdate/);
 });
 
+test("past bookings are rejected and expired tutor date settings are cleaned up", async () => {
+  const tutors = await readFile(path.join(routesRoot, "tutors.ts"), "utf8");
+  const sessions = await readFile(path.join(routesRoot, "sessions.ts"), "utf8");
+  const scheduler = await readFile(path.join(sourceRoot, "lib", "scheduler.ts"), "utf8");
+  const maintenance = await readFile(path.join(sourceRoot, "lib", "availabilityMaintenance.ts"), "utf8");
+  const unavailableListStart = tutors.indexOf('router.get("/tutors/:tutorId/unavailable-periods"');
+  const unavailableListEnd = tutors.indexOf('router.post("/tutors/:tutorId/unavailable-periods"', unavailableListStart);
+  const unavailableList = tutors.slice(unavailableListStart, unavailableListEnd);
+  const bookingStart = sessions.indexOf('router.post("/sessions"');
+  const bookingEnd = sessions.indexOf('router.post("/sessions/:sessionId/decision"', bookingStart);
+  const booking = sessions.slice(bookingStart, bookingEnd);
+  const offerStart = tutors.indexOf('router.post("/tutors/:tutorId/offers"');
+  const offerEnd = tutors.indexOf("// ── Available slots", offerStart);
+  const offer = tutors.slice(offerStart, offerEnd);
+
+  assert.match(booking, /isFutureBookingStart\(newStart\)/);
+  assert.match(offer, /isFutureBookingStart\(start\)/);
+  assert.match(tutors, /params\.data\.date < localDate\(new Date\(\)\)/);
+  assert.match(tutors, /parsed\.data\.startDate < localDate\(new Date\(\)\)/);
+  assert.match(unavailableList, /gte\(tutorUnavailablePeriodsTable\.endDate, today\)/);
+  assert.match(maintenance, /lt\(tutorAvailabilityOverridesTable\.date, today\)/);
+  assert.match(maintenance, /lt\(tutorUnavailablePeriodsTable\.endDate, today\)/);
+  assert.match(maintenance, /delete\(tutorAvailabilityOverridesTable\)/);
+  assert.match(maintenance, /delete\(tutorUnavailablePeriodsTable\)/);
+  assert.match(unavailableList, /cleanupExpiredTutorDateSettings\(new Date\(\), tutorId\)/);
+  assert.match(scheduler, /cleanupExpiredTutorDateSettings\(\)/);
+  assert.match(scheduler, /setInterval\(expire, DATE_SETTINGS_CLEANUP_INTERVAL_MS\)/);
+});
+
 test("tutor parent profiles require tutor ownership and scope invoices to the same family", async () => {
   const source = await readFile(path.join(routesRoot, "tutors.ts"), "utf8");
   const start = source.indexOf('router.get("/tutors/parents/:parentId"');

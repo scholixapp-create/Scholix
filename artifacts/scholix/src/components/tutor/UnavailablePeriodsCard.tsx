@@ -9,13 +9,24 @@ import {
 import { AlertCircle, CalendarOff, Check, Trash2 } from "lucide-react";
 import { apiErrorMessage } from "@/lib/bookingRequests";
 
-function todayLocal() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+function todayInMelbourne() {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Melbourne",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 function displayDate(date: string) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(`${date}T12:00:00`).toLocaleDateString("en-AU", {
+    timeZone: "Australia/Melbourne",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export default function UnavailablePeriodsCard({ tutorId }: { tutorId: number }) {
@@ -26,8 +37,8 @@ export default function UnavailablePeriodsCard({ tutorId }: { tutorId: number })
   });
   const createPeriod = useCreateTutorUnavailablePeriod();
   const deletePeriod = useDeleteTutorUnavailablePeriod();
-  const [startDate, setStartDate] = useState(todayLocal);
-  const [endDate, setEndDate] = useState(todayLocal);
+  const [startDate, setStartDate] = useState(todayInMelbourne);
+  const [endDate, setEndDate] = useState(todayInMelbourne);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
 
@@ -70,11 +81,11 @@ export default function UnavailablePeriodsCard({ tutorId }: { tutorId: number })
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1.3fr_auto] gap-2 items-end">
           <label className="text-[11px] font-medium text-foreground">
             From
-            <input type="date" value={startDate} min={todayLocal()} onChange={(event) => setStartDate(event.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-2.5 py-2 text-xs" />
+            <input type="date" value={startDate} min={todayInMelbourne()} onChange={(event) => setStartDate(event.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-2.5 py-2 text-xs" />
           </label>
           <label className="text-[11px] font-medium text-foreground">
             Through
-            <input type="date" value={endDate} min={startDate || todayLocal()} onChange={(event) => setEndDate(event.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-2.5 py-2 text-xs" />
+            <input type="date" value={endDate} min={startDate || todayInMelbourne()} onChange={(event) => setEndDate(event.target.value)} className="mt-1 block w-full rounded-lg border border-input bg-background px-2.5 py-2 text-xs" />
           </label>
           <label className="text-[11px] font-medium text-foreground">
             Label (optional)

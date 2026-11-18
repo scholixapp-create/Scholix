@@ -4,7 +4,7 @@ import { eq, inArray, and, isNotNull, isNull, lte, gte, asc, desc, sql } from "d
 import { UpdateTutorProfileBody, SetTutorAvailabilityBody, CreateTutorUnavailablePeriodBody, CreateTutorLessonOfferBody, GetTutorCalendarFeedResponse, EnableTutorCalendarFeedResponse, GetTutorParentProfileParams, GetTutorParentProfileResponse, GetTutorAvailabilityOverridesParams, GetTutorAvailabilityOverridesResponse, UpsertTutorAvailabilityOverrideParams, UpsertTutorAvailabilityOverrideBody, UpsertTutorAvailabilityOverrideResponse, DeleteTutorAvailabilityOverrideParams } from "@workspace/api-zod";
 import { requireAuth, getUserIdFromBearer, type AuthRequest } from "../lib/authMiddleware";
 import { tutorSlots } from "../lib/schedulingStore";
-import { BookingError, localDate, localTime, validDate, type LessonMode } from "../lib/scheduling";
+import { BookingError, isFutureBookingStart, localDate, localTime, validDate, type LessonMode } from "../lib/scheduling";
 import { buildTutorCalendarIcs, createTutorCalendarToken, matchesTutorCalendarToken, melbourneDateKey } from "../lib/tutorCalendarFeed";
 import { lockBookableStudent } from "../lib/accountRemoval";
 import { lockBookableTutor } from "../lib/bookableTutor";
@@ -12,6 +12,7 @@ import { createNotification } from "../lib/notify";
 import { bookingStatusEmailHtml, sendEmail } from "../lib/email";
 import { config } from "../lib/config";
 import { canTutorViewParentProfile } from "../lib/tutorParentProfile";
+import { cleanupExpiredTutorDateSettings } from "../lib/availabilityMaintenance";
 
 const router = Router();
 
@@ -503,8 +504,13 @@ router.get("/tutors/:tutorId/unavailable-periods", requireAuth, async (req, res)
   if (!owner || (actor.role !== "admin" && (actor.role !== "tutor" || owner.userId !== actor.id))) {
     res.status(403).json({ error: "Only this tutor or an admin can view blocked dates" }); return;
   }
+  await cleanupExpiredTutorDateSettings(new Date(), tutorId);
+  const today = localDate(new Date());
   const periods = await db.select().from(tutorUnavailablePeriodsTable)
-    .where(eq(tutorUnavailablePeriodsTable.tutorId, tutorId))
+    .where(and(
+      eq(tutorUnavailablePeriodsTable.tutorId, tutorId),
+      gte(tutorUnavailablePeriodsTable.endDate, today),
+    ))
     .orderBy(asc(tutorUnavailablePeriodsTable.startDate));
   res.setHeader("Cache-Control", "private, no-store");
   res.json(periods);
@@ -606,8 +612,9 @@ router.post("/tutors/:tutorId/offers", requireAuth, async (req, res) => {
   }
   const start = new Date(parsed.data.scheduledAt);
   if (!/Z$|[+-]\d{2}:\d{2}$/.test(parsed.data.scheduledAt) || Number.isNaN(start.getTime())
-    || start.getUTCSeconds() || start.getUTCMilliseconds() || start.getUTCMinutes() % 15) {
-    res.status(400).json({ error: "Choose a valid quarter-hour start with an explicit timezone" }); return;
+    || start.getUTCSeconds() || start.getUTCMilliseconds() || start.getUTCMinutes() % 15
+    || !isFutureBookingStart(start)) {
+    res.status(400).json({ error: "Choose a future quarter-hour start with an explicit timezone" }); return;
   }
   const subject = parsed.data.subject.trim();
   if (!subject || subject.length > 200) { res.status(400).json({ error: "Enter a valid lesson subject" }); return; }

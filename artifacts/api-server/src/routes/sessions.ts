@@ -11,7 +11,7 @@ import { canBookForStudent, canActOnSession } from "../lib/sessionAccess";
 import { lockBookableTutor } from "../lib/bookableTutor";
 import { config } from "../lib/config";
 import { tutorSlots } from "../lib/schedulingStore";
-import { BookingError, localDate, localTime } from "../lib/scheduling";
+import { BookingError, isFutureBookingStart, localDate, localTime } from "../lib/scheduling";
 import { cancelBooking, decideBooking, expireBookingRequests } from "../lib/bookingRequests";
 import { visibleSessionLocation } from "../lib/sessionLocation";
 import { getCommissionTierMilestone } from "../lib/commissionTierMilestones";
@@ -398,8 +398,9 @@ router.post("/sessions", requireAuth, async (req, res) => {
 
   const newStart = new Date(parsed.data.scheduledAt);
   if (!/Z$|[+-]\d{2}:\d{2}$/.test(parsed.data.scheduledAt) || isNaN(newStart.getTime())
-    || newStart.getUTCSeconds() || newStart.getUTCMilliseconds() || newStart.getUTCMinutes() % 15) {
-    res.status(400).json({ error: "Choose a valid quarter-hour start with an explicit timezone" }); return;
+    || newStart.getUTCSeconds() || newStart.getUTCMilliseconds() || newStart.getUTCMinutes() % 15
+    || !isFutureBookingStart(newStart)) {
+    res.status(400).json({ error: "Choose a future quarter-hour start with an explicit timezone" }); return;
   }
   if (!parsed.data.subject.trim() || parsed.data.subject.length > 200) {
     res.status(400).json({ error: "Enter a valid lesson subject" }); return;

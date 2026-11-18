@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { conflicts, dayOfWeek, generateSlots, zonedInstant, validDate, type BookingRange } from "./scheduling";
+import { conflicts, dayOfWeek, generateSlots, isFutureBookingStart, zonedInstant, validDate, type BookingRange } from "./scheduling";
 
 const date = "2030-11-04";
 const now = new Date("2030-11-01T00:00:00Z");
@@ -41,4 +41,18 @@ test("past times, outside windows, and overlapping windows never create invalid 
     windows: [...windows, ...windows], booked: [], now: zonedInstant(date, "17:00")! });
   assert.deepEqual(result.slots, ["17:15"]);
   assert.deepEqual(Object.keys(result.slotInstants), result.slots);
+});
+test("past dates produce no bookable starts even when recurring availability exists", () => {
+  const pastDate = "2025-04-07";
+  const result = generateSlots({
+    date: pastDate,
+    duration: 60,
+    mode: "online",
+    buffer: 0,
+    windows: [{ dayOfWeek: dayOfWeek(pastDate), startTime: "09:00", endTime: "17:00" }],
+    booked: [],
+    now: new Date("2026-11-18T00:00:00.000Z"),
+  });
+  assert.deepEqual(result.slots, []);
+  assert.equal(isFutureBookingStart(new Date("2025-04-07T00:00:00.000Z"), new Date("2026-11-18T00:00:00.000Z")), false);
 });
