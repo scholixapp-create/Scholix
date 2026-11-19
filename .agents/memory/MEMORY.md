@@ -16,3 +16,4 @@
 - [Scheduling policy](scheduling-policy.md) — quarter-hour starts for longer lessons; retain travel time when an in-person lesson precedes an online lesson.
 - [Student lesson addresses](student-lesson-addresses.md) — keep lesson addresses on each student; never silently copy a parent profile address into a child's record.
 - [Drizzle SQL composition](drizzle-query-composition.md) — arrays need explicit SQL typing; correlated selects must preserve outer-table qualification.
+- [Scholix rollout expectation](scholix-rollout-expectation.md) — user wants Scholix changes rolled into production unless they say otherwise; confirm migration prerequisites before release.
