@@ -202,6 +202,35 @@ test("admin deletion checks durable dependencies and preserves agreement and aud
   assert.match(migration, /'deleted'/);
 });
 
+test("commission waivers are admin-only, re-verified, serialized, and audited", async () => {
+  const routeSource = await readFile(path.join(routesRoot, "admin.ts"), "utf8");
+  const serviceSource = await readFile(path.join(sourceRoot, "lib", "adminCommissionWaiver.ts"), "utf8");
+  const storeSource = await readFile(path.join(sourceRoot, "lib", "adminCommissionWaiverStore.ts"), "utf8");
+  const reauthSource = await readFile(path.join(sourceRoot, "lib", "adminSensitiveActionReauth.ts"), "utf8");
+  const migration = await readFile(
+    path.join(sourceRoot, "..", "..", "..", "lib", "db", "migrations", "0013_admin_tutor_commission_waiver.sql"),
+    "utf8",
+  );
+
+  assert.match(routeSource, /req\.path\.startsWith\("\/admin"\)[\s\S]*?requireAdmin/);
+  assert.match(routeSource, /verifyAdminSensitiveActionPassword\(/);
+  assert.match(routeSource, /changeTutorCommissionWaiver\(adminCommissionWaiverStore/);
+  assert.match(routeSource, /isSafeAdminAuditReason\(/);
+  assert.match(serviceSource, /actor\.role !== "admin"/);
+  assert.match(serviceSource, /tutor\.role !== "tutor" \|\| !tutor\.isActive \|\| !tutor\.isApproved/);
+  assert.match(serviceSource, /confirmationEmail\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(serviceSource, /appendAudit/);
+  assert.match(storeSource, /pg_advisory_xact_lock/);
+  assert.match(storeSource, /db\.transaction/);
+  assert.match(reauthSource, /ADMIN_SENSITIVE_ACTION_MAX_ATTEMPTS = 5/);
+  assert.match(reauthSource, /ADMIN_SENSITIVE_ACTION_WINDOW_MS = 15 \* 60 \* 1000/);
+  assert.match(migration, /commission_waived/);
+  assert.match(migration, /commission_waiver_granted/);
+  assert.match(migration, /commission_waiver_revoked/);
+  assert.match(migration, /reason/);
+  assert.match(migration, /admin_sensitive_action_attempts/);
+});
+
 test("authentication and token issuance paths reject inactive accounts", async () => {
   const source = await readFile(path.join(routesRoot, "auth.ts"), "utf8");
   const middlewareSource = await readFile(path.join(sourceRoot, "lib", "authMiddleware.ts"), "utf8");

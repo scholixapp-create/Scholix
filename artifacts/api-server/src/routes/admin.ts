@@ -20,6 +20,7 @@ import { AdminUserDeletionError, deleteAdminUser } from "../lib/adminUserDeletio
 import { adminUserDeletionStore } from "../lib/adminUserDeletionStore";
 import { getEmailServiceStatus } from "../lib/email";
 import { verifyAdminSensitiveActionPassword } from "../lib/adminSensitiveActionReauth";
+import { isSafeAdminAuditReason } from "../lib/adminAuditReason";
 import { CommissionWaiverError, changeTutorCommissionWaiver } from "../lib/adminCommissionWaiver";
 import { adminCommissionWaiverStore } from "../lib/adminCommissionWaiverStore";
 
@@ -231,8 +232,12 @@ router.patch("/admin/tutors/:tutorId/commission-waiver", async (req, res): Promi
     res.status(400).json({ error: "Invalid commission waiver request" });
     return;
   }
+  if (!isSafeAdminAuditReason(body.data.reason, body.data.currentPassword)) {
+    res.status(400).json({ error: "The reason must not contain passwords, tokens, or verification codes" });
+    return;
+  }
 
-  const actor = (req as AuthRequest).user;
+  const actor = (req as unknown as AuthRequest).user;
   const reauth = await verifyAdminSensitiveActionPassword(
     actor.id,
     body.data.currentPassword,
