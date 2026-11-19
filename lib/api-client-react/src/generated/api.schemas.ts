@@ -171,6 +171,32 @@ export interface AdminUserStatusUpdate {
   isActive: boolean;
 }
 
+export interface TutorCommissionWaiverUpdate {
+  enabled: boolean;
+  /**
+     * @minLength 20
+     * @maxLength 500
+     */
+  reason: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  currentPassword: string;
+  /** @maxLength 254 */
+  confirmationEmail: string;
+}
+
+export interface TutorCommissionWaiver {
+  tutorId: number;
+  userId: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  commissionWaived: boolean;
+  changed: boolean;
+}
+
 export interface AdminUserManagementError {
   error: string;
 }

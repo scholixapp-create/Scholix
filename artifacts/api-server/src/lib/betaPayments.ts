@@ -4,6 +4,7 @@
 import { db, paymentsTable, invoicesTable, sessionsTable, tutorsTable } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { BookingError } from "./scheduling";
+import { getAdminCommissionWaiver } from "./commissionWaiverPolicy";
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Session = typeof sessionsTable.$inferSelect;
 
@@ -33,9 +34,12 @@ export async function captureBeta(tx: Tx, session: Session) {
   const firstPair = tutor?.firstStudentId === session.studentId;
   const firstLesson = !completed.some((s) => s.studentId === session.studentId);
   const count = completed.filter((s) => !s.isCommissionFree).length;
-  const rate = firstPair || firstLesson ? 0 : count >= 50 ? 0.05 : count >= 25 ? 0.15 : count >= 10 ? 0.24 : 0.30;
-  const tier = firstPair ? "first_student_free" : firstLesson ? "first_session_free"
-    : count >= 50 ? "expert" : count >= 25 ? "established" : count >= 10 ? "growth" : "standard";
+    const adminWaiver = getAdminCommissionWaiver(!!tutor?.commissionWaived, firstPair || firstLesson, session.totalAmount);
+    const rate = adminWaiver
+      ? 0 : count >= 50 ? 0.05 : count >= 25 ? 0.15 : count >= 10 ? 0.24 : 0.30;
+    const tier = firstPair ? "first_student_free" : firstLesson ? "first_session_free"
+      : adminWaiver ? adminWaiver.tier
+      : count >= 50 ? "expert" : count >= 25 ? "established" : count >= 10 ? "growth" : "standard";
   await tx.insert(invoicesTable).values({
     sessionId: session.id, totalAmount: session.totalAmount, commissionRate: rate,
     platformCommission: session.totalAmount * rate, tutorEarnings: session.totalAmount * (1 - rate), commissionTier: tier,

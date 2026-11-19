@@ -9,6 +9,9 @@ import {
   UpdateAdminUserStatusBody,
   UpdateAdminUserStatusParams,
   UpdateAdminUserStatusResponse,
+  UpdateTutorCommissionWaiverBody,
+  UpdateTutorCommissionWaiverParams,
+  UpdateTutorCommissionWaiverResponse,
 } from "@workspace/api-zod";
 import { requireAdmin, type AuthRequest } from "../lib/authMiddleware";
 import { AdminUserStatusError, changeAdminUserStatus } from "../lib/adminUserManagement";
@@ -16,6 +19,9 @@ import { adminUserStatusStore } from "../lib/adminUserManagementStore";
 import { AdminUserDeletionError, deleteAdminUser } from "../lib/adminUserDeletion";
 import { adminUserDeletionStore } from "../lib/adminUserDeletionStore";
 import { getEmailServiceStatus } from "../lib/email";
+import { verifyAdminSensitiveActionPassword } from "../lib/adminSensitiveActionReauth";
+import { CommissionWaiverError, changeTutorCommissionWaiver } from "../lib/adminCommissionWaiver";
+import { adminCommissionWaiverStore } from "../lib/adminCommissionWaiverStore";
 
 const router = Router();
 
@@ -211,6 +217,51 @@ router.patch("/admin/users/:userId/status", async (req, res): Promise<void> => {
     res.json(UpdateAdminUserStatusResponse.parse(user));
   } catch (error) {
     if (error instanceof AdminUserStatusError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.patch("/admin/tutors/:tutorId/commission-waiver", async (req, res): Promise<void> => {
+  const params = UpdateTutorCommissionWaiverParams.safeParse(req.params);
+  const body = UpdateTutorCommissionWaiverBody.safeParse(req.body);
+  if (!params.success || !body.success) {
+    res.status(400).json({ error: "Invalid commission waiver request" });
+    return;
+  }
+
+  const actor = (req as AuthRequest).user;
+  const reauth = await verifyAdminSensitiveActionPassword(
+    actor.id,
+    body.data.currentPassword,
+  );
+  if (reauth.status === "locked") {
+    res.status(429).json({ error: "Too many incorrect password attempts. Wait 15 minutes before retrying." });
+    return;
+  }
+  if (reauth.status === "not_admin") {
+    res.status(403).json({ error: "Active admin access is required" });
+    return;
+  }
+  if (reauth.status === "invalid") {
+    req.log.warn({ adminUserId: actor.id, tutorId: params.data.tutorId }, "Sensitive commission action password verification failed");
+    res.status(403).json({ error: "Current password could not be verified" });
+    return;
+  }
+
+  try {
+    const result = await changeTutorCommissionWaiver(adminCommissionWaiverStore, {
+      actorUserId: actor.id,
+      tutorId: params.data.tutorId,
+      enabled: body.data.enabled,
+      reason: body.data.reason,
+      confirmationEmail: body.data.confirmationEmail,
+    });
+    res.json(UpdateTutorCommissionWaiverResponse.parse(result));
+  } catch (error) {
+    if (error instanceof CommissionWaiverError) {
       res.status(error.statusCode).json({ error: error.message });
       return;
     }

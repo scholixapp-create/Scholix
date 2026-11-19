@@ -242,9 +242,11 @@ router.get("/admin/tutors/all", requireAdmin, async (_req, res) => {
         firstName: row.users.firstName,
         lastName: row.users.lastName,
         email: row.users.email,
+        isActive: row.users.isActive,
         bio: row.tutors.bio,
         subjects: row.tutors.subjects,
         hourlyRate: row.tutors.hourlyRate,
+        commissionWaived: row.tutors.commissionWaived,
         isApproved: row.tutors.isApproved,
         verificationStatus: row.tutors.verificationStatus,
         // WWCC data — admin-only sensitive fields

@@ -32,6 +32,7 @@ function getToken() {
 const TIER_LABEL: Record<string, string> = {
   first_student_free: "First student: free",
   first_session_free: "First session: free",
+  admin_waived: "Admin waiver (0%)",
   standard: "Starter (30%)",
   growth: "Growth (25%)",
   established: "Established (20%)",

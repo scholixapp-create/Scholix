@@ -73,6 +73,44 @@ export const DecideEducationResponse = zod.object({
 
 
 /**
+ * @summary Grant or revoke a tutor commission waiver with admin re-verification
+ */
+export const updateTutorCommissionWaiverPathTutorIdMax = 2147483647;
+
+
+
+export const UpdateTutorCommissionWaiverParams = zod.object({
+  "tutorId": zod.coerce.number().int().min(1).max(updateTutorCommissionWaiverPathTutorIdMax)
+})
+
+export const updateTutorCommissionWaiverBodyReasonMin = 20;
+export const updateTutorCommissionWaiverBodyReasonMax = 500;
+
+export const updateTutorCommissionWaiverBodyCurrentPasswordMax = 128;
+
+export const updateTutorCommissionWaiverBodyConfirmationEmailMax = 254;
+
+
+
+export const UpdateTutorCommissionWaiverBody = zod.object({
+  "enabled": zod.boolean(),
+  "reason": zod.string().min(updateTutorCommissionWaiverBodyReasonMin).max(updateTutorCommissionWaiverBodyReasonMax),
+  "currentPassword": zod.string().min(1).max(updateTutorCommissionWaiverBodyCurrentPasswordMax),
+  "confirmationEmail": zod.string().email().max(updateTutorCommissionWaiverBodyConfirmationEmailMax)
+})
+
+export const UpdateTutorCommissionWaiverResponse = zod.object({
+  "tutorId": zod.number().int(),
+  "userId": zod.number().int(),
+  "email": zod.string(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "commissionWaived": zod.boolean(),
+  "changed": zod.boolean()
+})
+
+
+/**
  * @summary Approve a pending active parent account
  */
 

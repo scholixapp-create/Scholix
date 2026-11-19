@@ -40,6 +40,7 @@ function tierLabel(tier?: string) {
   switch (tier) {
     case "first_student_free": return "First student: always commission-free";
     case "first_session_free": return "First session with this student: commission-free";
+    case "admin_waived": return "Admin-approved: commission-free";
     case "growth": return "Growth tier (10+ sessions)";
     case "established": return "Established tier (25+ sessions)";
     case "expert": return "Expert tier (50+ sessions)";

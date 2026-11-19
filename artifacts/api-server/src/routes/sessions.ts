@@ -15,6 +15,7 @@ import { BookingError, isFutureBookingStart, localDate, localTime } from "../lib
 import { cancelBooking, decideBooking, expireBookingRequests } from "../lib/bookingRequests";
 import { visibleSessionLocation } from "../lib/sessionLocation";
 import { getCommissionTierMilestone } from "../lib/commissionTierMilestones";
+import { getAdminCommissionWaiver } from "../lib/commissionWaiverPolicy";
 
 const router = Router();
 
@@ -92,6 +93,9 @@ async function calculateCommission(
       isCommissionFree: true,
     };
   }
+
+  const adminWaiver = getAdminCommissionWaiver(tutor.commissionWaived, false, totalAmount);
+  if (adminWaiver) return adminWaiver;
 
   // Rule 4: Commission tier based on total completed sessions (including this one)
   const totalCompleted = prevCompleted.length + 1;

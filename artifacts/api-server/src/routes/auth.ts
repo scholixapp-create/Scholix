@@ -17,14 +17,10 @@ import { config } from "../lib/config";
 import { passwordResetLink } from "../lib/passwordResetLink";
 import { logger } from "../lib/logger";
 import { beginReapplication, reapplicationRouter } from "../lib/reapplications";
+import { verifyStoredPassword } from "../lib/passwordVerification";
 
 const router = Router();
 router.use(reapplicationRouter);
-
-// Legacy SHA-256 hash — used only as fallback for existing accounts
-function legacyHashPassword(password: string): string {
-  return createHash("sha256").update(password + "scholix_salt").digest("hex");
-}
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
@@ -32,14 +28,6 @@ function hashToken(token: string): string {
 
 async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
-}
-
-async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  if (stored.startsWith("$2")) {
-    return bcrypt.compare(password, stored);
-  }
-  // Legacy SHA-256 fallback for accounts created before bcrypt migration
-  return stored === legacyHashPassword(password);
 }
 
 function normaliseAuPhone(raw: string): string | null {
@@ -78,7 +66,7 @@ router.post("/auth/login", async (req, res) => {
     .where(eq(usersTable.email, normalisedEmail))
     .limit(1);
 
-  const passwordMatch = user ? await verifyPassword(password, user.passwordHash) : false;
+  const passwordMatch = user ? await verifyStoredPassword(password, user.passwordHash) : false;
 
   if (!user || !passwordMatch) {
     logger.warn({ email: normalisedEmail, found: !!user }, "Login failed — invalid credentials");
@@ -508,7 +496,7 @@ router.post("/auth/change-password", requireAuth, async (req, res) => {
     return;
   }
 
-  const passwordMatch = await verifyPassword(currentPassword, user.passwordHash);
+  const passwordMatch = await verifyStoredPassword(currentPassword, user.passwordHash);
   if (!passwordMatch) {
     res.status(401).json({ error: "Current password is incorrect" });
     return;

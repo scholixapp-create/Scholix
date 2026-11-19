@@ -20,6 +20,7 @@ export const tutorsTable = pgTable("tutors", {
   educationSubmittedAt: timestamp("education_submitted_at", { precision: 3 }),
   promotionActions: text("promotion_actions").array().notNull().default([]),
   firstStudentId: integer("first_student_id"),
+  commissionWaived: boolean("commission_waived").notNull().default(false),
   abn: text("abn"),
   // Allowed session durations offered by the tutor, stored as JSON array e.g. "[60,90]"
   sessionDurations: text("session_durations"),
