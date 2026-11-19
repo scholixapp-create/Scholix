@@ -4,6 +4,7 @@ import {
   accountDeletionAdminEmailHtml,
   accountDeletionConfirmEmailHtml,
   adminReportEmailHtml,
+  parentInformationRequestedEmailHtml,
   otpEmailHtml,
   passwordResetEmailHtml,
   paymentConfirmedEmailHtml,
@@ -33,6 +34,9 @@ const brandedEmails = [
   }),
   verificationInfoRequestedEmailHtml({
     recipientName: "Ari", notes: "Please update your details.", actionUrl: "https://example.test/verify",
+  }),
+  parentInformationRequestedEmailHtml({
+    recipientName: "Ari", requestText: "Please confirm the year level.", actionUrl: "https://example.test/parent/information-requests",
   }),
   accountDeletionConfirmEmailHtml({ firstName: "Ari" }),
   accountDeletionAdminEmailHtml({ firstName: "Ari", lastName: "Parent", email: "ari@example.test" }),
@@ -67,8 +71,11 @@ test("user-controlled values are escaped in email HTML", () => {
     firstName: "Test", lastName: "User", email: "test@example.test",
     reason: "<script>alert(1)</script>",
   });
+  const parentRequest = parentInformationRequestedEmailHtml({
+    recipientName: "Ari", requestText: "<script>alert(1)</script>", actionUrl: "https://example.test/parent/information-requests",
+  });
 
-  for (const html of [booked, report, deletion]) {
+  for (const html of [booked, report, deletion, parentRequest]) {
     assert.doesNotMatch(html, /<script>/);
     assert.match(html, /&lt;script&gt;/);
   }

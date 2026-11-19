@@ -27,9 +27,11 @@ import type {
 import type {
   AccountDeletionRequest,
   AccountRemovalResult,
+  AdminInformationRequestInput,
   AdminListUsersParams,
   AdminStats,
   AdminUser,
+  AdminUserDetail,
   AdminUserManagementError,
   AdminUserRequest,
   AdminUserStatusUpdate,
@@ -55,6 +57,8 @@ import type {
   LoginBody,
   OtpChallengeResponse,
   OtpResendResponse,
+  ParentInformationRequest,
+  ParentInformationResponseInput,
   ParentInvoiceSummary,
   Payment,
   PromotionActionUpdate,
@@ -1318,6 +1322,196 @@ export const useSignup = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getSignupMutationOptions(options), queryClient);
+    }
+
+export const getListParentInformationRequestsUrl = () => {
+
+
+
+
+  return `/api/parent/information-requests`
+}
+
+/**
+ * @summary List information requests for the authenticated parent
+ */
+export const listParentInformationRequests = async ( options?: Parameters<typeof customFetch>[1]): Promise<ParentInformationRequest[]> => {
+
+  return customFetch<ParentInformationRequest[]>(getListParentInformationRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListParentInformationRequestsQueryKey = () => {
+    return [
+    `/api/parent/information-requests`
+    ] as const;
+    }
+
+
+export const getListParentInformationRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listParentInformationRequests>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParentInformationRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListParentInformationRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listParentInformationRequests>>> = ({ signal }) => listParentInformationRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listParentInformationRequests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListParentInformationRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listParentInformationRequests>>>
+export type ListParentInformationRequestsQueryError = ErrorType<void>
+
+
+export function useListParentInformationRequests<TData = Awaited<ReturnType<typeof listParentInformationRequests>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParentInformationRequests>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listParentInformationRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listParentInformationRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListParentInformationRequests<TData = Awaited<ReturnType<typeof listParentInformationRequests>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParentInformationRequests>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listParentInformationRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listParentInformationRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListParentInformationRequests<TData = Awaited<ReturnType<typeof listParentInformationRequests>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParentInformationRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List information requests for the authenticated parent
+ */
+
+export function useListParentInformationRequests<TData = Awaited<ReturnType<typeof listParentInformationRequests>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listParentInformationRequests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListParentInformationRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRespondParentInformationRequestUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/parent/information-requests/${requestId}/respond`
+}
+
+/**
+ * @summary Respond to an open information request for the authenticated parent
+ */
+export const respondParentInformationRequest = async (requestId: number,
+    parentInformationResponseInput: ParentInformationResponseInput, options?: Parameters<typeof customFetch>[1]): Promise<ParentInformationRequest> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ParentInformationRequest>(getRespondParentInformationRequestUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(parentInformationResponseInput)
+  }
+);}
+
+
+
+
+
+export const getRespondParentInformationRequestMutationKey = () => ['respondParentInformationRequest'] as const;
+
+export const getRespondParentInformationRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respondParentInformationRequest>>, TError,RespondParentInformationRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof respondParentInformationRequest>>, TError,RespondParentInformationRequestMutationVariables, TContext> => {
+
+const mutationKey = getRespondParentInformationRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof respondParentInformationRequest>>, RespondParentInformationRequestMutationVariables> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  respondParentInformationRequest(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RespondParentInformationRequestMutationResult = NonNullable<Awaited<ReturnType<typeof respondParentInformationRequest>>>
+    export type RespondParentInformationRequestMutationBody = BodyType<ParentInformationResponseInput>
+    export type RespondParentInformationRequestMutationError = ErrorType<void>
+    export type RespondParentInformationRequestMutationVariables = {requestId: number;data: BodyType<ParentInformationResponseInput>}
+
+    /**
+ * @summary Respond to an open information request for the authenticated parent
+ */
+export const useRespondParentInformationRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof respondParentInformationRequest>>, TError,RespondParentInformationRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof respondParentInformationRequest>>,
+        TError,
+        RespondParentInformationRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRespondParentInformationRequestMutationOptions(options), queryClient);
     }
 
 export const getVerifyReapplicationUrl = () => {
@@ -5828,9 +6022,9 @@ export const getGetAdminUserUrl = (userId: number,) => {
 /**
  * @summary Get user details (admin only)
  */
-export const getAdminUser = async (userId: number, options?: Parameters<typeof customFetch>[1]): Promise<AdminUser> => {
+export const getAdminUser = async (userId: number, options?: Parameters<typeof customFetch>[1]): Promise<AdminUserDetail> => {
 
-  return customFetch<AdminUser>(getGetAdminUserUrl(userId),
+  return customFetch<AdminUserDetail>(getGetAdminUserUrl(userId),
   {
     ...options,
     method: 'GET'
@@ -5990,6 +6184,169 @@ export const useDeleteAdminUser = <TError = ErrorType<void | AdminUserManagement
         TContext
       > => {
       return useMutation(getDeleteAdminUserMutationOptions(options), queryClient);
+    }
+
+export const getCreateAdminParentInformationRequestUrl = (userId: number,) => {
+
+
+
+
+  return `/api/admin/users/${userId}/information-requests`
+}
+
+/**
+ * @summary Request additional information from a parent
+ */
+export const createAdminParentInformationRequest = async (userId: number,
+    adminInformationRequestInput: AdminInformationRequestInput, options?: Parameters<typeof customFetch>[1]): Promise<ParentInformationRequest> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ParentInformationRequest>(getCreateAdminParentInformationRequestUrl(userId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminInformationRequestInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminParentInformationRequestMutationKey = () => ['createAdminParentInformationRequest'] as const;
+
+export const getCreateAdminParentInformationRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminParentInformationRequest>>, TError,CreateAdminParentInformationRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminParentInformationRequest>>, TError,CreateAdminParentInformationRequestMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminParentInformationRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminParentInformationRequest>>, CreateAdminParentInformationRequestMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  createAdminParentInformationRequest(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminParentInformationRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminParentInformationRequest>>>
+    export type CreateAdminParentInformationRequestMutationBody = BodyType<AdminInformationRequestInput>
+    export type CreateAdminParentInformationRequestMutationError = ErrorType<void>
+    export type CreateAdminParentInformationRequestMutationVariables = {userId: number;data: BodyType<AdminInformationRequestInput>}
+
+    /**
+ * @summary Request additional information from a parent
+ */
+export const useCreateAdminParentInformationRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminParentInformationRequest>>, TError,CreateAdminParentInformationRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminParentInformationRequest>>,
+        TError,
+        CreateAdminParentInformationRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminParentInformationRequestMutationOptions(options), queryClient);
+    }
+
+export const getCloseAdminParentInformationRequestUrl = (requestId: number,) => {
+
+
+
+
+  return `/api/admin/parent-information-requests/${requestId}/close`
+}
+
+/**
+ * @summary Close a responded parent information request
+ */
+export const closeAdminParentInformationRequest = async (requestId: number, options?: Parameters<typeof customFetch>[1]): Promise<ParentInformationRequest> => {
+
+  return customFetch<ParentInformationRequest>(getCloseAdminParentInformationRequestUrl(requestId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getCloseAdminParentInformationRequestMutationKey = () => ['closeAdminParentInformationRequest'] as const;
+
+export const getCloseAdminParentInformationRequestMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeAdminParentInformationRequest>>, TError,CloseAdminParentInformationRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeAdminParentInformationRequest>>, TError,CloseAdminParentInformationRequestMutationVariables, TContext> => {
+
+const mutationKey = getCloseAdminParentInformationRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeAdminParentInformationRequest>>, CloseAdminParentInformationRequestMutationVariables> = (props) => {
+          const {requestId} = props ?? {};
+
+          return  closeAdminParentInformationRequest(requestId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseAdminParentInformationRequestMutationResult = NonNullable<Awaited<ReturnType<typeof closeAdminParentInformationRequest>>>
+
+    export type CloseAdminParentInformationRequestMutationError = ErrorType<void>
+    export type CloseAdminParentInformationRequestMutationVariables = {requestId: number}
+
+    /**
+ * @summary Close a responded parent information request
+ */
+export const useCloseAdminParentInformationRequest = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeAdminParentInformationRequest>>, TError,CloseAdminParentInformationRequestMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof closeAdminParentInformationRequest>>,
+        TError,
+        CloseAdminParentInformationRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCloseAdminParentInformationRequestMutationOptions(options), queryClient);
     }
 
 export const getUpdateAdminUserStatusUrl = (userId: number,) => {

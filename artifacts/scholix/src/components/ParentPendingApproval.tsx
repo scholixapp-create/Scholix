@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Clock, RefreshCw, CheckCircle } from "lucide-react";
 import { useAuth, type AuthUser } from "@/context/AuthContext";
+import ParentInformationRequests from "@/pages/parent/InformationRequests";
 
 export default function ParentPendingApproval() {
   const { user, token, logout, updateUser } = useAuth();
@@ -48,6 +49,9 @@ export default function ParentPendingApproval() {
             <li>Once approved, your dashboard, bookings and students unlock</li>
             <li>You can check your status here at any time</li>
           </ul>
+        </div>
+        <div className="mt-4 text-left">
+          <ParentInformationRequests compact />
         </div>
         {message && (
           <p role={isError ? "alert" : "status"} className={`mt-4 text-sm ${isError ? "text-destructive" : "text-muted-foreground"}`} data-testid="text-parent-recheck-result">

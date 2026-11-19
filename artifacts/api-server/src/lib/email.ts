@@ -224,6 +224,22 @@ export function verificationInfoRequestedEmailHtml(opts: {
   return emailWrapper("More information required", body);
 }
 
+export function parentInformationRequestedEmailHtml(opts: {
+  recipientName: string;
+  requestText: string;
+  actionUrl: string;
+}) {
+  const body = `
+    <p style="color:${EMAIL_PALETTE.ink};margin-top:0">Hi <strong>${escapeHtml(opts.recipientName)}</strong>,</p>
+    <p style="color:${EMAIL_PALETTE.muted}">The Scholix team needs a little more information about your account.</p>
+    <div style="background:${EMAIL_PALETTE.cream};border:1px solid ${EMAIL_PALETTE.border};border-radius:8px;padding:14px;margin:16px 0;color:${EMAIL_PALETTE.ink};font-size:14px;line-height:1.5;white-space:pre-wrap">${escapeHtml(opts.requestText)}</div>
+    <p style="margin:20px 0 0">
+      <a href="${escapeHtml(opts.actionUrl)}" style="display:inline-block;background:${EMAIL_PALETTE.turquoise};color:#fff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:600">Review and respond</a>
+    </p>
+  `;
+  return emailWrapper("Additional information requested", body);
+}
+
 export function sessionBookedEmailHtml(opts: {
   recipientName: string;
   tutorName: string;

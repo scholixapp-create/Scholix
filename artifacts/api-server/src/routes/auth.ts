@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable, legalAgreementsTable, passwordResetTokensTable, authOtpTokensTable, accountDeletionRequestsTable } from "@workspace/db";
+import { db, usersTable, tutorsTable, studentsTable, legalAgreementsTable, passwordResetTokensTable, authOtpTokensTable, accountDeletionRequestsTable } from "@workspace/db";
 import { eq, and, gt, isNull } from "drizzle-orm";
 import { createHash, randomBytes } from "crypto";
 import bcrypt from "bcrypt";
@@ -18,6 +18,8 @@ import { passwordResetLink } from "../lib/passwordResetLink";
 import { logger } from "../lib/logger";
 import { beginReapplication, reapplicationRouter } from "../lib/reapplications";
 import { verifyStoredPassword } from "../lib/passwordVerification";
+import { validateSignupIntake } from "../lib/parentSignup";
+import { cleanStudentAddress } from "../lib/studentAddress";
 
 const router = Router();
 router.use(reapplicationRouter);
@@ -328,37 +330,76 @@ router.post("/auth/signup", async (req, res) => {
     return;
   }
 
-  const [user] = await db
-    .insert(usersTable)
-    .values({
-      email: email.toLowerCase(),
-      passwordHash: await hashPassword(password),
-      firstName,
-      lastName,
-      role,
-      parentApproved: role !== "parent",
-      phone: normalisedPhone,
-    })
-    .returning();
-
   const forwarded = req.headers["x-forwarded-for"];
   const ipAddress = ((Array.isArray(forwarded) ? forwarded[0] : forwarded) ?? req.socket.remoteAddress ?? null)?.split(",")[0]?.trim() ?? null;
 
-  await db.insert(legalAgreementsTable).values({
-    userId: user.id,
-    agreementVersion: "1.0",
-    ipAddress,
+  const intake = validateSignupIntake(role as "parent" | "tutor", {
+    signupIntent: parsed.data.signupIntent,
+    signupIntentDetails: parsed.data.signupIntentDetails,
+    knownTutorName: parsed.data.knownTutorName,
+    students: parsed.data.students,
   });
-
-  if (role === "tutor") {
-    await db.insert(tutorsTable).values({
-      userId: user.id,
-      subjects: [],
-      hourlyRate: 65,
-      isApproved: false,
-      verificationStatus: "pending",
-    });
+  if (!intake.ok) {
+    res.status(400).json({ error: intake.error });
+    return;
   }
+
+  const passwordHash = await hashPassword(password);
+  const [user] = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(usersTable)
+      .values({
+        email: email.toLowerCase(),
+        passwordHash,
+        firstName,
+        lastName,
+        role,
+        parentApproved: role !== "parent",
+        phone: normalisedPhone,
+        signupIntent: intake.intake.signupIntent,
+        signupIntentDetails: intake.intake.signupIntentDetails,
+        knownTutorName: intake.intake.knownTutorName,
+      })
+      .returning();
+
+    await tx.insert(legalAgreementsTable).values({
+      userId: created.id,
+      agreementVersion: "1.0",
+      ipAddress,
+    });
+
+    if (role === "tutor") {
+      await tx.insert(tutorsTable).values({
+        userId: created.id,
+        subjects: [],
+        hourlyRate: 65,
+        isApproved: false,
+        verificationStatus: "pending",
+      });
+    } else if (role === "parent") {
+      const studentValues = intake.intake.students.map((student) => {
+        const address = cleanStudentAddress(student.address);
+        if (!address) throw new Error("Student lesson address is invalid");
+        const dateOfBirth = student.dateOfBirth instanceof Date
+          ? student.dateOfBirth.toISOString().slice(0, 10)
+          : typeof student.dateOfBirth === "string" ? student.dateOfBirth : null;
+        return {
+          firstName: student.firstName.trim(),
+          lastName: student.lastName.trim(),
+          email: null,
+          gradeLevel: student.yearLevel.trim(),
+          school: student.school?.trim() || null,
+          subjects: student.subjects?.trim() || null,
+          goals: student.goals?.trim() || null,
+          address,
+          dateOfBirth,
+          parentId: created.id,
+        };
+      });
+      await tx.insert(studentsTable).values(studentValues);
+    }
+    return [created];
+  });
 
   const otp = generateOtp();
   const otpHash = hashToken(otp);

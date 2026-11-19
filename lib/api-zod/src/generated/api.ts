@@ -283,12 +283,47 @@ export const LoginResponse = zod.object({
 /**
  * @summary Register a new user or request approval to reactivate an inactive account
  */
+export const signupBodySignupIntentDetailsMax = 1000;
+
+export const signupBodyKnownTutorNameMax = 200;
+
+export const signupBodyStudentsItemFirstNameMax = 100;
+
+export const signupBodyStudentsItemLastNameMax = 100;
+
+export const signupBodyStudentsItemYearLevelMax = 100;
+
+export const signupBodyStudentsItemSchoolMax = 200;
+
+export const signupBodyStudentsItemSubjectsMax = 500;
+
+export const signupBodyStudentsItemGoalsMax = 2000;
+
+export const signupBodyStudentsItemAddressMax = 500;
+
+export const signupBodyStudentsMax = 8;
+
+
+
 export const SignupBody = zod.object({
   "email": zod.string(),
   "password": zod.string(),
   "firstName": zod.string(),
   "lastName": zod.string(),
-  "role": zod.enum(['tutor', 'parent', 'student', 'admin'])
+  "role": zod.enum(['tutor', 'parent', 'student', 'admin']),
+  "signupIntent": zod.enum(['knows_tutor', 'find_tutor', 'tutor_tools', 'other']).optional(),
+  "signupIntentDetails": zod.string().max(signupBodySignupIntentDetailsMax).optional(),
+  "knownTutorName": zod.string().max(signupBodyKnownTutorNameMax).optional(),
+  "students": zod.array(zod.object({
+  "firstName": zod.string().min(1).max(signupBodyStudentsItemFirstNameMax),
+  "lastName": zod.string().min(1).max(signupBodyStudentsItemLastNameMax),
+  "yearLevel": zod.string().min(1).max(signupBodyStudentsItemYearLevelMax),
+  "school": zod.string().max(signupBodyStudentsItemSchoolMax).optional(),
+  "subjects": zod.string().max(signupBodyStudentsItemSubjectsMax).optional(),
+  "goals": zod.string().max(signupBodyStudentsItemGoalsMax).optional(),
+  "dateOfBirth": zod.coerce.date().optional(),
+  "address": zod.string().min(1).max(signupBodyStudentsItemAddressMax)
+})).min(1).max(signupBodyStudentsMax).optional()
 })
 
 export const SignupResponse = zod.object({
@@ -298,6 +333,51 @@ export const SignupResponse = zod.object({
   "email": zod.string(),
   "devOtp": zod.string().optional(),
   "emailFailed": zod.boolean().optional()
+})
+
+
+/**
+ * @summary List information requests for the authenticated parent
+ */
+export const ListParentInformationRequestsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "parentUserId": zod.number().int().nullish(),
+  "parentEmail": zod.string(),
+  "requestText": zod.string(),
+  "responseText": zod.string().nullable(),
+  "status": zod.enum(['pending', 'responded', 'closed']),
+  "requestedAt": zod.coerce.date(),
+  "respondedAt": zod.coerce.date().nullable(),
+  "closedAt": zod.coerce.date().nullable()
+})
+export const ListParentInformationRequestsResponse = zod.array(ListParentInformationRequestsResponseItem)
+
+
+/**
+ * @summary Respond to an open information request for the authenticated parent
+ */
+export const RespondParentInformationRequestParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const respondParentInformationRequestBodyResponseTextMax = 4000;
+
+
+
+export const RespondParentInformationRequestBody = zod.object({
+  "responseText": zod.string().min(1).max(respondParentInformationRequestBodyResponseTextMax)
+})
+
+export const RespondParentInformationRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "parentUserId": zod.number().int().nullish(),
+  "parentEmail": zod.string(),
+  "requestText": zod.string(),
+  "responseText": zod.string().nullable(),
+  "status": zod.enum(['pending', 'responded', 'closed']),
+  "requestedAt": zod.coerce.date(),
+  "respondedAt": zod.coerce.date().nullable(),
+  "closedAt": zod.coerce.date().nullable()
 })
 
 
@@ -1491,7 +1571,7 @@ export const ListPaymentsResponse = zod.array(ListPaymentsResponseItem)
  */
 export const ListAdminUserRequestsResponseItem = zod.object({
   "id": zod.string(),
-  "kind": zod.enum(['removal', 'reapplication', 'parent_approval', 'tutor_verification', 'qualification_update']),
+  "kind": zod.enum(['removal', 'reapplication', 'parent_approval', 'tutor_verification', 'qualification_update', 'parent_info_response']),
   "resourceId": zod.number().int(),
   "userId": zod.number().int(),
   "email": zod.string(),
@@ -1587,9 +1667,6 @@ export const GetAdminUserParams = zod.object({
 })
 
 export const GetAdminUserResponse = zod.object({
-  "archivedAt": zod.coerce.date().nullish(),
-  "deletionRequestedAt": zod.coerce.date().nullish(),
-  "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "id": zod.number().int(),
   "email": zod.string(),
   "firstName": zod.string(),
@@ -1597,10 +1674,55 @@ export const GetAdminUserResponse = zod.object({
   "role": zod.enum(['tutor', 'parent', 'student', 'admin']),
   "createdAt": zod.coerce.date(),
   "isActive": zod.boolean(),
+  "archivedAt": zod.coerce.date().nullish(),
+  "deletionRequestedAt": zod.coerce.date().nullish(),
+  "reapplicationRequestedAt": zod.coerce.date().nullish(),
   "parentApproved": zod.boolean().optional(),
   "verificationStatus": zod.string().nullable(),
   "tutorApproved": zod.boolean().nullable(),
-  "studentIdentityVerified": zod.boolean().nullable()
+  "studentIdentityVerified": zod.boolean().nullable(),
+  "parentDetails": zod.union([zod.object({
+  "phone": zod.string().nullable(),
+  "address": zod.string().nullable(),
+  "signupIntent": zod.string().nullable(),
+  "signupIntentDetails": zod.string().nullable(),
+  "knownTutorName": zod.string().nullable(),
+  "students": zod.array(zod.object({
+  "id": zod.number().int(),
+  "firstName": zod.string(),
+  "lastName": zod.string().nullable(),
+  "yearLevel": zod.string().nullable(),
+  "school": zod.string().nullable(),
+  "subjects": zod.string().nullable(),
+  "goals": zod.string().nullable(),
+  "address": zod.string().nullable(),
+  "dateOfBirth": zod.string().nullable(),
+  "archivedAt": zod.coerce.date().nullable(),
+  "isIdentityVerified": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})),
+  "connectedTutors": zod.array(zod.object({
+  "id": zod.number().int(),
+  "userId": zod.number().int(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "email": zod.string(),
+  "isActive": zod.boolean(),
+  "isApproved": zod.boolean(),
+  "subjects": zod.string().nullable()
+})),
+  "informationRequests": zod.array(zod.object({
+  "id": zod.number().int(),
+  "parentUserId": zod.number().int().nullish(),
+  "parentEmail": zod.string(),
+  "requestText": zod.string(),
+  "responseText": zod.string().nullable(),
+  "status": zod.enum(['pending', 'responded', 'closed']),
+  "requestedAt": zod.coerce.date(),
+  "respondedAt": zod.coerce.date().nullable(),
+  "closedAt": zod.coerce.date().nullable()
+}))
+}),zod.null()])
 })
 
 
@@ -1612,6 +1734,54 @@ export const DeleteAdminUserParams = zod.object({
 })
 
 export const DeleteAdminUserResponse = zod.void()
+
+
+/**
+ * @summary Request additional information from a parent
+ */
+export const CreateAdminParentInformationRequestParams = zod.object({
+  "userId": zod.coerce.number().int()
+})
+
+export const createAdminParentInformationRequestBodyRequestTextMax = 2000;
+
+
+
+export const CreateAdminParentInformationRequestBody = zod.object({
+  "requestText": zod.string().min(1).max(createAdminParentInformationRequestBodyRequestTextMax)
+})
+
+export const CreateAdminParentInformationRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "parentUserId": zod.number().int().nullish(),
+  "parentEmail": zod.string(),
+  "requestText": zod.string(),
+  "responseText": zod.string().nullable(),
+  "status": zod.enum(['pending', 'responded', 'closed']),
+  "requestedAt": zod.coerce.date(),
+  "respondedAt": zod.coerce.date().nullable(),
+  "closedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Close a responded parent information request
+ */
+export const CloseAdminParentInformationRequestParams = zod.object({
+  "requestId": zod.coerce.number().int()
+})
+
+export const CloseAdminParentInformationRequestResponse = zod.object({
+  "id": zod.number().int(),
+  "parentUserId": zod.number().int().nullish(),
+  "parentEmail": zod.string(),
+  "requestText": zod.string(),
+  "responseText": zod.string().nullable(),
+  "status": zod.enum(['pending', 'responded', 'closed']),
+  "requestedAt": zod.coerce.date(),
+  "respondedAt": zod.coerce.date().nullable(),
+  "closedAt": zod.coerce.date().nullable()
+})
 
 
 /**

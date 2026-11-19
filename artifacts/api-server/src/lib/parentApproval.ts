@@ -6,5 +6,9 @@ export function isPendingParent(user: ApprovalUser): boolean {
 
 export function canUseProtectedResources(user: ApprovalUser, path: string): boolean {
   // Pending parents can authenticate and recheck status, but not reach business APIs.
-  return !isPendingParent(user) || path === "/auth/me" || path === "/auth/logout";
+  return !isPendingParent(user)
+    || path === "/auth/me"
+    || path === "/auth/logout"
+    || path === "/parent/information-requests"
+    || /^\/parent\/information-requests\/\d+\/respond$/.test(path);
 }

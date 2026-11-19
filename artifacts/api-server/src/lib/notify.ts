@@ -16,7 +16,8 @@ type NotificationType =
   | "invoice_generated"
   | "verification_info_requested"
   | "commission_tier"
-  | "student_address_requested";
+  | "student_address_requested"
+  | "parent_information_requested";
 
 export async function createNotification(opts: {
   userId: number;

@@ -22,3 +22,4 @@ export * from "./tutor-relationships";
 export * from "./admin-user-actions";
 export * from "./admin-sensitive-action-attempts";
 export * from "./account-reapplications";
+export * from "./parent-information-requests";

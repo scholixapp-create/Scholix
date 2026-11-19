@@ -264,3 +264,16 @@ test("signup creates an OTP challenge instead of returning an access token", asy
   assert.match(signupRoute, /pendingUserId:\s*user\.id/);
   assert.doesNotMatch(signupRoute, /issueAccessToken\s*\(/);
 });
+
+test("new parents must submit signup intake and student profiles with the parent transaction", async () => {
+  const source = await readFile(path.join(sourceRoot, "routes", "auth.ts"), "utf8");
+  const start = source.indexOf('router.post("/auth/signup"');
+  const end = source.indexOf('router.get("/auth/me"');
+  const signupRoute = source.slice(start, end);
+  assert.match(signupRoute, /validateSignupIntake/);
+  assert.match(signupRoute, /db\.transaction\(async \(tx\)/);
+  assert.match(signupRoute, /tx\.insert\(studentsTable\)\.values\(studentValues\)/);
+  assert.match(signupRoute, /parentId: created\.id/);
+  assert.match(signupRoute, /cleanStudentAddress/);
+  assert.match(signupRoute, /beginReapplication\(req, res, existing\[0\], password, role\)/);
+});

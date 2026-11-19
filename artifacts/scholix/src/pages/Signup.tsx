@@ -8,6 +8,27 @@ import { AlertCircle, Phone, Users, ShieldCheck, RefreshCw, ArrowLeft, Clock, Ho
 import TestModeBanner from "@/components/TestModeBanner";
 
 type Role = "tutor" | "parent";
+type SignupStudent = {
+  firstName: string;
+  lastName: string;
+  yearLevel: string;
+  school: string;
+  subjects: string;
+  goals: string;
+  dateOfBirth: string;
+  address: string;
+};
+
+const emptyStudent = (): SignupStudent => ({
+  firstName: "",
+  lastName: "",
+  yearLevel: "",
+  school: "",
+  subjects: "",
+  goals: "",
+  dateOfBirth: "",
+  address: "",
+});
 
 function apiErrorMessage(err: unknown): string {
   const e = err as { data?: { error?: unknown }; response?: { data?: { error?: unknown } }; message?: string } | null;
@@ -57,7 +78,8 @@ export default function Signup() {
   const [isReapplication, setIsReapplication] = useState(false);
   const [reapplyDone, setReapplyDone] = useState<string | null>(null);
   const redirectParam = new URLSearchParams(search).get("redirect");
-  const [role, setRole] = useState<Role>(resolveSafeRedirect(redirectParam) ? "parent" : "tutor");
+  const initialRole: Role = resolveSafeRedirect(redirectParam) ? "parent" : "tutor";
+  const [role, setRole] = useState<Role>(initialRole);
   const [step, setStep] = useState<"details" | "otp">("details");
   const [pendingUserId, setPendingUserId] = useState<number | null>(null);
   const [pendingEmail, setPendingEmail] = useState("");
@@ -82,6 +104,11 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [students, setStudents] = useState<SignupStudent[]>([emptyStudent()]);
+  const [signupIntent, setSignupIntent] = useState(initialRole === "parent" ? "find_tutor" : "tutor_tools");
+  const [signupIntentDetails, setSignupIntentDetails] = useState("");
+  const [knownTutorName, setKnownTutorName] = useState("");
+  const [existingAccountReapply, setExistingAccountReapply] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [error, setError] = useState("");
 
@@ -91,6 +118,33 @@ export default function Signup() {
     setPhone(formatAuPhone(cleaned.replace(/\s/g, "")));
     setPhoneError("");
   };
+
+  const signupData = () => ({
+    firstName,
+    lastName,
+    email,
+    password,
+    role,
+    phone,
+    termsAccepted,
+    ...(existingAccountReapply ? {} : {
+      signupIntent,
+      ...(signupIntent === "other" ? { signupIntentDetails } : {}),
+      ...(signupIntent === "knows_tutor" ? { knownTutorName } : {}),
+      ...(role === "parent" ? {
+        students: students.map((student) => ({
+          firstName: student.firstName.trim(),
+          lastName: student.lastName.trim(),
+          yearLevel: student.yearLevel.trim(),
+          school: student.school.trim() || undefined,
+          subjects: student.subjects.trim() || undefined,
+          goals: student.goals.trim() || undefined,
+          dateOfBirth: student.dateOfBirth || undefined,
+          address: student.address.trim(),
+        })),
+      } : {}),
+    }),
+  });
 
   const finishLogin = (user: any, token: string) => {
     login(user, token);
@@ -143,7 +197,7 @@ export default function Signup() {
     if (isReapplication) {
       setResending(true);
       signupMutation.mutate(
-        { data: { firstName, lastName, email, password, role, phone, termsAccepted } as any },
+        { data: signupData() as any },
         {
           onSuccess: (data) => {
             setPendingUserId(data.pendingUserId);
@@ -195,8 +249,26 @@ export default function Signup() {
       return;
     }
 
+    if (!existingAccountReapply) {
+      if (signupIntent === "knows_tutor" && !knownTutorName.trim()) {
+        setError("Enter the tutor's name so we can connect you.");
+        return;
+      }
+      if (signupIntent === "other" && !signupIntentDetails.trim()) {
+        setError("Please tell us what brought you to Scholix.");
+        return;
+      }
+      if (role === "parent" && (
+        students.length === 0
+        || students.some((student) => !student.firstName.trim() || !student.lastName.trim() || !student.yearLevel.trim() || !student.address.trim())
+      )) {
+        setError("Add each student's name, year level, and lesson address.");
+        return;
+      }
+    }
+
     signupMutation.mutate(
-      { data: { firstName, lastName, email, password, role, phone, termsAccepted } as any },
+      { data: signupData() as any },
       {
         onSuccess: (data) => {
           setIsReapplication(!!data.reapplication);
@@ -341,7 +413,7 @@ export default function Signup() {
     <>
     <TestModeBanner />
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <BrandMark size={56} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground">Create account</h1>
@@ -359,12 +431,16 @@ export default function Signup() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">I am a...</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {roles.map((r) => (
                   <button
                     key={r.value}
                     type="button"
-                    onClick={() => setRole(r.value)}
+                    onClick={() => {
+                      setRole(r.value);
+                      setSignupIntent(r.value === "parent" ? "find_tutor" : "tutor_tools");
+                      setExistingAccountReapply(false);
+                    }}
                     className={`py-2 px-2 rounded-lg border text-xs font-medium transition-all ${
                       role === r.value
                         ? "border-primary bg-primary/10 text-primary"
@@ -377,6 +453,196 @@ export default function Signup() {
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">{roles.find((r) => r.value === role)?.desc}</p>
             </div>
+
+            {!existingAccountReapply && (
+              <div className="rounded-lg border border-border p-4 space-y-3" data-testid="section-signup-intent">
+                <label className="block text-sm font-medium text-foreground" htmlFor="signup-intent">What brought you to Scholix?</label>
+                <select
+                  id="signup-intent"
+                  value={signupIntent}
+                  onChange={(event) => setSignupIntent(event.target.value)}
+                  required
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="select-signup-intent"
+                >
+                  {role === "parent" ? (
+                    <>
+                      <option value="knows_tutor">I know a particular tutor</option>
+                      <option value="find_tutor">I’m looking for a tutor</option>
+                      <option value="other">Something else</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="tutor_tools">I want an easier way to manage my tutoring business</option>
+                      <option value="other">Something else</option>
+                    </>
+                  )}
+                </select>
+                {role === "parent" && signupIntent === "knows_tutor" && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-foreground" htmlFor="known-tutor-name">Tutor’s name</label>
+                    <input
+                      id="known-tutor-name"
+                      value={knownTutorName}
+                      onChange={(event) => setKnownTutorName(event.target.value)}
+                      maxLength={200}
+                      required
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      data-testid="input-known-tutor-name"
+                    />
+                  </div>
+                )}
+                {signupIntent === "other" && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-foreground" htmlFor="signup-intent-details">Please tell us more</label>
+                    <textarea
+                      id="signup-intent-details"
+                      value={signupIntentDetails}
+                      onChange={(event) => setSignupIntentDetails(event.target.value)}
+                      maxLength={1000}
+                      required
+                      rows={2}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      data-testid="input-signup-intent-details"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {role === "parent" && (
+              <div className="rounded-lg border border-border p-4 space-y-3" data-testid="section-signup-students">
+                <div>
+                  <h2 className="text-sm font-semibold text-foreground">Student profiles</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">Students have profiles managed by their parent and do not need a separate login. Lesson addresses are kept private and shared only when needed for a booking.</p>
+                </div>
+                {existingAccountReapply ? (
+                  <p className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">Your existing parent and student profiles will be retained. New details entered here are not used for account reactivation.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {students.map((student, index) => (
+                      <fieldset key={index} className="space-y-3 rounded-lg bg-muted/30 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-foreground">Student {index + 1}</p>
+                          {students.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => setStudents((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                              className="text-xs font-medium text-destructive hover:underline"
+                              data-testid={`button-remove-student-${index + 1}`}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            aria-label={`Student ${index + 1} first name`}
+                            placeholder="First name"
+                            value={student.firstName}
+                            onChange={(event) => setStudents((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, firstName: event.target.value } : item))}
+                            maxLength={100}
+                            required={!existingAccountReapply}
+                            className="min-w-0 rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
+                            data-testid={`input-student-first-name-${index + 1}`}
+                          />
+                          <input
+                            aria-label={`Student ${index + 1} last name`}
+                            placeholder="Last name"
+                            value={student.lastName}
+                            onChange={(event) => setStudents((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, lastName: event.target.value } : item))}
+                            maxLength={100}
+                            required={!existingAccountReapply}
+                            className="min-w-0 rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
+                            data-testid={`input-student-last-name-${index + 1}`}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            aria-label={`Student ${index + 1} year level`}
+                            placeholder="Year level"
+                            value={student.yearLevel}
+                            onChange={(event) => setStudents((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, yearLevel: event.target.value } : item))}
+                            maxLength={100}
+                            required={!existingAccountReapply}
+                            className="min-w-0 rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
+                            data-testid={`input-student-year-level-${index + 1}`}
+                          />
+                          <input
+                            aria-label={`Student ${index + 1} school`}
+                            placeholder="School (optional)"
+                            value={student.school}
+                            onChange={(event) => setStudents((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, school: event.target.value } : item))}
+                            maxLength={200}
+                            className="min-w-0 rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
+                            data-testid={`input-student-school-${index + 1}`}
+                          />
+                        </div>
+                        <input
+                          aria-label={`Student ${index + 1} lesson address`}
+                          placeholder="Lesson address"
+                          value={student.address}
+                          onChange={(event) => setStudents((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, address: event.target.value } : item))}
+                          maxLength={500}
+                          required={!existingAccountReapply}
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
+                          data-testid={`input-student-address-${index + 1}`}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            aria-label={`Student ${index + 1} subjects`}
+                            placeholder="Subjects (optional)"
+                            value={student.subjects}
+                            onChange={(event) => setStudents((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, subjects: event.target.value } : item))}
+                            maxLength={500}
+                            className="min-w-0 rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
+                            data-testid={`input-student-subjects-${index + 1}`}
+                          />
+                          <input
+                            aria-label={`Student ${index + 1} date of birth`}
+                            type="date"
+                            value={student.dateOfBirth}
+                            onChange={(event) => setStudents((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, dateOfBirth: event.target.value } : item))}
+                            className="min-w-0 rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
+                            data-testid={`input-student-date-of-birth-${index + 1}`}
+                          />
+                        </div>
+                        <textarea
+                          aria-label={`Student ${index + 1} learning goals`}
+                          placeholder="Learning goals or support needs (optional)"
+                          value={student.goals}
+                          onChange={(event) => setStudents((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, goals: event.target.value } : item))}
+                          maxLength={2000}
+                          rows={2}
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
+                          data-testid={`input-student-goals-${index + 1}`}
+                        />
+                      </fieldset>
+                    ))}
+                    {students.length < 8 && (
+                      <button
+                        type="button"
+                        onClick={() => setStudents((current) => [...current, emptyStudent()])}
+                        className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-primary hover:border-primary"
+                        data-testid="button-add-student"
+                      >
+                        Add another student
+                      </button>
+                    )}
+                  </div>
+                )}
+                <label className="flex items-start gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={existingAccountReapply}
+                    onChange={(event) => setExistingAccountReapply(event.target.checked)}
+                    className="mt-0.5"
+                    data-testid="checkbox-existing-account-reapply"
+                  />
+                  I’m reapplying to an existing deactivated parent account
+                </label>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>

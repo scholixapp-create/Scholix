@@ -13,7 +13,7 @@ export const adminUserActionsTable = pgTable("admin_user_actions", {
 }, (table) => [
   check(
     "admin_user_actions_action_check",
-    sql`${table.action} IN ('deactivated', 'reactivated', 'deleted', 'parent_approved', 'education_approved', 'education_rejected', 'commission_waiver_granted', 'commission_waiver_revoked')`,
+    sql`${table.action} IN ('deactivated', 'reactivated', 'deleted', 'parent_approved', 'education_approved', 'education_rejected', 'commission_waiver_granted', 'commission_waiver_revoked', 'parent_information_requested', 'parent_information_closed')`,
   ),
 ]);
 

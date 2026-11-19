@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable, adminUserActionsTable, accountReapplicationsTable, accountDeletionRequestsTable } from "@workspace/db";
+import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable, tutorRelationshipsTable, parentInformationRequestsTable, adminUserActionsTable, accountReapplicationsTable, accountDeletionRequestsTable } from "@workspace/db";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import {
   AdminListUsersQueryParams,
@@ -12,6 +12,11 @@ import {
   UpdateTutorCommissionWaiverBody,
   UpdateTutorCommissionWaiverParams,
   UpdateTutorCommissionWaiverResponse,
+  CreateAdminParentInformationRequestParams,
+  CreateAdminParentInformationRequestBody,
+  CreateAdminParentInformationRequestResponse,
+  CloseAdminParentInformationRequestParams,
+  CloseAdminParentInformationRequestResponse,
 } from "@workspace/api-zod";
 import { requireAdmin, type AuthRequest } from "../lib/authMiddleware";
 import { AdminUserStatusError, changeAdminUserStatus } from "../lib/adminUserManagement";
@@ -23,6 +28,9 @@ import { verifyAdminSensitiveActionPassword } from "../lib/adminSensitiveActionR
 import { isSafeAdminAuditReason } from "../lib/adminAuditReason";
 import { CommissionWaiverError, changeTutorCommissionWaiver } from "../lib/adminCommissionWaiver";
 import { adminCommissionWaiverStore } from "../lib/adminCommissionWaiverStore";
+import { createNotification } from "../lib/notify";
+import { parentInformationRequestedEmailHtml } from "../lib/email";
+import { config } from "../lib/config";
 
 const router = Router();
 
@@ -170,7 +178,187 @@ router.get("/admin/users/:userId", async (req, res): Promise<void> => {
     res.status(404).json({ error: "User not found" });
     return;
   }
-  res.json(GetAdminUserResponse.parse(user));
+  const parentDetails = user.role === "parent" ? await getAdminParentDetails(user.id) : null;
+  res.set("Cache-Control", "no-store");
+  res.json(GetAdminUserResponse.parse({ ...user, parentDetails }));
+});
+
+async function getAdminParentDetails(parentId: number) {
+  const [parent] = await db.select({
+    phone: usersTable.phone,
+    address: usersTable.address,
+    signupIntent: usersTable.signupIntent,
+    signupIntentDetails: usersTable.signupIntentDetails,
+    knownTutorName: usersTable.knownTutorName,
+  }).from(usersTable).where(eq(usersTable.id, parentId)).limit(1);
+  if (!parent) return null;
+
+  const [students, relationshipTutors, sessionTutors, informationRequests] = await Promise.all([
+    db.select({
+      id: studentsTable.id,
+      firstName: studentsTable.firstName,
+      lastName: studentsTable.lastName,
+      yearLevel: studentsTable.gradeLevel,
+      school: studentsTable.school,
+      subjects: studentsTable.subjects,
+      goals: studentsTable.goals,
+      address: studentsTable.address,
+      dateOfBirth: studentsTable.dateOfBirth,
+      archivedAt: studentsTable.archivedAt,
+      isIdentityVerified: studentsTable.isIdentityVerified,
+      createdAt: studentsTable.createdAt,
+    }).from(studentsTable).where(eq(studentsTable.parentId, parentId)).orderBy(desc(studentsTable.createdAt)),
+    db.select({
+      tutorId: tutorsTable.id,
+      userId: usersTable.id,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      email: usersTable.email,
+      isActive: usersTable.isActive,
+      isApproved: tutorsTable.isApproved,
+      subjects: tutorsTable.subjects,
+    }).from(tutorRelationshipsTable)
+      .innerJoin(tutorsTable, eq(tutorRelationshipsTable.tutorId, tutorsTable.id))
+      .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
+      .where(eq(tutorRelationshipsTable.parentId, parentId)),
+    db.select({
+      tutorId: tutorsTable.id,
+      userId: usersTable.id,
+      firstName: usersTable.firstName,
+      lastName: usersTable.lastName,
+      email: usersTable.email,
+      isActive: usersTable.isActive,
+      isApproved: tutorsTable.isApproved,
+      subjects: tutorsTable.subjects,
+    }).from(sessionsTable)
+      .innerJoin(studentsTable, eq(sessionsTable.studentId, studentsTable.id))
+      .innerJoin(tutorsTable, eq(sessionsTable.tutorId, tutorsTable.id))
+      .innerJoin(usersTable, eq(tutorsTable.userId, usersTable.id))
+      .where(eq(studentsTable.parentId, parentId)),
+    db.select().from(parentInformationRequestsTable)
+      .where(eq(parentInformationRequestsTable.parentUserId, parentId))
+      .orderBy(desc(parentInformationRequestsTable.requestedAt)),
+  ]);
+
+  const tutorById = new Map<number, (typeof relationshipTutors)[number]>();
+  for (const tutor of [...relationshipTutors, ...sessionTutors]) tutorById.set(tutor.tutorId, tutor);
+  return {
+    phone: parent.phone ?? null,
+    address: parent.address ?? null,
+    signupIntent: parent.signupIntent ?? null,
+    signupIntentDetails: parent.signupIntentDetails ?? null,
+    knownTutorName: parent.knownTutorName ?? null,
+    students: students.map((student) => ({
+      ...student,
+      lastName: student.lastName ?? null,
+      yearLevel: student.yearLevel ?? null,
+      school: student.school ?? null,
+      subjects: student.subjects ?? null,
+      goals: student.goals ?? null,
+      address: student.address ?? null,
+      dateOfBirth: student.dateOfBirth ?? null,
+      isIdentityVerified: student.isIdentityVerified ?? false,
+    })),
+    connectedTutors: [...tutorById.values()].map((tutor) => ({
+      id: tutor.tutorId,
+      userId: tutor.userId,
+      firstName: tutor.firstName,
+      lastName: tutor.lastName,
+      email: tutor.email,
+      isActive: tutor.isActive,
+      isApproved: tutor.isApproved,
+      subjects: Array.isArray(tutor.subjects) ? tutor.subjects.join(", ") : tutor.subjects ?? null,
+    })),
+    informationRequests: informationRequests.map((request) => ({
+      ...request,
+      parentUserId: request.parentUserId ?? null,
+      responseText: request.responseText ?? null,
+      respondedAt: request.respondedAt ?? null,
+      closedAt: request.closedAt ?? null,
+    })),
+  };
+}
+
+router.post("/admin/users/:userId/information-requests", async (req, res): Promise<void> => {
+  const params = CreateAdminParentInformationRequestParams.safeParse(req.params);
+  const body = CreateAdminParentInformationRequestBody.safeParse(req.body);
+  if (!params.success || !body.success || !body.data.requestText.trim()) {
+    res.status(400).json({ error: "Enter a valid information request" });
+    return;
+  }
+
+  const actor = (req as unknown as AuthRequest).user;
+  const created = await db.transaction(async (tx) => {
+    const [parent] = await tx.select().from(usersTable)
+      .where(eq(usersTable.id, params.data.userId)).limit(1).for("update");
+    if (!parent || parent.role !== "parent" || !parent.isActive || parent.archivedAt) return null;
+    const [request] = await tx.insert(parentInformationRequestsTable).values({
+      parentUserId: parent.id,
+      targetUserId: parent.id,
+      parentEmail: parent.email,
+      adminUserId: actor.id,
+      requestText: body.data.requestText.trim(),
+    }).returning();
+    await tx.insert(adminUserActionsTable).values({
+      actorUserId: actor.id,
+      targetUserId: parent.id,
+      targetEmail: parent.email,
+      action: "parent_information_requested",
+    });
+    return { request, firstName: parent.firstName };
+  });
+  if (!created) {
+    res.status(404).json({ error: "Active parent account not found" });
+    return;
+  }
+
+  await createNotification({
+    userId: created.request.parentUserId!,
+    type: "parent_information_requested",
+    title: "Scholix needs more information",
+    message: "An administrator has asked you for additional information. Sign in to review and reply.",
+    actionUrl: "/parent/information-requests",
+    actionLabel: "Review request",
+    emailSubject: "Scholix needs more information",
+    emailHtml: parentInformationRequestedEmailHtml({
+      recipientName: created.firstName,
+      requestText: created.request.requestText,
+      actionUrl: `${config.frontendUrl.replace(/\/+$/, "")}/parent/information-requests`,
+    }),
+  });
+  res.set("Cache-Control", "no-store");
+  res.status(201).json(CreateAdminParentInformationRequestResponse.parse(created.request));
+});
+
+router.patch("/admin/parent-information-requests/:requestId/close", async (req, res): Promise<void> => {
+  const params = CloseAdminParentInformationRequestParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid information request ID" });
+    return;
+  }
+  const actor = (req as unknown as AuthRequest).user;
+  const closed = await db.transaction(async (tx) => {
+    const [request] = await tx.select().from(parentInformationRequestsTable)
+      .where(eq(parentInformationRequestsTable.id, params.data.requestId)).limit(1).for("update");
+    if (!request || request.status !== "responded") return null;
+    const [updated] = await tx.update(parentInformationRequestsTable)
+      .set({ status: "closed", closedAt: new Date() })
+      .where(eq(parentInformationRequestsTable.id, request.id))
+      .returning();
+    await tx.insert(adminUserActionsTable).values({
+      actorUserId: actor.id,
+      targetUserId: request.targetUserId,
+      targetEmail: request.parentEmail,
+      action: "parent_information_closed",
+    });
+    return updated;
+  });
+  if (!closed) {
+    res.status(409).json({ error: "Only a responded information request can be closed" });
+    return;
+  }
+  res.set("Cache-Control", "no-store");
+  res.json(CloseAdminParentInformationRequestResponse.parse(closed));
 });
 
 router.delete("/admin/users/:userId", async (req, res): Promise<void> => {

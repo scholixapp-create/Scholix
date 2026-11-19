@@ -32,12 +32,103 @@ export const SignupBodyRole = {
   admin: 'admin',
 } as const;
 
+export type SignupBodySignupIntent = typeof SignupBodySignupIntent[keyof typeof SignupBodySignupIntent];
+
+
+export const SignupBodySignupIntent = {
+  knows_tutor: 'knows_tutor',
+  find_tutor: 'find_tutor',
+  tutor_tools: 'tutor_tools',
+  other: 'other',
+} as const;
+
+export interface ParentSignupStudent {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  firstName: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  lastName: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  yearLevel: string;
+  /** @maxLength 200 */
+  school?: string;
+  /** @maxLength 500 */
+  subjects?: string;
+  /** @maxLength 2000 */
+  goals?: string;
+  dateOfBirth?: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  address: string;
+}
+
 export interface SignupBody {
   email: string;
   password: string;
   firstName: string;
   lastName: string;
   role: SignupBodyRole;
+  signupIntent?: SignupBodySignupIntent;
+  /** @maxLength 1000 */
+  signupIntentDetails?: string;
+  /** @maxLength 200 */
+  knownTutorName?: string;
+  /**
+     * @minItems 1
+     * @maxItems 8
+     */
+  students?: ParentSignupStudent[];
+}
+
+export interface AdminInformationRequestInput {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  requestText: string;
+}
+
+export interface ParentInformationResponseInput {
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  responseText: string;
+}
+
+export type ParentInformationRequestStatus = typeof ParentInformationRequestStatus[keyof typeof ParentInformationRequestStatus];
+
+
+export const ParentInformationRequestStatus = {
+  pending: 'pending',
+  responded: 'responded',
+  closed: 'closed',
+} as const;
+
+export interface ParentInformationRequest {
+  id: number;
+  /** @nullable */
+  parentUserId?: number | null;
+  parentEmail: string;
+  requestText: string;
+  /** @nullable */
+  responseText: string | null;
+  status: ParentInformationRequestStatus;
+  requestedAt: string;
+  /** @nullable */
+  respondedAt: string | null;
+  /** @nullable */
+  closedAt: string | null;
 }
 
 export type UserRole = typeof UserRole[keyof typeof UserRole];
@@ -98,6 +189,7 @@ export const AdminUserRequestKind = {
   parent_approval: 'parent_approval',
   tutor_verification: 'tutor_verification',
   qualification_update: 'qualification_update',
+  parent_info_response: 'parent_info_response',
 } as const;
 
 export type AdminUserRequestRole = typeof AdminUserRequestRole[keyof typeof AdminUserRequestRole];
@@ -165,6 +257,91 @@ export interface AdminUser {
   tutorApproved: boolean | null;
   /** @nullable */
   studentIdentityVerified: boolean | null;
+}
+
+export type AdminUserDetailRole = typeof AdminUserDetailRole[keyof typeof AdminUserDetailRole];
+
+
+export const AdminUserDetailRole = {
+  tutor: 'tutor',
+  parent: 'parent',
+  student: 'student',
+  admin: 'admin',
+} as const;
+
+export interface AdminParentStudent {
+  id: number;
+  firstName: string;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  yearLevel: string | null;
+  /** @nullable */
+  school: string | null;
+  /** @nullable */
+  subjects: string | null;
+  /** @nullable */
+  goals: string | null;
+  /** @nullable */
+  address: string | null;
+  /** @nullable */
+  dateOfBirth: string | null;
+  /** @nullable */
+  archivedAt: string | null;
+  isIdentityVerified: boolean;
+  createdAt: string;
+}
+
+export interface AdminConnectedTutor {
+  id: number;
+  userId: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  isActive: boolean;
+  isApproved: boolean;
+  /** @nullable */
+  subjects: string | null;
+}
+
+export interface AdminParentDetails {
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  address: string | null;
+  /** @nullable */
+  signupIntent: string | null;
+  /** @nullable */
+  signupIntentDetails: string | null;
+  /** @nullable */
+  knownTutorName: string | null;
+  students: AdminParentStudent[];
+  connectedTutors: AdminConnectedTutor[];
+  informationRequests: ParentInformationRequest[];
+}
+
+export interface AdminUserDetail {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: AdminUserDetailRole;
+  createdAt: string;
+  isActive: boolean;
+  /** @nullable */
+  archivedAt?: string | null;
+  /** @nullable */
+  deletionRequestedAt?: string | null;
+  /** @nullable */
+  reapplicationRequestedAt?: string | null;
+  parentApproved?: boolean;
+  /** @nullable */
+  verificationStatus: string | null;
+  /** @nullable */
+  tutorApproved: boolean | null;
+  /** @nullable */
+  studentIdentityVerified: boolean | null;
+  parentDetails: AdminParentDetails | null;
 }
 
 export interface AdminUserStatusUpdate {

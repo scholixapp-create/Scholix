@@ -1,13 +1,15 @@
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import {
   db, usersTable, tutorsTable, accountDeletionRequestsTable, accountReapplicationsTable,
+  parentInformationRequestsTable,
 } from "@workspace/db";
 
-export type RequestKind = "removal" | "reapplication" | "parent_approval" | "tutor_verification" | "qualification_update";
+export type RequestKind = "removal" | "reapplication" | "parent_approval" | "tutor_verification" | "qualification_update" | "parent_info_response";
 export type RequestPriority = "urgent" | "high" | "normal";
 export const requestPriority: Record<RequestKind, RequestPriority> = {
   removal: "urgent",
   reapplication: "high",
+  parent_info_response: "high",
   parent_approval: "normal",
   tutor_verification: "normal",
   qualification_update: "normal",
@@ -27,7 +29,7 @@ const identity = {
 };
 const eligible = and(eq(usersTable.isActive, true), isNull(usersTable.archivedAt));
 export async function listPendingUserRequests() {
-  const [removals, reapplications, parents, verification, qualifications] = await Promise.all([
+  const [removals, reapplications, parents, verification, qualifications, parentInfoResponses] = await Promise.all([
     db.select({ ...identity, resourceId: accountDeletionRequestsTable.id,
       requestedAt: accountDeletionRequestsTable.requestedAt, reason: accountDeletionRequestsTable.reason })
       .from(accountDeletionRequestsTable).innerJoin(usersTable, eq(usersTable.id, accountDeletionRequestsTable.userId))
@@ -47,6 +49,12 @@ export async function listPendingUserRequests() {
       createdAt: tutorsTable.createdAt }).from(tutorsTable)
       .innerJoin(usersTable, eq(usersTable.id, tutorsTable.userId))
       .where(and(eligible, eq(usersTable.role, "tutor"), eq(tutorsTable.educationReviewStatus, "pending"))),
+    db.select({ ...identity, resourceId: parentInformationRequestsTable.id,
+      requestedAt: parentInformationRequestsTable.respondedAt,
+      reason: parentInformationRequestsTable.responseText })
+      .from(parentInformationRequestsTable)
+      .innerJoin(usersTable, eq(usersTable.id, parentInformationRequestsTable.parentUserId))
+      .where(and(eq(parentInformationRequestsTable.status, "responded"), eligible, eq(usersTable.role, "parent"))),
   ]);
   const item = (kind: RequestKind, row: typeof parents[number], reason: string | null = null) => ({
     ...row, id: `${kind}:${row.resourceId}`, kind, priority: requestPriority[kind], reason,
@@ -59,5 +67,7 @@ export async function listPendingUserRequests() {
     ...verification.map((r) => item("tutor_verification", r)),
     ...qualifications.map(({ createdAt, ...r }) =>
       item("qualification_update", { ...r, requestedAt: r.requestedAt ?? createdAt })),
+    ...parentInfoResponses.filter((r) => r.requestedAt !== null)
+      .map((r) => item("parent_info_response", { ...r, requestedAt: r.requestedAt! }, r.reason)),
   ]);
 }

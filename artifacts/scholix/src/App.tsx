@@ -26,6 +26,7 @@ import TutorEarnings from "@/pages/tutor/Earnings";
 import TutorInvoices from "@/pages/tutor/Invoices";
 import TutorProfilePage from "@/pages/tutor/Profile";
 import ParentDashboard from "@/pages/parent/Dashboard";
+import ParentInformationRequests from "@/pages/parent/InformationRequests";
 import ParentTutors from "@/pages/parent/Tutors";
 import ParentBook from "@/pages/parent/Book";
 import ParentStudents from "@/pages/parent/Students";
@@ -347,6 +348,16 @@ function Router() {
       <Route path="/parent/dashboard">
         <RequireAuth role="parent">
           <Layout><ParentDashboard /></Layout>
+        </RequireAuth>
+      </Route>
+      <Route path="/parent/information-requests">
+        <RequireAuth role="parent">
+          <Layout>
+            <div className="p-4 md:p-6 max-w-3xl mx-auto">
+              <h1 className="mb-4 text-xl font-bold text-foreground">Information requests</h1>
+              <ParentInformationRequests />
+            </div>
+          </Layout>
         </RequireAuth>
       </Route>
       <Route path="/parent/sessions">

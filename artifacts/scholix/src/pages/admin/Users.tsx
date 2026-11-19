@@ -6,13 +6,15 @@ import {
   getListDeletionRequestsQueryKey,
   useAdminListUsers,
   useApproveParent,
+  useCloseAdminParentInformationRequest,
+  useCreateAdminParentInformationRequest,
   useDeleteAdminUser,
   useGetAdminUser,
   useUpdateAdminUserStatus,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
-import { AlertCircle, GraduationCap, Search, ShieldCheck, User, Users } from "lucide-react";
+import { AlertCircle, GraduationCap, Search, ShieldCheck, User, Users, MessageSquareText, MapPin } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import UserRequestsQueue from "@/components/admin/UserRequestsQueue";
 import {
@@ -51,6 +53,9 @@ export default function AdminUsers() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [statusError, setStatusError] = useState("");
   const [deleteError, setDeleteError] = useState("");
+  const [informationRequestText, setInformationRequestText] = useState("");
+  const [informationRequestError, setInformationRequestError] = useState("");
+  const [informationRequestSuccess, setInformationRequestSuccess] = useState("");
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 250);
@@ -74,7 +79,6 @@ export default function AdminUsers() {
         setConfirmOpen(false);
         setConfirmIsActive(null);
         setSelectedUserId(null);
-        queryClient.setQueryData(getGetAdminUserQueryKey(updatedUser.id), updatedUser.isActive ? { ...updatedUser, reapplicationRequestedAt: null } : updatedUser);
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }),
           invalidateRequests(),
@@ -99,7 +103,6 @@ export default function AdminUsers() {
       onSuccess: async (updatedUser) => {
         setApproveError("");
         setApproveSuccess("Parent account approved.");
-        queryClient.setQueryData(getGetAdminUserQueryKey(updatedUser.id), updatedUser);
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] }),
           invalidateRequests(),
@@ -137,6 +140,35 @@ export default function AdminUsers() {
             ? apiError.data.error
             : apiError.message ?? "Could not delete this account. Please try again.",
         );
+      },
+    },
+  });
+
+  const createInformationRequest = useCreateAdminParentInformationRequest({
+    mutation: {
+      onSuccess: async (request) => {
+        setInformationRequestText("");
+        setInformationRequestError("");
+        setInformationRequestSuccess("Information request sent to the parent.");
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetAdminUserQueryKey(request.parentUserId ?? 0) }),
+          queryClient.invalidateQueries({ queryKey: getListAdminUserRequestsQueryKey() }),
+        ]);
+      },
+      onError: (error) => {
+        const apiError = error as { data?: { error?: unknown }; message?: string };
+        setInformationRequestError(typeof apiError.data?.error === "string" ? apiError.data.error : apiError.message ?? "Could not send the request.");
+      },
+    },
+  });
+
+  const closeInformationRequest = useCloseAdminParentInformationRequest({
+    mutation: {
+      onSuccess: async (request) => {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getGetAdminUserQueryKey(request.parentUserId ?? 0) }),
+          queryClient.invalidateQueries({ queryKey: getListAdminUserRequestsQueryKey() }),
+        ]);
       },
     },
   });
@@ -276,12 +308,15 @@ export default function AdminUsers() {
             setDeleteConfirmOpen(false);
             setStatusError("");
             setDeleteError("");
+            setInformationRequestText("");
+            setInformationRequestError("");
+            setInformationRequestSuccess("");
             setApproveError("");
             setApproveSuccess("");
           }
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>User details</DialogTitle>
             <DialogDescription>Account information and current verification status.</DialogDescription>
@@ -381,6 +416,126 @@ export default function AdminUsers() {
                     {approveMutation.isPending ? "Approving..." : "Approve parent account"}
                   </button>
                   {!selectedUser.isActive && <p className="text-xs text-amber-800">Reactivate the account before approving.</p>}
+                </div>
+              )}
+              {selectedUser.role === "parent" && selectedUser.parentDetails && (
+                <div className="space-y-3" data-testid="section-admin-parent-details">
+                  <section className="rounded-lg border border-card-border p-4">
+                    <h3 className="text-sm font-semibold text-foreground">Parent contact and signup</h3>
+                    <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                      <div><dt className="text-xs text-muted-foreground">Phone</dt><dd>{selectedUser.parentDetails.phone || "Not provided"}</dd></div>
+                      <div><dt className="text-xs text-muted-foreground">Contact address</dt><dd>{selectedUser.parentDetails.address || "Not provided"}</dd></div>
+                      <div><dt className="text-xs text-muted-foreground">What brought them to Scholix</dt><dd>{({
+                        knows_tutor: "They know a particular tutor",
+                        find_tutor: "They are looking for a tutor",
+                        tutor_tools: "They are a tutor seeking business tools",
+                        other: "Other",
+                      } as Record<string, string>)[selectedUser.parentDetails.signupIntent ?? ""] ?? "Not provided"}</dd></div>
+                      {selectedUser.parentDetails.knownTutorName && <div><dt className="text-xs text-muted-foreground">Tutor they know</dt><dd>{selectedUser.parentDetails.knownTutorName}</dd></div>}
+                      {selectedUser.parentDetails.signupIntentDetails && <div className="sm:col-span-2"><dt className="text-xs text-muted-foreground">Additional signup details</dt><dd className="whitespace-pre-wrap">{selectedUser.parentDetails.signupIntentDetails}</dd></div>}
+                    </dl>
+                  </section>
+
+                  <section className="rounded-lg border border-card-border p-4">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-foreground">Student profiles</h3>
+                      <span className="text-xs text-muted-foreground">{selectedUser.parentDetails.students.length}</span>
+                    </div>
+                    {selectedUser.parentDetails.students.length ? (
+                      <div className="space-y-2">
+                        {selectedUser.parentDetails.students.map((student) => (
+                          <article key={student.id} className="rounded-md bg-muted/30 p-3" data-testid={`admin-parent-student-${student.id}`}>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-semibold">{student.firstName} {student.lastName}</p>
+                              <span className={`text-xs ${student.archivedAt ? "text-muted-foreground" : "text-emerald-700"}`}>
+                                {student.archivedAt ? "Archived" : "Active"} · {student.isIdentityVerified ? "Identity verified" : "Identity not verified"}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {student.yearLevel || "Year level not provided"}
+                              {student.school ? ` · ${student.school}` : ""}
+                              {student.subjects ? ` · ${student.subjects}` : ""}
+                            </p>
+                            {student.address && <p className="mt-2 flex items-start gap-1.5 text-xs text-foreground"><MapPin size={13} className="mt-0.5 shrink-0" />{student.address}</p>}
+                            {student.dateOfBirth && <p className="mt-1 text-xs text-muted-foreground">Date of birth: {student.dateOfBirth}</p>}
+                            {student.goals && <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">Learning goals: {student.goals}</p>}
+                          </article>
+                        ))}
+                      </div>
+                    ) : <p className="text-sm text-muted-foreground">No student profiles are connected to this parent.</p>}
+                  </section>
+
+                  <section className="rounded-lg border border-card-border p-4">
+                    <h3 className="mb-2 text-sm font-semibold text-foreground">Connected tutors</h3>
+                    {selectedUser.parentDetails.connectedTutors.length ? (
+                      <ul className="space-y-2">
+                        {selectedUser.parentDetails.connectedTutors.map((tutor) => (
+                          <li key={tutor.id} className="rounded-md bg-muted/30 p-3" data-testid={`admin-parent-tutor-${tutor.id}`}>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <a href={`/tutor/${tutor.id}`} className="font-semibold text-primary hover:underline">{tutor.firstName} {tutor.lastName}</a>
+                              <span className="text-xs text-muted-foreground">{tutor.isActive ? "Active" : "Inactive"} · {tutor.isApproved ? "Approved" : "Not approved"}</span>
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">{tutor.email}{tutor.subjects ? ` · ${tutor.subjects}` : ""}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-sm text-muted-foreground">No tutors are currently linked by a relationship or session history.</p>}
+                  </section>
+
+                  <section className="rounded-lg border border-card-border p-4">
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <MessageSquareText size={15} className="text-primary" /> Information requests
+                    </h3>
+                    <div className="mt-3 space-y-2">
+                      {selectedUser.parentDetails.informationRequests.map((request) => (
+                        <article key={request.id} className="rounded-md bg-muted/30 p-3" data-testid={`admin-information-request-${request.id}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-xs font-semibold capitalize">{request.status}</span>
+                            <span className="text-[11px] text-muted-foreground">{format(parseISO(request.requestedAt), "MMM d, yyyy, h:mm a")}</span>
+                          </div>
+                          <p className="mt-1 whitespace-pre-wrap text-sm">{request.requestText}</p>
+                          {request.responseText && <p className="mt-2 whitespace-pre-wrap rounded bg-background p-2 text-sm text-muted-foreground">Parent response: {request.responseText}</p>}
+                          {request.status === "responded" && (
+                            <button
+                              type="button"
+                              onClick={() => closeInformationRequest.mutate({ requestId: request.id })}
+                              disabled={closeInformationRequest.isPending}
+                              className="mt-2 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold hover:bg-background disabled:opacity-50"
+                              data-testid={`button-close-information-request-${request.id}`}
+                            >
+                              Close request
+                            </button>
+                          )}
+                        </article>
+                      ))}
+                    </div>
+                    <label className="mt-3 block text-xs font-medium text-foreground" htmlFor="admin-information-request">Ask for additional information</label>
+                    <textarea
+                      id="admin-information-request"
+                      value={informationRequestText}
+                      onChange={(event) => setInformationRequestText(event.target.value)}
+                      maxLength={2000}
+                      rows={3}
+                      placeholder="Tell the parent what information is needed"
+                      className="mt-1 w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                      data-testid="input-admin-information-request"
+                    />
+                    {informationRequestError && <p className="mt-1 text-xs text-destructive" role="alert">{informationRequestError}</p>}
+                    {informationRequestSuccess && <p className="mt-1 text-xs text-emerald-700" role="status">{informationRequestSuccess}</p>}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInformationRequestError("");
+                        setInformationRequestSuccess("");
+                        createInformationRequest.mutate({ userId: selectedUser.id, data: { requestText: informationRequestText.trim() } });
+                      }}
+                      disabled={!informationRequestText.trim() || createInformationRequest.isPending}
+                      className="mt-2 w-full rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                      data-testid="button-send-admin-information-request"
+                    >
+                      {createInformationRequest.isPending ? "Sending…" : "Send request to parent"}
+                    </button>
+                  </section>
                 </div>
               )}
               {approveError && (

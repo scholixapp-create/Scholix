@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Bell, Check, CheckCheck, Trash2, BookOpen, CreditCard, GraduationCap, XCircle, X, Upload, Star, MessageCircle, ExternalLink, ArrowRight, Trophy } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, BookOpen, CreditCard, GraduationCap, XCircle, X, Upload, Star, MessageCircle, ExternalLink, ArrowRight, Trophy, MessageSquareText } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import type { AppNotification } from "@/hooks/useNotifications";
 import { Link, useLocation } from "wouter";
@@ -18,6 +18,7 @@ const typeConfig: Record<string, { icon: any; iconBg: string; iconColor: string;
   invoice_generated:       { icon: CreditCard,     iconBg: "bg-accent/10",        iconColor: "text-accent",     isActionable: true },
   verification_info_requested: { icon: Upload,     iconBg: "bg-blue-100",         iconColor: "text-blue-600",   isActionable: true },
   commission_tier:             { icon: Trophy,     iconBg: "bg-brand-gold/15",    iconColor: "text-brand-gold" },
+  parent_information_requested: { icon: MessageSquareText, iconBg: "bg-brand-turquoise/10", iconColor: "text-brand-turquoise", isActionable: true },
 };
 
 function ActionButton({

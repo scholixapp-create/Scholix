@@ -45,6 +45,7 @@ const kindLabel: Record<string, string> = {
   parent_approval: "Parent approval",
   tutor_verification: "Tutor verification",
   qualification_update: "Qualification update",
+  parent_info_response: "Parent information response",
 };
 const priorityCls: Record<string, string> = {
   urgent: "bg-red-100 text-red-800",
@@ -173,6 +174,7 @@ export default function UserRequestsQueue({ onReviewed, onSelectUser }: Props) {
           </div>
         </div>
         {r.kind === "removal" && <p className="mt-2 text-xs text-muted-foreground"><span className="font-medium text-foreground">Reason: </span>{r.reason || "None given"}</p>}
+        {r.kind === "parent_info_response" && <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground"><span className="font-medium text-foreground">Parent response: </span>{r.reason || "No response text"}</p>}
         {r.kind === "reapplication" && <p className="mt-2 text-xs text-amber-800">Email verified. Awaiting admin approval to reactivate.</p>}
         {r.kind === "parent_approval" && <p className="mt-2 text-xs text-muted-foreground">Parent cannot book or use protected features until approved.</p>}
         <div className="mt-3 flex flex-col sm:flex-row gap-2">
@@ -187,7 +189,7 @@ export default function UserRequestsQueue({ onReviewed, onSelectUser }: Props) {
             </Link>
           ) : (
             <button type="button" onClick={() => onSelectUser?.(r.userId)} disabled={!onSelectUser} className="flex-1 rounded-lg bg-primary text-primary-foreground px-3 py-2 text-xs font-semibold hover:opacity-90 disabled:opacity-50" data-testid={`button-open-user-request-${r.id}`}>
-              {r.kind === "reapplication" ? "Review reapplication" : "Review parent account"}
+          {r.kind === "reapplication" ? "Review reapplication" : r.kind === "parent_info_response" ? "Review parent response" : "Review parent account"}
             </button>
           )}
         </div>
