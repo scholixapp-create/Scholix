@@ -17,3 +17,4 @@
 - [Student lesson addresses](student-lesson-addresses.md) — keep lesson addresses on each student; never silently copy a parent profile address into a child's record.
 - [Drizzle SQL composition](drizzle-query-composition.md) — arrays need explicit SQL typing; correlated selects must preserve outer-table qualification.
 - [Scholix rollout expectation](scholix-rollout-expectation.md) — user wants Scholix changes rolled into production unless they say otherwise; confirm migration prerequisites before release.
+- [Parent intake completeness](parent-intake-completeness.md) — require a distinct parent contact address, each student's lesson address, and an explicitly chosen signup reason before parent approval.
