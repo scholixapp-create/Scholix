@@ -83,6 +83,8 @@ export interface SignupBody {
   signupIntentDetails?: string;
   /** @maxLength 200 */
   knownTutorName?: string;
+  /** @maxLength 500 */
+  parentAddress?: string;
   /**
      * @minItems 1
      * @maxItems 8
@@ -104,6 +106,96 @@ export interface ParentInformationResponseInput {
      * @maxLength 4000
      */
   responseText: string;
+}
+
+export interface ParentIntakeStudent {
+  id: number;
+  firstName: string;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  yearLevel: string | null;
+  /** @nullable */
+  school: string | null;
+  /** @nullable */
+  subjects: string | null;
+  /** @nullable */
+  goals: string | null;
+  /** @nullable */
+  address: string | null;
+}
+
+export interface ParentIntake {
+  /** @nullable */
+  parentAddress: string | null;
+  /** @nullable */
+  signupIntent: string | null;
+  /** @nullable */
+  signupIntentDetails: string | null;
+  /** @nullable */
+  knownTutorName: string | null;
+  intakeComplete: boolean;
+  intakeIssues: string[];
+  students: ParentIntakeStudent[];
+}
+
+export interface ParentIntakeStudentInput {
+  /** @minimum 1 */
+  id?: number;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  firstName: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  lastName: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  yearLevel: string;
+  /** @maxLength 200 */
+  school?: string;
+  /** @maxLength 500 */
+  subjects?: string;
+  /** @maxLength 2000 */
+  goals?: string;
+  dateOfBirth?: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  address: string;
+}
+
+export type ParentIntakeUpdateSignupIntent = typeof ParentIntakeUpdateSignupIntent[keyof typeof ParentIntakeUpdateSignupIntent];
+
+
+export const ParentIntakeUpdateSignupIntent = {
+  knows_tutor: 'knows_tutor',
+  find_tutor: 'find_tutor',
+  other: 'other',
+} as const;
+
+export interface ParentIntakeUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  parentAddress: string;
+  signupIntent: ParentIntakeUpdateSignupIntent;
+  /** @maxLength 1000 */
+  signupIntentDetails?: string;
+  /** @maxLength 200 */
+  knownTutorName?: string;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     */
+  students: ParentIntakeStudentInput[];
 }
 
 export type ParentInformationRequestStatus = typeof ParentInformationRequestStatus[keyof typeof ParentInformationRequestStatus];
@@ -315,6 +407,8 @@ export interface AdminParentDetails {
   signupIntentDetails: string | null;
   /** @nullable */
   knownTutorName: string | null;
+  intakeComplete: boolean;
+  intakeIssues: string[];
   students: AdminParentStudent[];
   connectedTutors: AdminConnectedTutor[];
   informationRequests: ParentInformationRequest[];

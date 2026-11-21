@@ -7,6 +7,7 @@ import {
   useListParentInformationRequests,
   useRespondParentInformationRequest,
 } from "@workspace/api-client-react";
+import ParentIntakeCompletion from "./ParentIntakeCompletion";
 
 function messageFromError(error: unknown) {
   const value = error as { data?: { error?: unknown }; message?: string };
@@ -47,6 +48,8 @@ export default function ParentInformationRequests({ compact = false }: { compact
   };
 
   return (
+    <>
+    <ParentIntakeCompletion compact={compact} />
     <section
       className={`rounded-xl border border-card-border bg-card ${compact ? "p-4" : "p-5"}`}
       aria-labelledby="parent-information-requests-heading"
@@ -125,5 +128,6 @@ export default function ParentInformationRequests({ compact = false }: { compact
         </p>
       )}
     </section>
+    </>
   );
 }

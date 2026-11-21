@@ -287,6 +287,8 @@ export const signupBodySignupIntentDetailsMax = 1000;
 
 export const signupBodyKnownTutorNameMax = 200;
 
+export const signupBodyParentAddressMax = 500;
+
 export const signupBodyStudentsItemFirstNameMax = 100;
 
 export const signupBodyStudentsItemLastNameMax = 100;
@@ -314,6 +316,7 @@ export const SignupBody = zod.object({
   "signupIntent": zod.enum(['knows_tutor', 'find_tutor', 'tutor_tools', 'other']).optional(),
   "signupIntentDetails": zod.string().max(signupBodySignupIntentDetailsMax).optional(),
   "knownTutorName": zod.string().max(signupBodyKnownTutorNameMax).optional(),
+  "parentAddress": zod.string().max(signupBodyParentAddressMax).optional(),
   "students": zod.array(zod.object({
   "firstName": zod.string().min(1).max(signupBodyStudentsItemFirstNameMax),
   "lastName": zod.string().min(1).max(signupBodyStudentsItemLastNameMax),
@@ -351,6 +354,95 @@ export const ListParentInformationRequestsResponseItem = zod.object({
   "closedAt": zod.coerce.date().nullable()
 })
 export const ListParentInformationRequestsResponse = zod.array(ListParentInformationRequestsResponseItem)
+
+
+/**
+ * @summary Read the authenticated parent's signup details and student profiles
+ */
+export const GetParentIntakeResponse = zod.object({
+  "parentAddress": zod.string().nullable(),
+  "signupIntent": zod.string().nullable(),
+  "signupIntentDetails": zod.string().nullable(),
+  "knownTutorName": zod.string().nullable(),
+  "intakeComplete": zod.boolean(),
+  "intakeIssues": zod.array(zod.string()),
+  "students": zod.array(zod.object({
+  "id": zod.number().int(),
+  "firstName": zod.string(),
+  "lastName": zod.string().nullable(),
+  "yearLevel": zod.string().nullable(),
+  "school": zod.string().nullable(),
+  "subjects": zod.string().nullable(),
+  "goals": zod.string().nullable(),
+  "address": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Complete required parent signup information and student lesson addresses
+ */
+export const updateParentIntakeBodyParentAddressMax = 500;
+
+export const updateParentIntakeBodySignupIntentDetailsMax = 1000;
+
+export const updateParentIntakeBodyKnownTutorNameMax = 200;
+
+
+export const updateParentIntakeBodyStudentsItemFirstNameMax = 100;
+
+export const updateParentIntakeBodyStudentsItemLastNameMax = 100;
+
+export const updateParentIntakeBodyStudentsItemYearLevelMax = 100;
+
+export const updateParentIntakeBodyStudentsItemSchoolMax = 200;
+
+export const updateParentIntakeBodyStudentsItemSubjectsMax = 500;
+
+export const updateParentIntakeBodyStudentsItemGoalsMax = 2000;
+
+export const updateParentIntakeBodyStudentsItemAddressMax = 500;
+
+export const updateParentIntakeBodyStudentsMax = 20;
+
+
+
+export const UpdateParentIntakeBody = zod.object({
+  "parentAddress": zod.string().min(1).max(updateParentIntakeBodyParentAddressMax),
+  "signupIntent": zod.enum(['knows_tutor', 'find_tutor', 'other']),
+  "signupIntentDetails": zod.string().max(updateParentIntakeBodySignupIntentDetailsMax).optional(),
+  "knownTutorName": zod.string().max(updateParentIntakeBodyKnownTutorNameMax).optional(),
+  "students": zod.array(zod.object({
+  "id": zod.number().int().min(1).optional(),
+  "firstName": zod.string().min(1).max(updateParentIntakeBodyStudentsItemFirstNameMax),
+  "lastName": zod.string().min(1).max(updateParentIntakeBodyStudentsItemLastNameMax),
+  "yearLevel": zod.string().min(1).max(updateParentIntakeBodyStudentsItemYearLevelMax),
+  "school": zod.string().max(updateParentIntakeBodyStudentsItemSchoolMax).optional(),
+  "subjects": zod.string().max(updateParentIntakeBodyStudentsItemSubjectsMax).optional(),
+  "goals": zod.string().max(updateParentIntakeBodyStudentsItemGoalsMax).optional(),
+  "dateOfBirth": zod.coerce.date().optional(),
+  "address": zod.string().min(1).max(updateParentIntakeBodyStudentsItemAddressMax)
+})).min(1).max(updateParentIntakeBodyStudentsMax)
+})
+
+export const UpdateParentIntakeResponse = zod.object({
+  "parentAddress": zod.string().nullable(),
+  "signupIntent": zod.string().nullable(),
+  "signupIntentDetails": zod.string().nullable(),
+  "knownTutorName": zod.string().nullable(),
+  "intakeComplete": zod.boolean(),
+  "intakeIssues": zod.array(zod.string()),
+  "students": zod.array(zod.object({
+  "id": zod.number().int(),
+  "firstName": zod.string(),
+  "lastName": zod.string().nullable(),
+  "yearLevel": zod.string().nullable(),
+  "school": zod.string().nullable(),
+  "subjects": zod.string().nullable(),
+  "goals": zod.string().nullable(),
+  "address": zod.string().nullable()
+}))
+})
 
 
 /**
@@ -1687,6 +1779,8 @@ export const GetAdminUserResponse = zod.object({
   "signupIntent": zod.string().nullable(),
   "signupIntentDetails": zod.string().nullable(),
   "knownTutorName": zod.string().nullable(),
+  "intakeComplete": zod.boolean(),
+  "intakeIssues": zod.array(zod.string()),
   "students": zod.array(zod.object({
   "id": zod.number().int(),
   "firstName": zod.string(),

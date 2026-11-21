@@ -176,6 +176,9 @@ export default function AdminUsers() {
   const selectedUser = detail.data;
   const isSelf = selectedUser?.id === currentUser?.id;
   const pendingReapply = !!selectedUser && !selectedUser.isActive && !!selectedUser.reapplicationRequestedAt;
+  const parentIntakeIncomplete = selectedUser?.role === "parent"
+    && !!selectedUser.parentDetails
+    && !selectedUser.parentDetails.intakeComplete;
   const role = selectedUser ? roleConfig[selectedUser.role] ?? roleConfig.student : null;
 
   return (
@@ -409,17 +412,33 @@ export default function AdminUsers() {
                   <button
                     type="button"
                     onClick={() => { setApproveError(""); setApproveSuccess(""); approveMutation.mutate({ userId: selectedUser.id }); }}
-                    disabled={approveMutation.isPending || !selectedUser.isActive}
+                    disabled={approveMutation.isPending || !selectedUser.isActive || !selectedUser.parentDetails?.intakeComplete}
                     className="w-full rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50"
                     data-testid="button-approve-parent"
                   >
                     {approveMutation.isPending ? "Approving..." : "Approve parent account"}
                   </button>
+                  {parentIntakeIncomplete && (
+                    <div className="rounded-md border border-amber-300 bg-white/70 p-3 text-xs text-amber-900" role="alert" data-testid="text-parent-intake-incomplete">
+                      <p className="font-semibold">Required signup details are missing. Request these before approving:</p>
+                      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                        {selectedUser.parentDetails?.intakeIssues.map((issue) => <li key={issue}>{issue}</li>)}
+                      </ul>
+                    </div>
+                  )}
                   {!selectedUser.isActive && <p className="text-xs text-amber-800">Reactivate the account before approving.</p>}
                 </div>
               )}
               {selectedUser.role === "parent" && selectedUser.parentDetails && (
                 <div className="space-y-3" data-testid="section-admin-parent-details">
+                  {!selectedUser.parentDetails.intakeComplete && selectedUser.parentApproved !== false && (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert" data-testid="text-parent-intake-incomplete">
+                      This parent profile is missing required signup details. Send an information request before approval.
+                      <ul className="mt-1 list-disc pl-5 text-xs">
+                        {selectedUser.parentDetails.intakeIssues.map((issue) => <li key={issue}>{issue}</li>)}
+                      </ul>
+                    </div>
+                  )}
                   <section className="rounded-lg border border-card-border p-4">
                     <h3 className="text-sm font-semibold text-foreground">Parent contact and signup</h3>
                     <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">

@@ -334,6 +334,7 @@ router.post("/auth/signup", async (req, res) => {
   const ipAddress = ((Array.isArray(forwarded) ? forwarded[0] : forwarded) ?? req.socket.remoteAddress ?? null)?.split(",")[0]?.trim() ?? null;
 
   const intake = validateSignupIntake(role as "parent" | "tutor", {
+    parentAddress: parsed.data.parentAddress,
     signupIntent: parsed.data.signupIntent,
     signupIntentDetails: parsed.data.signupIntentDetails,
     knownTutorName: parsed.data.knownTutorName,
@@ -356,6 +357,7 @@ router.post("/auth/signup", async (req, res) => {
         role,
         parentApproved: role !== "parent",
         phone: normalisedPhone,
+        address: intake.intake.parentAddress,
         signupIntent: intake.intake.signupIntent,
         signupIntentDetails: intake.intake.signupIntentDetails,
         knownTutorName: intake.intake.knownTutorName,

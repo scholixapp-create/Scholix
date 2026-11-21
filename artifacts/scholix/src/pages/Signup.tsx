@@ -103,9 +103,10 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState("");
+  const [parentAddress, setParentAddress] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [students, setStudents] = useState<SignupStudent[]>([emptyStudent()]);
-  const [signupIntent, setSignupIntent] = useState(initialRole === "parent" ? "find_tutor" : "tutor_tools");
+  const [signupIntent, setSignupIntent] = useState(initialRole === "parent" ? "" : "tutor_tools");
   const [signupIntentDetails, setSignupIntentDetails] = useState("");
   const [knownTutorName, setKnownTutorName] = useState("");
   const [existingAccountReapply, setExistingAccountReapply] = useState(false);
@@ -131,6 +132,7 @@ export default function Signup() {
       signupIntent,
       ...(signupIntent === "other" ? { signupIntentDetails } : {}),
       ...(signupIntent === "knows_tutor" ? { knownTutorName } : {}),
+      ...(role === "parent" ? { parentAddress: parentAddress.trim() } : {}),
       ...(role === "parent" ? {
         students: students.map((student) => ({
           firstName: student.firstName.trim(),
@@ -250,6 +252,10 @@ export default function Signup() {
     }
 
     if (!existingAccountReapply) {
+      if (role === "parent" && !["knows_tutor", "find_tutor", "other"].includes(signupIntent)) {
+        setError("Choose what brought you to Scholix.");
+        return;
+      }
       if (signupIntent === "knows_tutor" && !knownTutorName.trim()) {
         setError("Enter the tutor's name so we can connect you.");
         return;
@@ -259,10 +265,12 @@ export default function Signup() {
         return;
       }
       if (role === "parent" && (
+        !parentAddress.trim()
+        ||
         students.length === 0
         || students.some((student) => !student.firstName.trim() || !student.lastName.trim() || !student.yearLevel.trim() || !student.address.trim())
       )) {
-        setError("Add each student's name, year level, and lesson address.");
+        setError("Enter your contact address and each student's name, year level, and lesson address.");
         return;
       }
     }
@@ -438,7 +446,7 @@ export default function Signup() {
                     type="button"
                     onClick={() => {
                       setRole(r.value);
-                      setSignupIntent(r.value === "parent" ? "find_tutor" : "tutor_tools");
+                      setSignupIntent(r.value === "parent" ? "" : "tutor_tools");
                       setExistingAccountReapply(false);
                     }}
                     className={`py-2 px-2 rounded-lg border text-xs font-medium transition-all ${
@@ -465,6 +473,7 @@ export default function Signup() {
                   className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   data-testid="select-signup-intent"
                 >
+                  {role === "parent" && <option value="" disabled>Select one…</option>}
                   {role === "parent" ? (
                     <>
                       <option value="knows_tutor">I know a particular tutor</option>
@@ -507,6 +516,27 @@ export default function Signup() {
                     />
                   </div>
                 )}
+              </div>
+            )}
+
+            {role === "parent" && !existingAccountReapply && (
+              <div className="rounded-lg border border-border p-4 space-y-2" data-testid="section-parent-contact-address">
+                <label className="block text-sm font-medium text-foreground" htmlFor="parent-contact-address">
+                  Parent or guardian contact address
+                </label>
+                <input
+                  id="parent-contact-address"
+                  type="text"
+                  autoComplete="street-address"
+                  value={parentAddress}
+                  onChange={(event) => setParentAddress(event.target.value)}
+                  maxLength={500}
+                  required
+                  placeholder="Street, suburb, state and postcode"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="input-parent-contact-address"
+                />
+                <p className="text-xs text-muted-foreground">This contact address is stored on your parent profile. It is not copied to a student’s lesson address.</p>
               </div>
             )}
 

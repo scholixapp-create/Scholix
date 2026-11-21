@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable, tutorRelationshipsTable, parentInformationRequestsTable, adminUserActionsTable, accountReapplicationsTable, accountDeletionRequestsTable } from "@workspace/db";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { db, usersTable, tutorsTable, sessionsTable, invoicesTable, studentsTable, tutorRelationshipsTable, parentInformationRequestsTable, adminUserActionsTable, accountReapplicationsTable, accountDeletionRequestsTable, notificationsTable } from "@workspace/db";
+import { and, desc, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import {
   AdminListUsersQueryParams,
   AdminListUsersResponse,
@@ -28,9 +28,9 @@ import { verifyAdminSensitiveActionPassword } from "../lib/adminSensitiveActionR
 import { isSafeAdminAuditReason } from "../lib/adminAuditReason";
 import { CommissionWaiverError, changeTutorCommissionWaiver } from "../lib/adminCommissionWaiver";
 import { adminCommissionWaiverStore } from "../lib/adminCommissionWaiverStore";
-import { createNotification } from "../lib/notify";
-import { parentInformationRequestedEmailHtml } from "../lib/email";
+import { parentInformationRequestedEmailHtml, sendEmail } from "../lib/email";
 import { config } from "../lib/config";
+import { parentIntakeIssues } from "../lib/parentSignup";
 
 const router = Router();
 
@@ -127,18 +127,48 @@ router.post("/admin/users/:userId/approve-parent", async (req, res): Promise<voi
   if (!Number.isInteger(userId) || userId <= 0 || userId > 2147483647) {
     res.status(400).json({ error: "Invalid user ID" }); return;
   }
-  const approved = await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [target] = await tx.select().from(usersTable)
       .where(eq(usersTable.id, userId)).limit(1).for("update");
-    if (!target || target.role !== "parent" || !target.isActive || target.parentApproved) return false;
+    if (!target || target.role !== "parent" || !target.isActive || target.parentApproved) return { kind: "unavailable" as const };
+    const students = await tx.select({
+      firstName: studentsTable.firstName,
+      lastName: studentsTable.lastName,
+      yearLevel: studentsTable.gradeLevel,
+      address: studentsTable.address,
+    }).from(studentsTable)
+      .where(and(eq(studentsTable.parentId, userId), isNull(studentsTable.archivedAt)));
+    const intakeIssues = parentIntakeIssues({
+      parentAddress: target.address ?? undefined,
+      signupIntent: target.signupIntent ?? undefined,
+      signupIntentDetails: target.signupIntentDetails ?? undefined,
+      knownTutorName: target.knownTutorName ?? undefined,
+      students: students.map((student) => ({
+        firstName: student.firstName,
+        lastName: student.lastName ?? "",
+        yearLevel: student.yearLevel ?? "",
+        address: student.address ?? "",
+      })),
+    });
+    if (intakeIssues.length) return { kind: "incomplete" as const, issues: intakeIssues };
     await tx.update(usersTable).set({ parentApproved: true }).where(eq(usersTable.id, userId));
     await tx.insert(adminUserActionsTable).values({
       actorUserId: (req as unknown as AuthRequest).user.id,
       targetUserId: target.id, targetEmail: target.email, action: "parent_approved",
     });
-    return true;
+    return { kind: "approved" as const };
   });
-  if (!approved) { res.status(409).json({ error: "Only an active parent awaiting approval can be approved" }); return; }
+  if (result.kind === "unavailable") {
+    res.status(409).json({ error: "Only an active parent awaiting approval can be approved" });
+    return;
+  }
+  if (result.kind === "incomplete") {
+    res.status(409).json({
+      error: "Complete the parent contact address, signup reason, and every active student's profile and lesson address before approval.",
+      missingFields: result.issues,
+    });
+    return;
+  }
   res.json(await findAdminUser(userId));
 });
 
@@ -242,12 +272,26 @@ async function getAdminParentDetails(parentId: number) {
 
   const tutorById = new Map<number, (typeof relationshipTutors)[number]>();
   for (const tutor of [...relationshipTutors, ...sessionTutors]) tutorById.set(tutor.tutorId, tutor);
+  const intakeIssues = parentIntakeIssues({
+    parentAddress: parent.address ?? undefined,
+    signupIntent: parent.signupIntent ?? undefined,
+    signupIntentDetails: parent.signupIntentDetails ?? undefined,
+    knownTutorName: parent.knownTutorName ?? undefined,
+    students: students.filter((student) => !student.archivedAt).map((student) => ({
+      firstName: student.firstName,
+      lastName: student.lastName ?? "",
+      yearLevel: student.yearLevel ?? "",
+      address: student.address ?? "",
+    })),
+  });
   return {
     phone: parent.phone ?? null,
     address: parent.address ?? null,
     signupIntent: parent.signupIntent ?? null,
     signupIntentDetails: parent.signupIntentDetails ?? null,
     knownTutorName: parent.knownTutorName ?? null,
+    intakeComplete: intakeIssues.length === 0,
+    intakeIssues,
     students: students.map((student) => ({
       ...student,
       lastName: student.lastName ?? null,
@@ -305,6 +349,14 @@ router.post("/admin/users/:userId/information-requests", async (req, res): Promi
       targetEmail: parent.email,
       action: "parent_information_requested",
     });
+    await tx.insert(notificationsTable).values({
+      userId: parent.id,
+      type: "parent_information_requested",
+      title: "Scholix needs more information",
+      message: "An administrator has asked you for additional information. Sign in to review and reply.",
+      actionUrl: "/parent/information-requests",
+      actionLabel: "Review request",
+    });
     return { request, firstName: parent.firstName };
   });
   if (!created) {
@@ -312,20 +364,18 @@ router.post("/admin/users/:userId/information-requests", async (req, res): Promi
     return;
   }
 
-  await createNotification({
-    userId: created.request.parentUserId!,
-    type: "parent_information_requested",
-    title: "Scholix needs more information",
-    message: "An administrator has asked you for additional information. Sign in to review and reply.",
-    actionUrl: "/parent/information-requests",
-    actionLabel: "Review request",
-    emailSubject: "Scholix needs more information",
-    emailHtml: parentInformationRequestedEmailHtml({
+  const email = await sendEmail({
+    to: created.request.parentEmail,
+    subject: "Scholix needs more information",
+    html: parentInformationRequestedEmailHtml({
       recipientName: created.firstName,
       requestText: created.request.requestText,
       actionUrl: `${config.frontendUrl.replace(/\/+$/, "")}/parent/information-requests`,
     }),
   });
+  if (!email.delivered && !email.devMode) {
+    req.log.warn({ requestId: created.request.id }, "Parent information request saved with in-app alert, but email delivery failed");
+  }
   res.set("Cache-Control", "no-store");
   res.status(201).json(CreateAdminParentInformationRequestResponse.parse(created.request));
 });

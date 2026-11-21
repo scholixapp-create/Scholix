@@ -9,6 +9,7 @@ export function canUseProtectedResources(user: ApprovalUser, path: string): bool
   return !isPendingParent(user)
     || path === "/auth/me"
     || path === "/auth/logout"
+    || path === "/parent/intake"
     || path === "/parent/information-requests"
     || /^\/parent\/information-requests\/\d+\/respond$/.test(path);
 }

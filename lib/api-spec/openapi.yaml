@@ -283,6 +283,41 @@ paths:
         "401": { description: Sign in required }
         "403": { description: Parent account required }
 
+  /parent/intake:
+    get:
+      operationId: getParentIntake
+      tags: [parent]
+      summary: Read the authenticated parent's signup details and student profiles
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Parent intake information and any missing required fields
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ParentIntake" }
+        "401": { description: Sign in required }
+        "403": { description: Parent account required }
+    put:
+      operationId: updateParentIntake
+      tags: [parent]
+      summary: Complete required parent signup information and student lesson addresses
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ParentIntakeUpdate" }
+      responses:
+        "200":
+          description: Updated parent intake information
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ParentIntake" }
+        "400": { description: Invalid or incomplete parent intake }
+        "401": { description: Sign in required }
+        "403": { description: Parent account required }
+        "404": { description: Student profile not found for this parent }
+
   /parent/information-requests/{requestId}/respond:
     post:
       operationId: respondParentInformationRequest
@@ -1675,6 +1710,9 @@ components:
         knownTutorName:
           type: string
           maxLength: 200
+        parentAddress:
+          type: string
+          maxLength: 500
         students:
           type: array
           minItems: 1
@@ -1709,6 +1747,67 @@ components:
       properties:
         responseText: { type: string, minLength: 1, maxLength: 4000 }
       required: [responseText]
+
+    ParentIntakeStudent:
+      type: object
+      properties:
+        id: { type: integer }
+        firstName: { type: string }
+        lastName: { type: ["string", "null"] }
+        yearLevel: { type: ["string", "null"] }
+        school: { type: ["string", "null"] }
+        subjects: { type: ["string", "null"] }
+        goals: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+      required: [id, firstName, lastName, yearLevel, school, subjects, goals, address]
+
+    ParentIntake:
+      type: object
+      properties:
+        parentAddress: { type: ["string", "null"] }
+        signupIntent: { type: ["string", "null"] }
+        signupIntentDetails: { type: ["string", "null"] }
+        knownTutorName: { type: ["string", "null"] }
+        intakeComplete: { type: boolean }
+        intakeIssues:
+          type: array
+          items: { type: string }
+        students:
+          type: array
+          items: { $ref: "#/components/schemas/ParentIntakeStudent" }
+      required: [parentAddress, signupIntent, signupIntentDetails, knownTutorName, intakeComplete, intakeIssues, students]
+
+    ParentIntakeStudentInput:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: integer, minimum: 1 }
+        firstName: { type: string, minLength: 1, maxLength: 100 }
+        lastName: { type: string, minLength: 1, maxLength: 100 }
+        yearLevel: { type: string, minLength: 1, maxLength: 100 }
+        school: { type: string, maxLength: 200 }
+        subjects: { type: string, maxLength: 500 }
+        goals: { type: string, maxLength: 2000 }
+        dateOfBirth: { type: string, format: date }
+        address: { type: string, minLength: 1, maxLength: 500 }
+      required: [firstName, lastName, yearLevel, address]
+
+    ParentIntakeUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        parentAddress: { type: string, minLength: 1, maxLength: 500 }
+        signupIntent:
+          type: string
+          enum: [knows_tutor, find_tutor, other]
+        signupIntentDetails: { type: string, maxLength: 1000 }
+        knownTutorName: { type: string, maxLength: 200 }
+        students:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { $ref: "#/components/schemas/ParentIntakeStudentInput" }
+      required: [parentAddress, signupIntent, students]
 
     ParentInformationRequest:
       type: object
@@ -1885,6 +1984,10 @@ components:
         signupIntent: { type: ["string", "null"] }
         signupIntentDetails: { type: ["string", "null"] }
         knownTutorName: { type: ["string", "null"] }
+        intakeComplete: { type: boolean }
+        intakeIssues:
+          type: array
+          items: { type: string }
         students:
           type: array
           items: { $ref: "#/components/schemas/AdminParentStudent" }
@@ -1894,7 +1997,7 @@ components:
         informationRequests:
           type: array
           items: { $ref: "#/components/schemas/ParentInformationRequest" }
-      required: [phone, address, signupIntent, signupIntentDetails, knownTutorName, students, connectedTutors, informationRequests]
+      required: [phone, address, signupIntent, signupIntentDetails, knownTutorName, intakeComplete, intakeIssues, students, connectedTutors, informationRequests]
 
     AdminParentStudent:
       type: object

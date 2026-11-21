@@ -271,6 +271,8 @@ test("new parents must submit signup intake and student profiles with the parent
   const end = source.indexOf('router.get("/auth/me"');
   const signupRoute = source.slice(start, end);
   assert.match(signupRoute, /validateSignupIntake/);
+  assert.match(signupRoute, /parentAddress: parsed\.data\.parentAddress/);
+  assert.match(signupRoute, /address: intake\.intake\.parentAddress/);
   assert.match(signupRoute, /db\.transaction\(async \(tx\)/);
   assert.match(signupRoute, /tx\.insert\(studentsTable\)\.values\(studentValues\)/);
   assert.match(signupRoute, /parentId: created\.id/);
